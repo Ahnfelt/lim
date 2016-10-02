@@ -1,0 +1,231 @@
+package lim
+
+import com.sun.jmx.snmp.IPAcl.ParseError
+import lim.Lexer.TokenType._
+import lim.Lexer._
+
+import scala.collection.mutable
+import scala.collection.mutable.ArrayBuffer
+
+class Lexer(cursor : Cursor) {
+    
+    def token() : Option[Token] = {
+        identifier().orElse(operator()).orElse(brackets()).orElse(separator()).orElse(text())
+    }
+
+    def separator() : Option[Token] = {
+        cursor.skipWhitespace() // To make sure we ignore line breaks when appropriate
+        if(cursor() != '\n') return None
+        val from = cursor.offset
+        while(cursor() == '\n') {
+            cursor.skip()
+            cursor.skipWhitespace()
+        }
+        Some(Token(Separator, from, from + 1))
+    }
+    
+    def identifier() : Option[Token] = {
+        val upper = isBetween('A', 'Z')
+        if(!upper && !isBetween('a', 'z')) return None
+        val from = cursor.offset
+        while(isBetween('a', 'z') || isBetween('A', 'Z') || isBetween('0', '9')) {
+            cursor.skip()
+        }
+        val to = cursor.offset
+        cursor.skipWhitespace()
+        Some(Token(if(upper) Upper else Lower, from, to))
+    }
+    
+    def operator() : Option[Token] = {
+        val c = cursor()
+        val n = cursor(1)
+        val from = cursor.offset
+        val result : Token = (c, n) match {
+            case ('-', '>') => cursor.skip(2); Token(RightThinArrow, from, cursor.offset)
+            case ('-', '=') => cursor.skip(2); Token(Decrement, from, cursor.offset)
+            case ('-', _) => cursor.skip(1); Token(Minus, from, cursor.offset)
+            case ('+', '=') => cursor.skip(2); Token(Increment, from, cursor.offset)
+            case ('+', _) => cursor.skip(1); Token(Plus, from, cursor.offset)
+            case ('=', '>') => cursor.skip(2); Token(RightThickArrow, from, cursor.offset)
+            case ('=', '=') => cursor.skip(2); Token(Equal, from, cursor.offset)
+            case ('=', _) => cursor.skip(1); Token(Assign, from, cursor.offset)
+            case ('*', _) => cursor.skip(1); Token(Star, from, cursor.offset)
+            case ('/', _) => cursor.skip(1); Token(Slash, from, cursor.offset)
+            case ('&', '&') => cursor.skip(2); Token(And, from, cursor.offset)
+            case ('|', '|') => cursor.skip(2); Token(Or, from, cursor.offset)
+            case ('|', '>') => cursor.skip(2); Token(RightPipe, from, cursor.offset)
+            case ('<', '|') => cursor.skip(2); Token(LeftPipe, from, cursor.offset)
+            case ('?', _) => cursor.skip(1); Token(Question, from, cursor.offset)
+            case ('!', _) => cursor.skip(1); Token(Exclamation, from, cursor.offset)
+            case (':', _) => cursor.skip(1); Token(Colon, from, cursor.offset)
+            case ('@', _) => cursor.skip(1); Token(AtSign, from, cursor.offset)
+            case ('.', _) => cursor.skip(1); Token(Dot, from, cursor.offset)
+            case (',', _) => cursor.skip(1); Token(Comma, from, cursor.offset)
+            case ('_', _) => cursor.skip(1); Token(Underscore, from, cursor.offset)
+            case ('<', '-') => cursor.skip(2); Token(LeftThinArrow, from, cursor.offset)
+            case ('<', '=') => cursor.skip(2); Token(LessEqual, from, cursor.offset)
+            case ('<', _) => cursor.skip(2); Token(Less, from, cursor.offset)
+            case ('>', '=') => cursor.skip(2); Token(GreaterEqual, from, cursor.offset)
+            case ('>', _) => cursor.skip(2); Token(Greater, from, cursor.offset)
+            case _ => return None
+        }
+        cursor.skipWhitespace()
+        Some(result)
+    }
+
+    def brackets() : Option[Token] = {
+        val c = cursor()
+        val from = cursor.offset
+        val result : Token = c match {
+            case '(' => cursor.skip(1); cursor.push(')'); Token(LeftRound, from, cursor.offset)
+            case ')' => cursor.skip(1); cursor.pop(')'); Token(RightRound, from, cursor.offset)
+            case '[' => cursor.skip(1); cursor.push(']'); Token(LeftSquare, from, cursor.offset)
+            case ']' => cursor.skip(1); cursor.pop(']'); Token(RightSquare, from, cursor.offset)
+            case '{' => cursor.skip(1); cursor.push('}'); Token(LeftCurly, from, cursor.offset)
+            case '}' => cursor.skip(1); cursor.pop('}'); Token(RightCurly, from, cursor.offset)
+            case _ => return None
+        }
+        cursor.skipWhitespace()
+        Some(result)
+    }
+
+    def text() : Option[Token] = {
+        val c = cursor()
+        if(c != '"') return None
+        cursor.skip()
+        val from = cursor.offset
+        while(cursor() != '"') {
+            if(cursor.pastEnd) throw new ParseException("Unexpected end of file inside this string", position(cursor.buffer, from))
+            cursor.skip() // TODO: Escape sequences
+        }
+        val to = cursor.offset
+        cursor.skip()
+        cursor.skipWhitespace()
+        Some(Token(Text, from, to))
+    }
+
+    private def isBetween(from : Char, to : Char) = { val c = cursor(); c >= from && c <= to }
+    
+}
+
+object Lexer {
+    
+    case class Token(token : TokenType, from : Int, to : Int)
+    
+    sealed abstract class TokenType
+    object TokenType {
+        case object LeftThinArrow extends TokenType
+        case object RightThinArrow extends TokenType
+        case object RightThickArrow extends TokenType
+        case object LeftPipe extends TokenType
+        case object RightPipe extends TokenType
+        case object AtSign extends TokenType
+        case object Colon extends TokenType
+        case object Comma extends TokenType
+        case object Dot extends TokenType
+        case object Underscore extends TokenType
+        case object Assign extends TokenType
+        case object Increment extends TokenType
+        case object Decrement extends TokenType
+        case object Plus extends TokenType
+        case object Minus extends TokenType
+        case object Star extends TokenType
+        case object Slash extends TokenType
+        case object Equal extends TokenType
+        case object NotEqual extends TokenType
+        case object Less extends TokenType
+        case object LessEqual extends TokenType
+        case object Greater extends TokenType
+        case object GreaterEqual extends TokenType
+        case object And extends TokenType
+        case object Or extends TokenType
+        case object Exclamation extends TokenType
+        case object Question extends TokenType
+        case object LeftRound extends TokenType
+        case object RightRound extends TokenType
+        case object LeftSquare extends TokenType
+        case object RightSquare extends TokenType
+        case object LeftCurly extends TokenType
+        case object RightCurly extends TokenType
+        case object Lower extends TokenType
+        case object Upper extends TokenType
+        case object Text extends TokenType
+        case object Separator extends TokenType
+        case object OutsideFile extends TokenType
+    }
+    
+    
+    case class Position(line : Int, column : Int)
+    
+    
+    def position(buffer : Array[Char], offset : Int) : Position = {
+        var remaining = offset
+        var line = 1
+        var column = 1
+        while(remaining > 0) {
+            if(remaining < buffer.length && buffer(remaining) == '\n') {
+                line += 1
+                column = 1
+            } else {
+                column += 1
+            }
+            remaining -= 1
+        }
+        Position(line, column)
+    }
+
+
+    def text(buffer : Array[Char], from : Int, to : Int) : String = {
+        new String(buffer, from, to - from)
+    }
+
+    
+    def tokens(buffer : Array[Char], padding : Int = 0) : Array[Token] = {
+        val builder = new ArrayBuffer[Token]()
+        for(_ <- 1 to padding) builder += Token(OutsideFile, 0, 0)
+        val cursor = Cursor(buffer, 0, ArrayBuffer())
+        val lexer = new Lexer(cursor)
+        var lastToken : Option[Token] = None
+        while({ lastToken = lexer.token(); lastToken.isDefined }) builder += lastToken.get
+        for(_ <- 1 to padding) builder += Token(OutsideFile, cursor.offset, cursor.offset)
+        builder.toArray
+    }
+    
+    
+    case class Cursor(buffer : Array[Char], var offset : Int, stack : ArrayBuffer[Char]) {
+        
+        def apply(ahead : Int = 0) : Char = 
+            try buffer(offset + ahead) 
+            catch { case _ : ArrayIndexOutOfBoundsException => ' ' }
+        
+        def skip(ahead : Int = 1) : Unit = {
+            offset += ahead
+        }
+        
+        def pastEnd = offset >= buffer.length
+
+        def push(closeSymbol : Char) : Unit = {
+            stack += closeSymbol
+        }
+
+        def pop(closeSymbol : Char) : Unit = {
+            if(stack.isEmpty) {
+                throw new ParseException("Unexpected '" + closeSymbol + "'", position(buffer, offset))
+            }
+            if(stack.last != closeSymbol) {
+                throw new ParseException("Expected '" + stack.last + "', got '" + closeSymbol + "'", position(buffer, offset))
+            }
+            stack.remove(stack.length - 1)
+        }
+        
+        def skipWhitespace() : Unit = {
+            val ignoreNewLine = stack.nonEmpty && (stack.last == ')' || stack.last == ']')
+            while(offset < buffer.length && (apply() == ' ' || apply() == '\t' || apply() == '\r' || (ignoreNewLine && apply() == '\n'))) {
+                skip()
+            }
+        }
+
+    }
+    
+    case class ParseException(message : String, position : Position) extends RuntimeException(message + " at line " + position.line + " column " + position.column)
+}
