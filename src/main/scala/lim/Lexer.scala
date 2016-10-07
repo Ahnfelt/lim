@@ -10,7 +10,7 @@ import scala.collection.mutable.ArrayBuffer
 class Lexer(cursor : Cursor) {
     
     def token() : Option[Token] = {
-        identifier().orElse(operator()).orElse(brackets()).orElse(separator()).orElse(text())
+        identifier().orElse(operator()).orElse(brackets()).orElse(separator()).orElse(text()).orElse(number())
     }
 
     def separator() : Option[Token] = {
@@ -104,6 +104,20 @@ class Lexer(cursor : Cursor) {
         Some(Token(Text, from, to))
     }
 
+    def number() : Option[Token] = {
+        val c = cursor()
+        if(c < '0' || c > '9') return None
+        val from = cursor.offset
+        while(cursor() >= '0' && cursor() <= '9') {
+            if(cursor.pastEnd) throw new ParseException("Unexpected end of file inside this number", position(cursor.buffer, from))
+            cursor.skip()
+        }
+        val to = cursor.offset
+        cursor.skipWhitespace()
+        // TODO: Floating
+        Some(Token(Numeral, from, to))
+    }
+
     private def isBetween(from : Char, to : Char) = { val c = cursor(); c >= from && c <= to }
     
 }
@@ -150,6 +164,8 @@ object Lexer {
         case object Lower extends TokenType
         case object Upper extends TokenType
         case object Text extends TokenType
+        case object Numeral extends TokenType
+        case object Floating extends TokenType
         case object Separator extends TokenType
         case object OutsideFile extends TokenType
     }
@@ -159,17 +175,17 @@ object Lexer {
     
     
     def position(buffer : Array[Char], offset : Int) : Position = {
-        var remaining = offset
+        var at = 0
         var line = 1
         var column = 1
-        while(remaining > 0) {
-            if(remaining < buffer.length && buffer(remaining) == '\n') {
+        while(at < offset) {
+            if(at < buffer.length && buffer(at) == '\n') {
                 line += 1
                 column = 1
             } else {
                 column += 1
             }
-            remaining -= 1
+            at += 1
         }
         Position(line, column)
     }
@@ -180,14 +196,14 @@ object Lexer {
     }
 
     
-    def tokens(buffer : Array[Char], padding : Int = 0) : Array[Token] = {
+    def tokens(buffer : Array[Char], paddingBefore : Int = 0, paddingAfter : Int = 10) : Array[Token] = {
         val builder = new ArrayBuffer[Token]()
-        for(_ <- 1 to padding) builder += Token(OutsideFile, 0, 0)
+        for(_ <- 1 to paddingBefore) builder += Token(OutsideFile, 0, 0)
         val cursor = Cursor(buffer, 0, ArrayBuffer())
         val lexer = new Lexer(cursor)
         var lastToken : Option[Token] = None
         while({ lastToken = lexer.token(); lastToken.isDefined }) builder += lastToken.get
-        for(_ <- 1 to padding) builder += Token(OutsideFile, cursor.offset, cursor.offset)
+        for(_ <- 1 to paddingAfter) builder += Token(OutsideFile, cursor.offset, cursor.offset)
         builder.toArray
     }
     
