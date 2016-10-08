@@ -168,14 +168,22 @@ class Parser(cursor : Cursor, buffer : Array[Char]) {
                 if(cursor().token != RightRound) throw new ParseException("Expected ), got " + cursor().token, Lexer.position(buffer, cursor().from))
                 cursor.skip()
                 result
+            case (Upper, Dot, Upper, _) =>
+                val module = Lexer.text(buffer, cursor().from, cursor().to)
+                cursor.skip(2)
+                val result = ClassOrModule(cursor.offset, Some(module), Lexer.text(buffer, cursor().from, cursor().to))
+                cursor.skip()
+                result
             case (Upper, _, _, _) =>
-                val result = ClassOrModule(cursor.offset, Lexer.text(buffer, cursor().from, cursor().to))
+                val result = ClassOrModule(cursor.offset, None, Lexer.text(buffer, cursor().from, cursor().to))
                 cursor.skip()
                 result
             case (Lower, _, _, _) =>
                 val result = Variable(cursor.offset, Lexer.text(buffer, cursor().from, cursor().to))
                 cursor.skip()
                 result
+            case (Text, _, _, _) =>
+                cursor.skipWith(TextValue(cursor.offset, Lexer.text(buffer, cursor().from, cursor().to)))
             case (Numeral, _, _, _) =>
                 cursor.skipWith(IntegerValue(cursor.offset, Lexer.text(buffer, cursor().from, cursor().to).toLong))
             case (Floating, _, _, _) =>
@@ -286,8 +294,120 @@ class Parser(cursor : Cursor, buffer : Array[Char]) {
         }
     }
 
-    def parseModule() = {
+    def parseTypeParameter() : String = {
+        if(cursor().token != Lower) throw new ParseException("Expected type parameter, got " + cursor().token, Lexer.position(buffer, cursor().from))
+        cursor.skipWith(Lexer.text(buffer, cursor().from, cursor().to))
+    }
 
+    def parseParameter() : Parameter = {
+        val offset = cursor.offset
+        if(cursor().token != Lower) throw new ParseException("Expected parameter name, got " + cursor().token, Lexer.position(buffer, cursor().from))
+        val name = cursor.skipWith(Lexer.text(buffer, cursor().from, cursor().to))
+        if(cursor().token != Colon) throw new ParseException("Expected parameter type, got " + cursor().token, Lexer.position(buffer, cursor().from))
+        cursor.skip()
+        val parameterType = parseType()
+        Parameter(offset, name, parameterType)
+    }
+
+    def parseMethodSignature() : MethodSignature = {
+        val offset = cursor.offset
+        if(cursor().token != Lower) throw new ParseException("Expected method name, got " + cursor().token, Lexer.position(buffer, cursor().from))
+        val name = cursor.skipWith(Lexer.text(buffer, cursor().from, cursor().to))
+        val typeParameters = if(cursor().token == LeftSquare) {
+            cursor.skip()
+            cursor.skipWith(commaList(parseTypeParameter, () => cursor().token == RightSquare))
+        } else List()
+        val parameters = if(cursor().token == LeftRound) {
+            cursor.skip()
+            cursor.skipWith(commaList(parseParameter, () => cursor().token == RightRound))
+        } else List()
+        val returnType = if(cursor().token == Colon) {
+            cursor.skip()
+            parseType()
+        } else TypeConstructor(cursor.offset, "Void", List())
+        MethodSignature(offset, name, typeParameters, parameters, returnType)
+    }
+
+    def parseMethodDefinition() = {
+        val offset = cursor.offset
+        val signature = parseMethodSignature()
+        val body = parseBody()
+        MethodDefinition(offset, signature, body)
+    }
+
+    def parseMethodSignatures() : List[MethodSignature] = {
+        if(cursor().token != LeftCurly) throw new ParseException("Expected {, got " + cursor().token, Lexer.position(buffer, cursor().from))
+        cursor.skip()
+        val result = ListBuffer[MethodSignature]()
+        while(cursor().token != RightCurly) {
+            if(cursor().token == Separator) cursor.skip()
+            result += parseMethodSignature()
+            if(cursor().token != RightCurly) {
+                if(cursor().token != Separator) throw new ParseException("Expected } or line break, got " + cursor().token, Lexer.position(buffer, cursor().from))
+                cursor.skip()
+            }
+        }
+        cursor.skip()
+        result.toList
+    }
+
+    def parseValueDefinition() : ValueDefinition = {
+        val offset = cursor.offset
+        if(cursor().token != Lower) throw new ParseException("Expected constant name, got " + cursor().token, Lexer.position(buffer, cursor().from))
+        val name = cursor.skipWith(Lexer.text(buffer, cursor().from, cursor().to))
+        if(cursor().token != Colon) throw new ParseException("Expected constant type, got " + cursor().token, Lexer.position(buffer, cursor().from))
+        cursor.skip()
+        val valueType = if(cursor().token == Lexer.TokenType.Assign) None else Some(parseType())
+        if(cursor().token != Lexer.TokenType.Assign) throw new ParseException("Expected constant value, got " + cursor().token, Lexer.position(buffer, cursor().from))
+        cursor.skip()
+        val value = parseTerm()
+        // TODO: Check if value contains method calls (forbidden at toplevel to prevent global state)
+        ValueDefinition(offset, name, valueType, value)
+    }
+
+    def parseTypeDefinition() : TypeDefinition = {
+        val offset = cursor.offset
+        if(cursor().token != Upper) throw new ParseException("Expected type name, got " + cursor().token, Lexer.position(buffer, cursor().from))
+        val name = cursor.skipWith(Lexer.text(buffer, cursor().from, cursor().to))
+        val typeParameters = if(cursor().token == LeftSquare) {
+            cursor.skip()
+            cursor.skipWith(commaList(parseTypeParameter, () => cursor().token == RightSquare))
+        } else List()
+        val defaultModifier = (cursor(0).token, cursor(1).token) match {
+            case (Question, Exclamation) => cursor.skipWith(RequestResponseModifier, 2)
+            case (Question, _) => cursor.skipWith(RequestModifier)
+            case (Exclamation, _) => cursor.skipWith(ResponseModifier)
+            case (LeftRound, _) => RequestModifier
+            case _ => RequestResponseModifier
+        }
+        val methodSignatures = if(cursor().token == LeftRound) {
+            cursor.skip()
+            val parameters = commaList(parseParameter, () => cursor().token == RightRound)
+            cursor.skip()
+            List(MethodSignature(offset, name.head.toLower + name.tail, List(), parameters, TypeConstructor(offset, "Void", List())))
+        } else parseMethodSignatures()
+        TypeDefinition(offset, name, typeParameters, defaultModifier, methodSignatures)
+    }
+
+    def parseDefinition() = {
+        (cursor(0).token, cursor(1).token) match {
+            case (Lower, Colon) => parseValueDefinition()
+            case (Lower, _) => parseMethodDefinition()
+            case _ => parseTypeDefinition()
+        }
+    }
+
+    def parseModule() = {
+        val result = ListBuffer[Definition]()
+        while(cursor().token != OutsideFile) {
+            if(cursor().token == Separator) cursor.skip()
+            result += parseDefinition()
+            if(cursor().token != OutsideFile) {
+                if(cursor().token != Separator) throw new ParseException("Expected end of file or line break, got " + cursor().token, Lexer.position(buffer, cursor().from))
+                cursor.skip()
+            }
+        }
+        result.toList
     }
 
 }
@@ -297,9 +417,10 @@ object Parser {
     sealed abstract class Term
     case class Binary(offset : Int, operator : TokenType, left : Term, right : Term) extends Term
     case class Unary(offset : Int, operator : TokenType, value : Term) extends Term
+    case class TextValue(offset : Int, value : String) extends Term
     case class IntegerValue(offset : Int, value : Long) extends Term
     case class FloatingValue(offset : Int, value : Double) extends Term
-    case class ClassOrModule(offset : Int, name : String) extends Term
+    case class ClassOrModule(offset : Int, module : Option[String], classOrModule : String) extends Term
     case class Variable(offset : Int, name : String) extends Term
     case class MethodCall(offset : Int, value : Term, methodName : String, arguments : List[Term], namedArguments : List[(String, Term)]) extends Term
     case class Copy(offset : Int, value : Term, fields : List[(String, Term)]) extends Term
@@ -329,7 +450,7 @@ object Parser {
     case object ResponseModifier extends TypeModifier
     case object RequestResponseModifier extends TypeModifier
 
-    case class MethodSignature(offset : Int, name : String, typeParameters : List[String], parameters : List[Parameter])
+    case class MethodSignature(offset : Int, name : String, typeParameters : List[String], parameters : List[Parameter], returnType : Type)
 
     case class MethodImplementation(offset : Int, name : String, parameters : List[String], body : List[Statement])
 
@@ -358,18 +479,29 @@ object Parser {
 
 
     def main(args : Array[String]) {
-        println(testParse("""Iterator {
-            next(x, y) {
-                while({x < y}, { x += 1 })
+        println(testParse("""
+
+        origo := Point(0, 0)
+
+        Iterator[t] {
+            next() : Option[t]
+        }
+
+        newIntIterator(i : Int) : Iterator[Int] {
+            Iterator {
+                next() {
+                    Option.none
+                }
             }
-            delete() { nope() }
-        }"""))
+        }
+
+        """))
     }
 
     def testParse(text : String) : Any = {
         val buffer = text.toCharArray
         val tokens = Lexer.tokens(buffer, 0)
         val parser = new Parser(new Parser.Cursor(tokens, 0), buffer)
-        parser.parseInstance()
+        parser.parseModule()
     }
 }
