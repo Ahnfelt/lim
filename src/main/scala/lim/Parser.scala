@@ -244,7 +244,16 @@ class Parser(cursor : Cursor, buffer : Array[Char]) {
     def parseInequality() : Term = leftAssociative(parsePlusMinus, List(Equal, NotEqual, Less, LessEqual, Greater, GreaterEqual))
     def parseAndOr() : Term = leftAssociative(parseInequality, List(And, Or))
 
-    def parseTerm() : Term = parseAndOr()
+    def parseMatch() : Term = {
+        val value = parseAndOr()
+        if(cursor().token != Question) return value
+        val offset = cursor.offset
+        cursor.skip()
+        val (_, methods) = parseMethodImplementations(false)
+        Match(offset, value, methods)
+    }
+
+    def parseTerm() : Term = parseMatch()
 
     def parseBody() : List[Statement] = {
         if(cursor().token != LeftCurly) throw new ParseException("Expected {, got " + cursor().token, Lexer.position(buffer, cursor().from))
