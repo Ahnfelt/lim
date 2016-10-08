@@ -34,6 +34,10 @@ class Parser(cursor : Cursor, buffer : Array[Char]) {
 
     def parseTypeConstructor() : Type = {
         val position = cursor().from
+        val moduleName = if(cursor(1).token != Dot) None else {
+            if(cursor().token != Upper) throw new ParseException("Expected module name, got " + cursor().token, Lexer.position(buffer, cursor().from))
+            cursor.skipWith(Some(Lexer.text(buffer, cursor().from, cursor().to)), 2)
+        }
         if(cursor().token != Upper) throw new ParseException("Expected type, got " + cursor().token, Lexer.position(buffer, cursor().from))
         val name = Lexer.text(buffer, cursor().from, cursor().to)
         cursor.skip()
@@ -43,7 +47,7 @@ class Parser(cursor : Cursor, buffer : Array[Char]) {
             cursor.skip()
             result
         }
-        TypeConstructor(position, name, typeArguments)
+        TypeConstructor(position, moduleName, name, typeArguments)
     }
 
     def parseType() : Type = {
@@ -55,7 +59,7 @@ class Parser(cursor : Cursor, buffer : Array[Char]) {
             val position = cursor.offset
             cursor.skip()
             val right = parseType()
-            TypeConstructor(position, "F" + typeArguments.length, typeArguments ++ List(right))
+            TypeConstructor(position, Some("_"), "F" + typeArguments.length, typeArguments ++ List(right))
         } else {
             val left = if(cursor().token != Lower) parseTypeConstructor() else {
                 val typeParameter = TypeParameter(cursor.offset, Lexer.text(buffer, cursor().from, cursor().to))
@@ -66,7 +70,7 @@ class Parser(cursor : Cursor, buffer : Array[Char]) {
                 val position = cursor.offset
                 cursor.skip()
                 val right = parseType()
-                TypeConstructor(position, "F1", List(right))
+                TypeConstructor(position, Some("_"), "F1", List(right))
             }
         }
     }
@@ -333,7 +337,7 @@ class Parser(cursor : Cursor, buffer : Array[Char]) {
         val returnType = if(cursor().token == Colon) {
             cursor.skip()
             parseType()
-        } else TypeConstructor(cursor.offset, "Void", List())
+        } else TypeConstructor(cursor.offset, Some("_"), "Void", List())
         MethodSignature(offset, name, typeParameters, parameters, returnType)
     }
 
@@ -393,7 +397,7 @@ class Parser(cursor : Cursor, buffer : Array[Char]) {
             cursor.skip()
             val parameters = commaList(parseParameter, () => cursor().token == RightRound)
             cursor.skip()
-            List(MethodSignature(offset, name.head.toLower + name.tail, List(), parameters, TypeConstructor(offset, "Void", List())))
+            List(MethodSignature(offset, name.head.toLower + name.tail, List(), parameters, TypeConstructor(offset, Some("_"), "Void", List())))
         } else parseMethodSignatures()
         TypeDefinition(offset, name, typeParameters, defaultModifier, methodSignatures)
     }
@@ -445,7 +449,7 @@ object Parser {
     case class Decrement(offset : Int, variable : String, value : Term) extends Statement
 
     sealed abstract class Type
-    case class TypeConstructor(offset : Int, name : String, typeArguments : List[Type]) extends Type
+    case class TypeConstructor(offset : Int, module : Option[String], name : String, typeArguments : List[Type]) extends Type
     case class TypeParameter(offset : Int, name : String) extends Type
     case class TypeVariable(offset : Int, id : Int) extends Type
 
