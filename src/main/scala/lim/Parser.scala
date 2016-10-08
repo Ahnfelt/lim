@@ -410,7 +410,7 @@ class Parser(cursor : Cursor, buffer : Array[Char]) {
         }
     }
 
-    def parseModule() = {
+    def parseModule() : Module = {
         val result = ListBuffer[Definition]()
         while(cursor().token != OutsideFile) {
             if(cursor().token == Separator) cursor.skip()
@@ -420,7 +420,15 @@ class Parser(cursor : Cursor, buffer : Array[Char]) {
                 cursor.skip()
             }
         }
-        result.toList
+        val definitions = result.toList
+
+        Module(
+            exports = List(),
+            imports = List(),
+            typeDefinitions = definitions.collect { case d : TypeDefinition => d },
+            valueDefinitions = definitions.collect { case d : ValueDefinition => d },
+            methodDefinitions = definitions.collect { case d : MethodDefinition => d }
+        )
     }
 
 }
@@ -492,9 +500,9 @@ object Parser {
 
 
     def main(args : Array[String]) {
-        println(testParse("""
+        val p1 = test("""
 
-        origo := Point(0, 0)
+        origo := 0
 
         Iterator[t] {
             next() : Option[t]
@@ -508,13 +516,17 @@ object Parser {
             }
         }
 
-        """))
+        """)
+
+        println(p1)
     }
 
-    def testParse(text : String) : Any = {
+    def test(text : String) : Any = {
         val buffer = text.toCharArray
         val tokens = Lexer.tokens(buffer, 0)
         val parser = new Parser(new Parser.Cursor(tokens, 0), buffer)
-        parser.parseModule()
+        val typer = new Typer(buffer)
+        val module = parser.parseModule()
+        typer.typeModule(module)
     }
 }
