@@ -207,6 +207,7 @@ class Typer(buffer : Array[Char]) {
             val valueType = nextTypeVariable(offset)
             val (typeDefinition : TypeDefinition, module : Option[String], name : String, modifier : Option[TypeModifier], typedValue : Term) = {
                 value match {
+                    // TODO: Also handle response type methods
                     case ClassOrModule(_, module1, classOrModule1) =>
                         val uninstantiatedDefinition = typeEnvironment.getOrElse(module1 -> classOrModule1, {
                             throw new TypeException("No such type: " + module1.map(_ + ".").getOrElse("") + classOrModule1, Lexer.position(buffer, offset))
