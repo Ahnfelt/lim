@@ -1,7 +1,5 @@
 package lim
 
-import java.util.function.BinaryOperator
-
 import lim.Lexer._
 import lim.Lexer.TokenType._
 import lim.Parser.Assign
@@ -13,6 +11,7 @@ class Typer(buffer : Array[Char]) {
 
     var nextTypeVariableId = 1
     var environment = Map[String, Type]()
+    var methodEnvironment = Map[String, MethodSignature]()
     var typeVariables = Map[Int, Type]()
     var typeEnvironment = Map[(Option[String], String), TypeDefinition](
         (None, "Void") -> TypeDefinition(0, "Void", List(), RequestModifier, List()),
@@ -205,15 +204,17 @@ class Typer(buffer : Array[Char]) {
 
         case ClassOrModule(offset, module, classOrModule) => throw new TypeException("Lone interface or module: " + module.map(_ + ".").getOrElse("") + classOrModule, Lexer.position(buffer, offset))
 
+        case ThisModule(offset) => throw new TypeException("Lone this module", Lexer.position(buffer, offset))
+
         case Variable(offset, name) =>
             environment.get(name) match {
                 case Some(t) => equalityConstraint(offset, expectedType, t); term
                 case None => throw new TypeException("No such variable: " + name, Lexer.position(buffer, offset))
             }
 
-        case MethodCall(offset, value, methodName, arguments, namedArguments) =>
+        case MethodCall(offset, value, originalMethodName, arguments, namedArguments) =>
             val valueType = nextTypeVariable(offset)
-            val (typeDefinition : TypeDefinition, module : Option[String], name : String, modifier : Option[TypeModifier], typedValue : Term) = {
+            val (typeDefinition : TypeDefinition, module : Option[String], name : String, modifier : Option[TypeModifier], typedValue : Term, methodName : String) = {
                 value match {
                     // TODO: Also handle response type methods
                     case ClassOrModule(_, module1, classOrModule1) =>
@@ -225,7 +226,13 @@ class Typer(buffer : Array[Char]) {
                         val requestDefinition = definition.copy(methodSignatures = definition.methodSignatures.map { m =>
                             m.copy(returnType = TypeConstructor(offset, module1, classOrModule1, typeArguments, Some(RequestModifier)))
                         })
-                        (requestDefinition, module1, classOrModule1, Some(RequestResponseModifier), value)
+                        (requestDefinition, module1, classOrModule1, Some(RequestResponseModifier), value, originalMethodName)
+                    case Variable(_, name1) if !environment.contains(name1) =>
+                        val method = methodEnvironment.getOrElse(name1, {
+                            throw new TypeException("No such method: " + name1, Lexer.position(buffer, offset))
+                        })
+                        val methodTypeDefinition = TypeDefinition(offset, name1, List(), RequestResponseModifier, List(method))
+                        (methodTypeDefinition, None, name1, Some(RequestResponseModifier), ThisModule(offset), name1)
                     case _ =>
                         val typedValue1 = typeTerm(valueType, value)
                         expandType(valueType) match {
@@ -233,9 +240,9 @@ class Typer(buffer : Array[Char]) {
                                 val definition = typeEnvironment.get(module1 -> name1).map(instantiateTypeDefinition(offset, _, Some(typeArguments1))).getOrElse {
                                     throw new TypeException("No such type: " + module1.map(_ + ".").getOrElse("") + name1, Lexer.position(buffer, offset))
                                 }
-                                (definition, module1, name1, modifier1, typedValue1)
-                            case TypeParameter(_, name1) => throw new TypeException("Type parameter " + name1 + " may not support this method: " + methodName, Lexer.position(buffer, offset))
-                            case TypeVariable(_, id) => throw new TypeException("Unknown type may not support this method: " + methodName, Lexer.position(buffer, offset))
+                                (definition, module1, name1, modifier1, typedValue1, originalMethodName)
+                            case TypeParameter(_, name1) => throw new TypeException("Type parameter " + name1 + " may not support this method: " + originalMethodName, Lexer.position(buffer, offset))
+                            case TypeVariable(_, id) => throw new TypeException("Unknown type may not support this method: " + originalMethodName, Lexer.position(buffer, offset))
                         }
                 }
             }
@@ -343,6 +350,7 @@ class Typer(buffer : Array[Char]) {
     }
 
     def typeMethodDefinitions(methodDefinitions : List[MethodDefinition]) : List[MethodDefinition] = {
+        for(d <- methodDefinitions) methodEnvironment += d.signature.name -> d.signature
         methodDefinitions.map { m =>
             saveEnvironment {
                 for(p <- m.signature.parameters) environment += p.name -> p.parameterType

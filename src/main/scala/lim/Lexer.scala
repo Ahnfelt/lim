@@ -91,9 +91,9 @@ class Lexer(cursor : Cursor) {
 
     def text() : Option[Token] = {
         val c = cursor()
+        val from = cursor.offset
         if(c != '"') return None
         cursor.skip()
-        val from = cursor.offset
         while(cursor() != '"') {
             if(cursor.pastEnd) throw new ParseException("Unexpected end of file inside this string", position(cursor.buffer, from))
             cursor.skip() // TODO: Escape sequences
