@@ -107,6 +107,7 @@ class Lexer(cursor : Cursor) {
                 val to = cursor.offset
                 cursor.skip()
                 cursor.push('"')
+                cursor.skipWhitespace()
                 return Some(Token(if(middle) TextMiddle else TextStart, from, to))
             }
             if(cursor.pastEnd) throw new ParseException("Unexpected end of file inside this string", position(cursor.buffer, from))
@@ -220,6 +221,10 @@ object Lexer {
         val lexer = new Lexer(cursor)
         var lastToken : Option[Token] = None
         while({ lastToken = lexer.token(); lastToken.isDefined }) builder += lastToken.get
+        if(!cursor.pastEnd) {
+            println(builder.toList.map(_.token).mkString(" "))
+            throw new ParseException("Unexpected character: " + cursor(), position(buffer, cursor.offset))
+        }
         for(_ <- 1 to paddingAfter) builder += Token(OutsideFile, cursor.offset, cursor.offset)
         builder.toArray
     }
