@@ -534,6 +534,13 @@ object Parser {
             }
         }
 
+        foo(bar : Option[Int]) : Int {
+            bar ? {
+                some(x) { x * x }
+                none { 0 }
+            }
+        }
+
         """)
 
         println(p1)

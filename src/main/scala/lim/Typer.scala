@@ -163,12 +163,13 @@ class Typer(buffer : Array[Char]) {
 
     def typeMethod(signature : MethodSignature, method : MethodImplementation) : MethodImplementation = {
         saveEnvironment {
-            for(p <- signature.parameters) environment += p.name -> p.parameterType
+            for((p, t) <- method.parameters zip signature.parameters.map(_.parameterType)) environment += p -> t
             method.copy(body = typeBody(method.offset, signature.returnType, method.body))
         }
     }
 
     def typeTerm(expectedType : Type, term : Term) : Term = term match {
+
         case Binary(offset, operator, left, right) =>
             def operatorType(resultTypeName : String, operandTypeName : Option[String]) = {
                 val t1 = operandTypeName.map(TypeConstructor(offset, None, _, List(), None)).getOrElse(nextTypeVariable(offset))
@@ -191,18 +192,25 @@ class Typer(buffer : Array[Char]) {
                 case TokenType.Plus => operatorType("Int", Some("Int"))
                 case _ => throw new TypeException("Unknown binary operator: " + operator, Lexer.position(buffer, offset))
             }
+
         case Unary(offset, Minus, value) => equalityConstraint(offset, expectedType, TypeConstructor(offset, None, "Int", List(), None)); Unary(offset, Minus, typeTerm(expectedType, value))
         case Unary(offset, Exclamation, value) => equalityConstraint(offset, expectedType, TypeConstructor(offset, None, "Bool", List(), None)); Unary(offset, Exclamation, typeTerm(expectedType, value))
         case Unary(offset, operator, value) => throw new TypeException("Unknown unary operator: " + operator, Lexer.position(buffer, offset))
+
         case TextValue(offset, value) => equalityConstraint(offset, expectedType, TypeConstructor(offset, None, "String", List(), None)); term
+
         case IntegerValue(offset, value) => equalityConstraint(offset, expectedType, TypeConstructor(offset, None, "Int", List(), None)); term
+
         case FloatingValue(offset, value) => equalityConstraint(offset, expectedType, TypeConstructor(offset, None, "Float", List(), None)); term
+
         case ClassOrModule(offset, module, classOrModule) => throw new TypeException("Lone interface or module: " + module.map(_ + ".").getOrElse("") + classOrModule, Lexer.position(buffer, offset))
+
         case Variable(offset, name) =>
             environment.get(name) match {
                 case Some(t) => equalityConstraint(offset, expectedType, t); term
                 case None => throw new TypeException("No such variable: " + name, Lexer.position(buffer, offset))
             }
+
         case MethodCall(offset, value, methodName, arguments, namedArguments) =>
             val valueType = nextTypeVariable(offset)
             val (typeDefinition : TypeDefinition, module : Option[String], name : String, modifier : Option[TypeModifier], typedValue : Term) = {
@@ -260,6 +268,7 @@ class Typer(buffer : Array[Char]) {
                 (i, x, typeTerm(p.parameterType, a))
             }
             MethodCall(offset, typedValue, methodName, unnamed, named)
+
         case instance@Instance(offset, moduleName, interfaceName, thisName, methods) =>
             val typeDefinition = typeEnvironment.getOrElse(moduleName -> interfaceName, {
                 throw new TypeException("No such type: " + moduleName.map(_ + ".").getOrElse("") + interfaceName, Lexer.position(buffer, offset))
@@ -279,11 +288,40 @@ class Typer(buffer : Array[Char]) {
             }
             val missing = instantiatedTypeDefinition.methodSignatures.map(_.name).toSet -- methods.map(_.name)
             if(missing.nonEmpty) {
-                throw new TypeException("The following methods are missing: " + missing.mkString(", "), Lexer.position(buffer, offset))
+                throw new TypeException("The following methods must be implemented: " + missing.mkString(", "), Lexer.position(buffer, offset))
             }
             instance.copy(methods = typedMethods)
+
         case Match(offset, value, methods) =>
-            /* TODO */ term
+            val valueType = nextTypeVariable(offset)
+            val typedValue = typeTerm(valueType, value)
+            val methodSignatures = expandType(valueType) match {
+                case t@TypeConstructor(_, module1, name1, typeArguments1, modifier1) =>
+                    val definition = typeEnvironment.get(module1 -> name1).map(instantiateTypeDefinition(offset, _, Some(typeArguments1))).getOrElse {
+                        throw new TypeException("No such type: " + module1.map(_ + ".").getOrElse("") + name1, Lexer.position(buffer, offset))
+                    }
+                    // TODO: Also handle response type methods
+                    if(modifier1.getOrElse(definition.defaultModifier) != RequestModifier) {
+                        throw new TypeException("Can't match on non-request type: " + t, Lexer.position(buffer, offset))
+                    }
+                    definition.methodSignatures
+                case t@TypeParameter(_, name1) => throw new TypeException("Can't match on type parameter: " + t, Lexer.position(buffer, offset))
+                case t@TypeVariable(_, id) => throw new TypeException("Can't match on unknown type: " + t, Lexer.position(buffer, offset))
+            }
+            val resultType = nextTypeVariable(offset)
+            equalityConstraint(offset, expectedType, resultType)
+            val typedMethods = methods.map { m =>
+                val signature = methodSignatures.find(_.name == m.name).getOrElse {
+                    throw new TypeException("No such case: " + m.name, Lexer.position(buffer, offset))
+                }
+                typeMethod(signature.copy(returnType = resultType), m)
+            }
+            val missing = methodSignatures.map(_.name).toSet -- methods.map(_.name)
+            if(missing.nonEmpty) {
+                throw new TypeException("The following cases must be implemented: " + missing.mkString(", "), Lexer.position(buffer, offset))
+            }
+            Match(offset, typedValue, typedMethods)
+
         case Lambda(offset, parameters, body) =>
             val parameterTypes = parameters.map(p => p -> nextTypeVariable(offset))
             val returnType = nextTypeVariable(offset)
