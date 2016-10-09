@@ -10,7 +10,7 @@ import scala.collection.mutable.ArrayBuffer
 class Lexer(cursor : Cursor) {
     
     def token() : Option[Token] = {
-        identifier().orElse(operator()).orElse(brackets()).orElse(separator()).orElse(text()).orElse(number())
+        identifier().orElse(operator()).orElse(text()).orElse(brackets()).orElse(separator()).orElse(number())
     }
 
     def separator() : Option[Token] = {
@@ -92,16 +92,30 @@ class Lexer(cursor : Cursor) {
     def text() : Option[Token] = {
         val c = cursor()
         val from = cursor.offset
-        if(c != '"') return None
+        val middle = if(c == ')' && cursor.top('"')) {
+            cursor.pop('"')
+            true
+        } else if(c == '"') {
+            false
+        } else {
+            return None
+        }
         cursor.skip()
         while(cursor() != '"') {
+            if(cursor() == '\\' && cursor(1) == '(') {
+                cursor.skip()
+                val to = cursor.offset
+                cursor.skip()
+                cursor.push('"')
+                return Some(Token(if(middle) TextMiddle else TextStart, from, to))
+            }
             if(cursor.pastEnd) throw new ParseException("Unexpected end of file inside this string", position(cursor.buffer, from))
             cursor.skip() // TODO: Escape sequences
         }
         val to = cursor.offset
         cursor.skip()
         cursor.skipWhitespace()
-        Some(Token(Text, from, to))
+        Some(Token(if(middle) TextEnd else Text, from, to))
     }
 
     def number() : Option[Token] = {
@@ -164,6 +178,9 @@ object Lexer {
         case object Lower extends TokenType
         case object Upper extends TokenType
         case object Text extends TokenType
+        case object TextStart extends TokenType
+        case object TextMiddle extends TokenType
+        case object TextEnd extends TokenType
         case object Numeral extends TokenType
         case object Floating extends TokenType
         case object Separator extends TokenType
@@ -220,6 +237,8 @@ object Lexer {
         
         def pastEnd = offset >= buffer.length
 
+        def top(closeSymbol : Char) : Boolean = stack.nonEmpty && stack.last == closeSymbol
+
         def push(closeSymbol : Char) : Unit = {
             stack += closeSymbol
         }
@@ -235,7 +254,7 @@ object Lexer {
         }
         
         def skipWhitespace() : Unit = {
-            val ignoreNewLine = stack.nonEmpty && (stack.last == ')' || stack.last == ']')
+            val ignoreNewLine = stack.nonEmpty && (stack.last == ')' || stack.last == ']' || stack.last == '"')
             while(offset < buffer.length && (apply() == ' ' || apply() == '\t' || apply() == '\r' || (ignoreNewLine && apply() == '\n'))) {
                 skip()
             }

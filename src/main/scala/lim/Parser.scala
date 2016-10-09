@@ -204,7 +204,22 @@ class Parser(cursor : Cursor, buffer : Array[Char]) {
                 cursor.skip()
                 result
             case (Text, _, _, _) =>
-                cursor.skipWith(TextValue(cursor().from, Lexer.text(buffer, cursor().from, cursor().to)))
+                cursor.skipWith(TextValue(cursor().from, Lexer.text(buffer, cursor().from + 1, cursor().to)))
+            case (TextStart, _, _, _) =>
+                val offset = cursor().from
+                val parts = ListBuffer[Term]()
+                parts += cursor.skipWith(TextValue(cursor().from, Lexer.text(buffer, cursor().from + 1, cursor().to - 1)))
+                while(true) {
+                    parts += parseTerm()
+                    if(cursor().token == TextEnd) {
+                        parts += cursor.skipWith(TextValue(cursor().from, Lexer.text(buffer, cursor().from + 1, cursor().to)))
+                        return TextLiteral(offset, parts.toList)
+                    } else if(cursor().token != TextMiddle) {
+                        throw new ParseException("Expected end of string, got " + cursor().token, Lexer.position(buffer, cursor().from))
+                    }
+                    parts += cursor.skipWith(TextValue(cursor().from, Lexer.text(buffer, cursor().from + 1, cursor().to - 1)))
+                }
+                TextLiteral(offset, parts.toList)
             case (Numeral, _, _, _) =>
                 cursor.skipWith(IntegerValue(cursor().from, Lexer.text(buffer, cursor().from, cursor().to).toLong))
             case (Floating, _, _, _) =>
@@ -463,6 +478,7 @@ object Parser {
     case class Binary(offset : Int, operator : TokenType, left : Term, right : Term) extends Term
     case class Unary(offset : Int, operator : TokenType, value : Term) extends Term
     case class TextValue(offset : Int, value : String) extends Term
+    case class TextLiteral(offset : Int, parts : List[Term]) extends Term
     case class IntegerValue(offset : Int, value : Long) extends Term
     case class FloatingValue(offset : Int, value : Double) extends Term
     case class ArrayValue(offset : Int, elements : List[Term]) extends Term
@@ -539,7 +555,12 @@ object Parser {
 
         Point(x : Int, y : Int)
 
-        list := [(x, y) => x + y, (a, b) => a * b]
+        list := [(x, y) => x]
+
+        bar := "bar"
+        quux := "quux"
+
+        string := "foo\(bar)baz\(quux)ok"
 
         origo := Point(0, 0)
 

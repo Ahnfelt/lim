@@ -199,6 +199,11 @@ class Typer(buffer : Array[Char]) {
 
         case TextValue(offset, value) => equalityConstraint(offset, expectedType, TypeConstructor(offset, None, "String", List(), None)); term
 
+        case TextLiteral(offset, parts) =>
+            val stringType = TypeConstructor(offset, None, "String", List(), None)
+            equalityConstraint(offset, expectedType, stringType)
+            TextLiteral(offset, parts.map(typeTerm(stringType, _)))
+
         case IntegerValue(offset, value) => equalityConstraint(offset, expectedType, TypeConstructor(offset, None, "Int", List(), None)); term
 
         case FloatingValue(offset, value) => equalityConstraint(offset, expectedType, TypeConstructor(offset, None, "Float", List(), None)); term

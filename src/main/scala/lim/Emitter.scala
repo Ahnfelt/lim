@@ -52,6 +52,13 @@ class Emitter {
             emitTerm(builder, value)
             builder ++= ")"
         case TextValue(offset, value) => builder ++= escapeString(value)
+        case TextLiteral(offset, parts) =>
+            builder ++= "("
+            for((p, i) <- parts.zipWithIndex) {
+                if(i != 0) builder ++= " + "
+                emitTerm(builder, p)
+            }
+            builder ++= ")"
         case IntegerValue(offset, value) => builder ++= value.toString
         case FloatingValue(offset, value) => builder ++= value.toString
         case ClassOrModule(offset, module, classOrModule) => throw new RuntimeException()
