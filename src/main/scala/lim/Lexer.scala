@@ -118,7 +118,15 @@ class Lexer(cursor : Cursor) {
                     case '\'' => cursor.skip()
                     case '\"' => cursor.skip()
                     case '\\' => cursor.skip()
-                    case 'U' => cursor.skip(6)
+                    case '{' =>
+                        cursor.skip()
+                        while(cursor() != '}') {
+                            if(cursor.pastEnd) throw new ParseException("Unexpected end of file inside unicode escape sequence", position(cursor.buffer, from))
+                            val c = cursor()
+                            if((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')) cursor.skip()
+                            else throw new ParseException("Unexpected non-hexadecimal inside unicode escape sequence: " + c, position(cursor.buffer, from))
+                        }
+                        cursor.skip()
                     case _ => throw new ParseException("Unknown escape sequence: \\" + cursor(), position(cursor.buffer, from))
                 }
             } else {

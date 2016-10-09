@@ -51,7 +51,9 @@ class Emitter {
             }
             emitTerm(builder, value)
             builder ++= ")"
-        case TextValue(offset, value) => builder ++= escapeString(value)
+        case TextValue(offset, value) =>
+            // TODO: Handle \{12345} escapes
+            builder ++= escapeString(value)
         case TextLiteral(offset, parts) =>
             builder ++= "("
             for((p, i) <- parts.zipWithIndex) {
