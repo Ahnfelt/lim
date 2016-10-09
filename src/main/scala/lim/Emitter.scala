@@ -56,6 +56,13 @@ class Emitter {
         case FloatingValue(offset, value) => builder ++= value.toString
         case ClassOrModule(offset, module, classOrModule) => throw new RuntimeException()
         case ThisModule(offset) => throw new RuntimeException()
+        case ArrayValue(offset, elements) =>
+            builder ++= "["
+            for((e, i) <- elements.zipWithIndex) {
+                if(i != 0) builder ++= ", "
+                emitTerm(builder, e)
+            }
+            builder ++= "]"
         case Variable(offset, name) => builder ++= escapeVariable(name)
         case MethodCall(offset, ThisModule(_), methodName, arguments, namedArguments) =>
             builder ++= escapeMethod(methodName)
@@ -211,10 +218,12 @@ class Emitter {
     }
 
     def emitModule(builder : StringBuilder, module : Module) = {
+        builder ++= "(function(_global, _undefined) {\n\n"
         emitImport(builder, module.imports)
         emitTypeDefinitions(builder, module.typeDefinitions)
         emitValueDefinitions(builder, module.valueDefinitions)
         emitMethodDefinitions(builder, module.methodDefinitions)
         emitExports(builder, module.exports)
+        builder ++= "})(this, void(0));\n"
     }
 }

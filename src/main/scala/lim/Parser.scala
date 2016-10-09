@@ -165,8 +165,18 @@ class Parser(cursor : Cursor, buffer : Array[Char]) {
         Lambda(offset, parameters, body)
     }
 
+    def parseArray() : Term = {
+        val offset = cursor().from
+        if(cursor().token != LeftSquare) throw new ParseException("Expected [, got " + cursor().token, Lexer.position(buffer, cursor().from))
+        cursor.skip()
+        val elements = commaList(parseTerm, () => cursor().token == RightSquare)
+        cursor.skip()
+        ArrayValue(offset, elements)
+    }
+
     def parseAtom() : Term = {
         (cursor(0).token, cursor(1).token, cursor(2).token, cursor(3).token) match {
+            case (LeftSquare, _, _, _) => parseArray()
             case (Lower, RightThickArrow, _, _) => parseLambda()
             case (LeftRound, Lower, Comma, _) => parseLambda()
             case (LeftRound, Lower, RightRound, RightThickArrow) => parseLambda()
@@ -455,6 +465,7 @@ object Parser {
     case class TextValue(offset : Int, value : String) extends Term
     case class IntegerValue(offset : Int, value : Long) extends Term
     case class FloatingValue(offset : Int, value : Double) extends Term
+    case class ArrayValue(offset : Int, elements : List[Term]) extends Term
     case class ClassOrModule(offset : Int, module : Option[String], classOrModule : String) extends Term
     case class ThisModule(offset : Int) extends Term
     case class Variable(offset : Int, name : String) extends Term
@@ -526,7 +537,9 @@ object Parser {
     def main(args : Array[String]) {
         val p1 = test("""
 
-        Point(x : Int, y: Int)
+        Point(x : Int, y : Int)
+
+        list := [(x, y) => x + y, (a, b) => a * b]
 
         origo := Point(0, 0)
 
@@ -544,9 +557,10 @@ object Parser {
 
         foo(bar : Option[Int]) : Int {
             baz := newIntIterator(7)
+            baz.next
             bar ? {
                 some(x) { x * x }
-                none { origo.z }
+                none { origo.y }
             }
         }
 
@@ -572,7 +586,7 @@ object Parser {
                 println()
                 println()
                 println(e.getMessage)
-                ""
+                System.exit(1)
         }
     }
 

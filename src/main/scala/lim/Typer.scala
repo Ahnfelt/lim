@@ -207,6 +207,12 @@ class Typer(buffer : Array[Char]) {
 
         case ThisModule(offset) => throw new TypeException("Lone this module", Lexer.position(buffer, offset))
 
+        case ArrayValue(offset, elements) =>
+            val elementType = nextTypeVariable(offset)
+            equalityConstraint(offset, expectedType, TypeConstructor(offset, None, "Array", List(elementType), None))
+            val typedElements = for(element <- elements) yield typeTerm(elementType, element)
+            ArrayValue(offset, typedElements)
+
         case Variable(offset, name) =>
             environment.get(name) match {
                 case Some(t) => equalityConstraint(offset, expectedType, t); term
