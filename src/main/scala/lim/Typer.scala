@@ -230,7 +230,7 @@ class Typer(buffer : Array[Char]) {
                         (requestDefinition, module1, classOrModule1, Some(RequestResponseModifier), value, originalMethodName)
                     case Variable(_, name1) if !environment.contains(name1) =>
                         val method = methodEnvironment.getOrElse(name1, {
-                            throw new TypeException("No such method: " + name1, Lexer.position(buffer, offset))
+                            throw new TypeException("No such method or variable: " + name1, Lexer.position(buffer, offset))
                         })
                         val methodTypeDefinition = TypeDefinition(offset, name1, List(), RequestResponseModifier, List(method))
                         (methodTypeDefinition, None, name1, Some(RequestResponseModifier), ThisModule(offset), name1)
@@ -249,12 +249,18 @@ class Typer(buffer : Array[Char]) {
             }
             val TypeDefinition(_, typeName, typeParameters, defaultModifier, methodSignatures) = typeDefinition
             if(!value.isInstanceOf[ClassOrModule] && modifier.getOrElse(defaultModifier) != RequestResponseModifier) {
-                val sigil = modifier.getOrElse(defaultModifier) match {
-                    case RequestModifier => "?"
-                    case ResponseModifier => "!"
-                    case RequestResponseModifier => "?!"
+                if(modifier.getOrElse(defaultModifier) == RequestModifier && methodSignatures.length == 1 && methodSignatures.head.parameters.map(_.name).contains(methodName) && arguments.isEmpty && namedArguments.isEmpty) {
+                    val methodSignature = instantiateMethodSignature(offset, methodSignatures.head, None)
+                    equalityConstraint(offset, expectedType, methodSignature.parameters.head.parameterType)
+                    return FieldAccess(offset, typedValue, methodName)
+                } else {
+                    val sigil = modifier.getOrElse(defaultModifier) match {
+                        case RequestModifier => "?"
+                        case ResponseModifier => "!"
+                        case RequestResponseModifier => "?!"
+                    }
+                    throw new TypeException("Type " + module.map(_ + ".").getOrElse("") + name + sigil + " does not support this method: " + methodName, Lexer.position(buffer, offset))
                 }
-                throw new TypeException("Type " + module.map(_ + ".").getOrElse("") + name + sigil + " does not support this method: " + methodName, Lexer.position(buffer, offset))
             }
             val signature = methodSignatures.find(_.name == methodName).map(instantiateMethodSignature(offset, _, None)).getOrElse {
                 throw new TypeException("Type " + module.map(_ + ".").getOrElse("") + name + " does not support this method: " + methodName, Lexer.position(buffer, offset))
@@ -346,7 +352,9 @@ class Typer(buffer : Array[Char]) {
         for(definition <- valueDefinitions) yield {
             val expectedType = definition.valueType.getOrElse(nextTypeVariable(definition.offset))
             val value = typeTerm(expectedType, definition.value)
-            definition.copy(valueType = Some(expandType(expectedType)), value = value)
+            val expandedType = expandType(expectedType)
+            environment += definition.name -> expandedType
+            definition.copy(valueType = Some(expandedType), value = value)
         }
     }
 

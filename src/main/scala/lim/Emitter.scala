@@ -86,6 +86,9 @@ class Emitter {
                 emitTerm(builder, a)
             }
             builder ++= ")"
+        case FieldAccess(offset, value, fieldName) =>
+            emitTerm(builder, value)
+            builder ++= "." + escapeMethod(fieldName)
         case Instance(offset, moduleName, interfaceName, thisName, methods) =>
             builder ++= "{\n"
             for((m, i) <- methods.zipWithIndex) {
