@@ -208,16 +208,19 @@ class Parser(cursor : Cursor, buffer : Array[Char]) {
             case (TextStart, _, _, _) =>
                 val offset = cursor().from
                 val parts = ListBuffer[Term]()
-                parts += cursor.skipWith(TextValue(cursor().from, Lexer.text(buffer, cursor().from + 1, cursor().to - 1)))
+                val fistText = cursor.skipWith(Lexer.text(buffer, cursor().from + 1, cursor().to - 1))
+                if(fistText.nonEmpty) parts += TextValue(cursor().from, fistText)
                 while(true) {
                     parts += parseTerm()
                     if(cursor().token == TextEnd) {
-                        parts += cursor.skipWith(TextValue(cursor().from, Lexer.text(buffer, cursor().from + 1, cursor().to)))
+                        val text = cursor.skipWith(Lexer.text(buffer, cursor().from + 1, cursor().to))
+                        if(text.nonEmpty) parts += TextValue(cursor().from, text)
                         return TextLiteral(offset, parts.toList)
                     } else if(cursor().token != TextMiddle) {
                         throw new ParseException("Expected end of string, got " + cursor().token, Lexer.position(buffer, cursor().from))
                     }
-                    parts += cursor.skipWith(TextValue(cursor().from, Lexer.text(buffer, cursor().from + 1, cursor().to - 1)))
+                    val text = cursor.skipWith(Lexer.text(buffer, cursor().from + 1, cursor().to - 1))
+                    if(text.nonEmpty) parts += TextValue(cursor().from, text)
                 }
                 TextLiteral(offset, parts.toList)
             case (Numeral, _, _, _) =>
