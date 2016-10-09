@@ -5,6 +5,7 @@ import lim.Lexer.TokenType._
 import lim.Parser.Cursor
 import lim.Parser._
 
+import scala.collection.mutable
 import scala.collection.mutable._
 
 class Parser(cursor : Cursor, buffer : Array[Char]) {
@@ -216,7 +217,10 @@ class Parser(cursor : Cursor, buffer : Array[Char]) {
         var result = parseAtom()
         while(cursor().token == LeftRound || cursor().token == Dot) {
             val position = cursor().from
-            val methodName = if(cursor().token != Dot) "invoke" else {
+            val methodName = if(cursor().token != Dot) result match {
+                case ClassOrModule(_, _, classOrModule) => classOrModule.head.toLower + classOrModule.tail
+                case _ => "invoke"
+            } else {
                 cursor.skip()
                 if(cursor().token != Lower) throw new ParseException("Expected method name, got " + cursor().token, Lexer.position(buffer, cursor().from))
                 val name = Lexer.text(buffer, cursor().from, cursor().to)
@@ -263,7 +267,7 @@ class Parser(cursor : Cursor, buffer : Array[Char]) {
         val offset = cursor().from
         cursor.skip()
         val (_, methods) = parseMethodImplementations(false)
-        Match(offset, value, methods)
+        Match(offset, value, methods.map(m => m -> List()))
     }
 
     def parseTerm() : Term = parseMatch()
@@ -456,7 +460,7 @@ object Parser {
     case class Variable(offset : Int, name : String) extends Term
     case class MethodCall(offset : Int, value : Term, methodName : String, arguments : List[Term], namedArguments : List[(Int, String, Term)]) extends Term
     case class Instance(offset : Int, moduleName : Option[String], interfaceName : String, thisName : Option[String], methods : List[MethodImplementation]) extends Term
-    case class Match(offset : Int, value : Term, methods : List[MethodImplementation]) extends Term
+    case class Match(offset : Int, value : Term, methods : List[(MethodImplementation, List[String])]) extends Term
     case class Lambda(offset : Int, parameters : List[String], body : List[Statement]) extends Term
 
     sealed abstract class Statement
@@ -521,7 +525,9 @@ object Parser {
     def main(args : Array[String]) {
         val p1 = test("""
 
-        origo := 0 + 1
+        Point(x : Int, y: Int)
+
+        origo := Point(0, 0)
 
         Iterator[t] {
             next() : Option[t]
@@ -554,6 +560,10 @@ object Parser {
         val parser = new Parser(new Parser.Cursor(tokens, 0), buffer)
         val typer = new Typer(buffer)
         val module = parser.parseModule()
-        typer.typeModule(module)
+        val typedModule = typer.typeModule(module)
+        val emitted = new mutable.StringBuilder()
+        new Emitter().emitModule(emitted, typedModule)
+        emitted
     }
+
 }

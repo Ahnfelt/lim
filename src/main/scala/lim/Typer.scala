@@ -97,8 +97,9 @@ class Typer(buffer : Array[Char]) {
         case s@Let(_, variable, variableType, value) =>
             val newType = variableType.getOrElse(nextTypeVariable(s.offset))
             val newValue = typeTerm(newType, value)
-            environment += (variable -> newType)
-            Let(s.offset, variable, Some(newType), newValue)
+            val expandedType = expandType(newType)
+            environment += (variable -> expandedType)
+            Let(s.offset, variable, Some(expandedType), newValue)
         case s@Assign(_, variable, value) =>
             val t = environment.getOrElse(variable, throw new TypeException("Unknown variable: " + variable, Lexer.position(buffer, s.offset)))
             s.copy(value = typeTerm(t, value))
@@ -299,7 +300,7 @@ class Typer(buffer : Array[Char]) {
             }
             instance.copy(methods = typedMethods)
 
-        case Match(offset, value, methods) =>
+        case Match(offset, value, methodsWithFieldNames) =>
             val valueType = nextTypeVariable(offset)
             val typedValue = typeTerm(valueType, value)
             val methodSignatures = expandType(valueType) match {
@@ -317,13 +318,13 @@ class Typer(buffer : Array[Char]) {
             }
             val resultType = nextTypeVariable(offset)
             equalityConstraint(offset, expectedType, resultType)
-            val typedMethods = methods.map { m =>
+            val typedMethods = methodsWithFieldNames.map { case (m, _) =>
                 val signature = methodSignatures.find(_.name == m.name).getOrElse {
                     throw new TypeException("No such case: " + m.name, Lexer.position(buffer, offset))
                 }
-                typeMethod(signature.copy(returnType = resultType), m)
+                typeMethod(signature.copy(returnType = resultType), m) -> signature.parameters.map(_.name)
             }
-            val missing = methodSignatures.map(_.name).toSet -- methods.map(_.name)
+            val missing = methodSignatures.map(_.name).toSet -- methodsWithFieldNames.map(_._1.name)
             if(missing.nonEmpty) {
                 throw new TypeException("The following cases must be implemented: " + missing.mkString(", "), Lexer.position(buffer, offset))
             }
