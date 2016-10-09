@@ -546,7 +546,7 @@ object Parser {
             baz := newIntIterator(7)
             bar ? {
                 some(x) { x * x }
-                none { origo.x }
+                none { origo.z }
             }
         }
 
@@ -556,15 +556,24 @@ object Parser {
     }
 
     def test(text : String) : Any = {
-        val buffer = text.toCharArray
-        val tokens = Lexer.tokens(buffer, 0)
-        val parser = new Parser(new Parser.Cursor(tokens, 0), buffer)
-        val typer = new Typer(buffer)
-        val module = parser.parseModule()
-        val typedModule = typer.typeModule(module)
-        val emitted = new mutable.StringBuilder()
-        new Emitter().emitModule(emitted, typedModule)
-        emitted
+        try {
+            val buffer = text.toCharArray
+            val tokens = Lexer.tokens(buffer, 0)
+            val parser = new Parser(new Parser.Cursor(tokens, 0), buffer)
+            val typer = new Typer(buffer)
+            val module = parser.parseModule()
+            val typedModule = typer.typeModule(module)
+            val emitted = new mutable.StringBuilder()
+            new Emitter().emitModule(emitted, typedModule)
+            emitted
+        } catch {
+            case e : Exception =>
+                e.printStackTrace(System.out)
+                println()
+                println()
+                println(e.getMessage)
+                ""
+        }
     }
 
 }
