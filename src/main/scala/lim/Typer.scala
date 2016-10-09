@@ -1,6 +1,12 @@
 package lim
 
-import lim.Lexer.Position
+import java.util.function.BinaryOperator
+
+import lim.Lexer._
+import lim.Lexer.TokenType._
+import lim.Parser.Assign
+import lim.Parser.Decrement
+import lim.Parser.Increment
 import lim.Parser._
 
 class Typer(buffer : Array[Char]) {
@@ -9,24 +15,28 @@ class Typer(buffer : Array[Char]) {
     var environment = Map[String, Type]()
     var typeVariables = Map[Int, Type]()
     var typeEnvironment = Map[(Option[String], String), TypeDefinition](
-        (Some("_"), "Void") -> TypeDefinition(0, "Void", List(), RequestModifier, List()),
-        (Some("_"), "Int") -> TypeDefinition(0, "Int", List(), RequestModifier, List()),
-        (Some("_"), "Float") -> TypeDefinition(0, "Float", List(), RequestModifier, List()),
-        (Some("_"), "String") -> TypeDefinition(0, "String", List(), RequestModifier, List()),
-        (Some("_"), "Bool") -> TypeDefinition(0, "Bool", List(), RequestModifier, List(
-            MethodSignature(0, "false", List(), List(), TypeConstructor(0, Some("_"), "Void", List())),
-            MethodSignature(0, "true", List(), List(), TypeConstructor(0, Some("_"), "Void", List()))
+        (None, "Void") -> TypeDefinition(0, "Void", List(), RequestModifier, List()),
+        (None, "Int") -> TypeDefinition(0, "Int", List(), RequestModifier, List()),
+        (None, "Float") -> TypeDefinition(0, "Float", List(), RequestModifier, List()),
+        (None, "String") -> TypeDefinition(0, "String", List(), RequestModifier, List()),
+        (None, "Bool") -> TypeDefinition(0, "Bool", List(), RequestModifier, List(
+            MethodSignature(0, "false", List(), List(), TypeConstructor(0, None, "Void", List(), None)),
+            MethodSignature(0, "true", List(), List(), TypeConstructor(0, None, "Void", List(), None))
         )),
-        (Some("_"), "F0") -> TypeDefinition(0, "F0", List(), RequestModifier, List(
+        (None, "Option") -> TypeDefinition(0, "Option", List("t"), RequestModifier, List(
+            MethodSignature(0, "none", List(), List(), TypeConstructor(0, None, "Void", List(), None)),
+            MethodSignature(0, "some", List(), List(Parameter(0, "value", TypeParameter(0, "t"))), TypeConstructor(0, None, "Void", List(), None))
+        )),
+        (None, "F0") -> TypeDefinition(0, "F0", List(), RequestModifier, List(
             MethodSignature(0, "invoke", List("r"), List(), TypeParameter(0, "r"))
         )),
-        (Some("_"), "F1") -> TypeDefinition(0, "F1", List(), RequestModifier, List(
+        (None, "F1") -> TypeDefinition(0, "F1", List(), RequestModifier, List(
             MethodSignature(0, "invoke", List("p1", "r"), List(Parameter(0, "a1", TypeParameter(0, "p1"))), TypeParameter(0, "r"))
         )),
-        (Some("_"), "F2") -> TypeDefinition(0, "F2", List(), RequestModifier, List(
+        (None, "F2") -> TypeDefinition(0, "F2", List(), RequestModifier, List(
             MethodSignature(0, "invoke", List("p1", "p2", "r"), List(Parameter(0, "a1", TypeParameter(0, "p1")), Parameter(0, "a2", TypeParameter(0, "p2"))), TypeParameter(0, "r"))
         )),
-        (Some("_"), "F3") -> TypeDefinition(0, "F3", List(), RequestModifier, List(
+        (None, "F3") -> TypeDefinition(0, "F3", List(), RequestModifier, List(
             MethodSignature(0, "invoke", List("p1", "p2", "p3", "r"), List(Parameter(0, "a1", TypeParameter(0, "p1")), Parameter(0, "a2", TypeParameter(0, "p2")), Parameter(0, "a3", TypeParameter(0, "p3"))), TypeParameter(0, "r"))
         ))
     )
@@ -38,7 +48,7 @@ class Typer(buffer : Array[Char]) {
     }
 
     def expandType(unexpandedType : Type) : Type = unexpandedType match {
-        case t@TypeConstructor(_, module, name, typeArguments) => t.copy(typeArguments = t.typeArguments.map(expandType))
+        case t@TypeConstructor(_, module, name, typeArguments, modifier) => t.copy(typeArguments = t.typeArguments.map(expandType))
         case t@TypeParameter(_, name) => t
         case t@TypeVariable(_, id) => typeVariables.get(id) match {
             case Some(boundToType) => expandType(boundToType)
@@ -53,16 +63,27 @@ class Typer(buffer : Array[Char]) {
         result
     }
 
-    def equalityConstraint(offset : Int, expectedType : Type, actualType : Type) : Unit = {
-        (expandType(expectedType), expandType(actualType)) match {
-            case (t1@TypeVariable(_, id), t2) => typeVariables = typeVariables + (id -> t2)
-            case (t1, t2@TypeVariable(_, id)) => typeVariables = typeVariables + (id -> t1)
-            case (t1@TypeConstructor(_, module1, name1, typeArguments1), t2@TypeConstructor(_, module2, name2, typeArguments2)) if module1 == module2 && name1 == name2 && typeArguments1.length == typeArguments2.length =>
-                for((a1, a2) <- typeArguments1 zip typeArguments2) equalityConstraint(offset, a1, a2)
-            case (t1@TypeParameter(_, name1), t2@TypeParameter(_, name2)) if name1 == name2 =>
-            case (t1, t2) =>
-                throw new TypeException("Expected type " + t1 + ", but got type " + t2, Lexer.position(buffer, offset))
+    def equalityConstraint(offset : Int, originalExpectedType : Type, originalActualType : Type) : Unit = {
+        def go(expectedType : Type, actualType : Type) : Unit = {
+            (expandType(expectedType), expandType(actualType)) match {
+                case (t1@TypeVariable(_, id), t2) => typeVariables = typeVariables + (id -> t2)
+                case (t1, t2@TypeVariable(_, id)) => typeVariables = typeVariables + (id -> t1)
+                case (t1@TypeConstructor(_, module1, name1, typeArguments1, modifier1), t2@TypeConstructor(_, module2, name2, typeArguments2, modifier2)) if module1 == module2 && name1 == name2 && typeArguments1.length == typeArguments2.length =>
+                    if(modifier1 != modifier2) {
+                        val defaultModifier = typeEnvironment.getOrElse((module1, name1),
+                            throw new TypeException("No such type: " + module1.map(_ + ".").getOrElse("") + name1, Lexer.position(buffer, offset))
+                        ).defaultModifier
+                        if(modifier1.getOrElse(defaultModifier) != modifier2.getOrElse(defaultModifier)) {
+                            throw new TypeException("Expected type " + t1 + ", but got type " + t2 + ", which has a different modifier", Lexer.position(buffer, offset))
+                        }
+                    }
+                    for((a1, a2) <- typeArguments1 zip typeArguments2) go(a1, a2)
+                case (t1@TypeParameter(_, name1), t2@TypeParameter(_, name2)) if name1 == name2 =>
+                case (t1, t2) =>
+                    throw new TypeException("Expected type " + expandType(originalExpectedType) + ", but got type " + expandType(originalActualType), Lexer.position(buffer, offset))
+            }
         }
+        go(originalExpectedType, originalActualType)
     }
 
     def typeTypeDefinitions(typeTypeDefinitions : List[TypeDefinition]) : List[TypeDefinition] = {
@@ -92,37 +113,180 @@ class Typer(buffer : Array[Char]) {
 
     def typeBody(offset : Int, expectedType : Type, body : List[Statement]) : List[Statement] = {
         if(body.isEmpty) {
-            equalityConstraint(offset, expectedType, TypeConstructor(offset, Some("_"), "Void", List()))
+            equalityConstraint(offset, expectedType, TypeConstructor(offset, None, "Void", List(), None))
             return List()
         }
         val init = for(s <- body.init) yield typeStatement(nextTypeVariable(offset), s)
         val last = expandType(expectedType) match {
-            case TypeConstructor(_, Some("_"), "Void", List()) => typeStatement(nextTypeVariable(offset), body.last)
+            case TypeConstructor(_, None, "Void", List(), None) => typeStatement(nextTypeVariable(offset), body.last)
             case _ => typeStatement(expectedType, body.last)
         }
         init :+ last
     }
 
+    def instantiateType(substitution : Map[String, Type], uninstantiatedType : Type) : Type = expandType(uninstantiatedType) match {
+        case t@TypeConstructor(_, module, name, ts, _) => t.copy(typeArguments = ts.map(instantiateType(substitution, _)))
+        case t@TypeParameter(_, name) => substitution.get(name) match {
+            case Some(typeArgument) => typeArgument
+            case None => t
+        }
+        case t@TypeVariable(_, id) => t
+    }
+
+    def instantiateTypeDefinition(offset : Int, definition : TypeDefinition, optionalTypeArguments : Option[List[Type]]) : TypeDefinition = {
+        val typeArguments = optionalTypeArguments.getOrElse(definition.typeParameters.map(_ => nextTypeVariable(offset)))
+        if(definition.typeParameters.length != typeArguments.length) {
+            throw new TypeException("Wrong number of type arguments for type " + definition.name + ": " + typeArguments, Lexer.position(buffer, offset))
+        }
+        val substitution = definition.typeParameters.zip(typeArguments).toMap
+        val methodSignatures = definition.methodSignatures.map { s =>
+            s.copy(
+                parameters = s.parameters.map(p => p.copy(parameterType = instantiateType(substitution, p.parameterType))),
+                returnType = instantiateType(substitution, s.returnType)
+            )
+        }
+        TypeDefinition(definition.offset, definition.name, List(), definition.defaultModifier, methodSignatures)
+    }
+
+    def instantiateMethodSignature(offset : Int, methodSignature : MethodSignature, optionalTypeArguments : Option[List[Type]]) : MethodSignature = {
+        val typeArguments = optionalTypeArguments.getOrElse(methodSignature.typeParameters.map(_ => nextTypeVariable(offset)))
+        if(methodSignature.typeParameters.length != typeArguments.length) {
+            throw new TypeException("Wrong number of type arguments for method " + methodSignature.name + ": " + typeArguments, Lexer.position(buffer, offset))
+        }
+        val substitution = methodSignature.typeParameters.zip(typeArguments).toMap
+        methodSignature.copy(
+            typeParameters = List(),
+            parameters = methodSignature.parameters.map(p => p.copy(parameterType = instantiateType(substitution, p.parameterType))),
+            returnType = instantiateType(substitution, methodSignature.returnType)
+        )
+    }
+
+    def typeMethod(signature : MethodSignature, method : MethodImplementation) : MethodImplementation = {
+        saveEnvironment {
+            for(p <- signature.parameters) environment += p.name -> p.parameterType
+            method.copy(body = typeBody(method.offset, signature.returnType, method.body))
+        }
+    }
+
     def typeTerm(expectedType : Type, term : Term) : Term = term match {
-        case Binary(offset, operator, left, right) => /* TODO */ term
-        case Unary(offset, operator, value) => /* TODO */ term
-        case TextValue(offset, value) => equalityConstraint(offset, expectedType, TypeConstructor(offset, Some("_"), "String", List())); term
-        case IntegerValue(offset, value) => equalityConstraint(offset, expectedType, TypeConstructor(offset, Some("_"), "Int", List())); term
-        case FloatingValue(offset, value) => equalityConstraint(offset, expectedType, TypeConstructor(offset, Some("_"), "Float", List())); term
-        case ClassOrModule(offset, module, classOrModule) => /* TODO */ term
+        case Binary(offset, operator, left, right) =>
+            def operatorType(resultTypeName : String, operandTypeName : Option[String]) = {
+                val t1 = operandTypeName.map(TypeConstructor(offset, None, _, List(), None)).getOrElse(nextTypeVariable(offset))
+                val t2 = TypeConstructor(offset, None, resultTypeName, List(), None)
+                equalityConstraint(offset, expectedType, t2)
+                Binary(offset, operator, typeTerm(t1, left), typeTerm(t1, right))
+            }
+            operator match {
+                case TokenType.And => operatorType("Bool", Some("Bool"))
+                case TokenType.Or => operatorType("Bool", Some("Bool"))
+                case TokenType.Equal => operatorType("Bool", None) // TODO: Constrain types to instances of Eq, Ord, etc.
+                case TokenType.NotEqual => operatorType("Bool", None)
+                case TokenType.Less => operatorType("Bool", Some("Int"))
+                case TokenType.LessEqual => operatorType("Bool", Some("Int"))
+                case TokenType.Greater => operatorType("Bool", Some("Int"))
+                case TokenType.GreaterEqual => operatorType("Bool", Some("Int"))
+                case TokenType.Slash => operatorType("Int", Some("Int"))
+                case TokenType.Star => operatorType("Int", Some("Int"))
+                case TokenType.Minus => operatorType("Int", Some("Int"))
+                case TokenType.Plus => operatorType("Int", Some("Int"))
+                case _ => throw new TypeException("Unknown binary operator: " + operator, Lexer.position(buffer, offset))
+            }
+        case Unary(offset, Minus, value) => equalityConstraint(offset, expectedType, TypeConstructor(offset, None, "Int", List(), None)); Unary(offset, Minus, typeTerm(expectedType, value))
+        case Unary(offset, Exclamation, value) => equalityConstraint(offset, expectedType, TypeConstructor(offset, None, "Bool", List(), None)); Unary(offset, Exclamation, typeTerm(expectedType, value))
+        case Unary(offset, operator, value) => throw new TypeException("Unknown unary operator: " + operator, Lexer.position(buffer, offset))
+        case TextValue(offset, value) => equalityConstraint(offset, expectedType, TypeConstructor(offset, None, "String", List(), None)); term
+        case IntegerValue(offset, value) => equalityConstraint(offset, expectedType, TypeConstructor(offset, None, "Int", List(), None)); term
+        case FloatingValue(offset, value) => equalityConstraint(offset, expectedType, TypeConstructor(offset, None, "Float", List(), None)); term
+        case ClassOrModule(offset, module, classOrModule) => throw new TypeException("Lone interface or module: " + module.map(_ + ".").getOrElse("") + classOrModule, Lexer.position(buffer, offset))
         case Variable(offset, name) =>
             environment.get(name) match {
                 case Some(t) => equalityConstraint(offset, expectedType, t); term
-                case None => throw new TypeException("Unknown variable: " + name, Lexer.position(buffer, offset))
+                case None => throw new TypeException("No such variable: " + name, Lexer.position(buffer, offset))
             }
-        case MethodCall(offset, value, methodName, arguments, namedArguments) => /* TODO */ term
-        case Copy(offset, value, fields) => /* TODO */ term
-        case Instance(offset, moduleName, interfaceName, thisName, methods) => /* TODO */ term
-        case Match(offset, value, methods) => /* TODO */ term
+        case MethodCall(offset, value, methodName, arguments, namedArguments) =>
+            val valueType = nextTypeVariable(offset)
+            val (typeDefinition : TypeDefinition, module : Option[String], name : String, modifier : Option[TypeModifier], typedValue : Term) = {
+                value match {
+                    case ClassOrModule(_, module1, classOrModule1) =>
+                        val uninstantiatedDefinition = typeEnvironment.getOrElse(module1 -> classOrModule1, {
+                            throw new TypeException("No such type: " + module1.map(_ + ".").getOrElse("") + classOrModule1, Lexer.position(buffer, offset))
+                        })
+                        val typeArguments = uninstantiatedDefinition.typeParameters.map(_ => nextTypeVariable(offset))
+                        val definition = instantiateTypeDefinition(offset, uninstantiatedDefinition, Some(typeArguments))
+                        val requestDefinition = definition.copy(methodSignatures = definition.methodSignatures.map { m =>
+                            m.copy(returnType = TypeConstructor(offset, module1, classOrModule1, typeArguments, Some(RequestModifier)))
+                        })
+                        (requestDefinition, module1, classOrModule1, Some(RequestResponseModifier), value)
+                    case _ =>
+                        val typedValue1 = typeTerm(valueType, value)
+                        expandType(valueType) match {
+                            case TypeConstructor(_, module1, name1, typeArguments1, modifier1) =>
+                                val definition = typeEnvironment.get(module1 -> name1).map(instantiateTypeDefinition(offset, _, Some(typeArguments1))).getOrElse {
+                                    throw new TypeException("No such type: " + module1.map(_ + ".").getOrElse("") + name1, Lexer.position(buffer, offset))
+                                }
+                                (definition, module1, name1, modifier1, typedValue1)
+                            case TypeParameter(_, name1) => throw new TypeException("Type parameter " + name1 + " may not support this method: " + methodName, Lexer.position(buffer, offset))
+                            case TypeVariable(_, id) => throw new TypeException("Unknown type may not support this method: " + methodName, Lexer.position(buffer, offset))
+                        }
+                }
+            }
+            val TypeDefinition(_, typeName, typeParameters, defaultModifier, methodSignatures) = typeDefinition
+            if(!value.isInstanceOf[ClassOrModule] && modifier.getOrElse(defaultModifier) != RequestResponseModifier) {
+                val sigil = modifier.getOrElse(defaultModifier) match {
+                    case RequestModifier => "?"
+                    case ResponseModifier => "!"
+                    case RequestResponseModifier => "?!"
+                }
+                throw new TypeException("Type " + module.map(_ + ".").getOrElse("") + name + sigil + " does not support this method: " + methodName, Lexer.position(buffer, offset))
+            }
+            val signature = methodSignatures.find(_.name == methodName).map(instantiateMethodSignature(offset, _, None)).getOrElse {
+                throw new TypeException("Type " + module.map(_ + ".").getOrElse("") + name + " does not support this method: " + methodName, Lexer.position(buffer, offset))
+            }
+            if(signature.parameters.length != arguments.length + namedArguments.length) {
+                val message = if(signature.parameters.length < arguments.length + namedArguments.length) "Too many" else "Too few"
+                throw new TypeException(message + " arguments to method " + methodName + ": " + arguments + ", " + namedArguments, Lexer.position(buffer, offset))
+            }
+            equalityConstraint(offset, expectedType, signature.returnType)
+            val unnamedParameters = signature.parameters.take(arguments.length)
+            val namedParameters = signature.parameters.drop(arguments.length)
+            val unnamed = for((a, p) <- arguments.zip(unnamedParameters)) yield {
+                typeTerm(p.parameterType, a)
+            }
+            val named = for(p <- namedParameters) yield {
+                val (i, x, a) = namedArguments.find(_._2 == p.name).getOrElse {
+                    throw new TypeException("Missing argument for method " + methodName + ": " + p.name, Lexer.position(buffer, offset))
+                }
+                (i, x, typeTerm(p.parameterType, a))
+            }
+            MethodCall(offset, typedValue, methodName, unnamed, named)
+        case instance@Instance(offset, moduleName, interfaceName, thisName, methods) =>
+            val typeDefinition = typeEnvironment.getOrElse(moduleName -> interfaceName, {
+                throw new TypeException("No such type: " + moduleName.map(_ + ".").getOrElse("") + interfaceName, Lexer.position(buffer, offset))
+            })
+            val typeArguments = typeDefinition.typeParameters.map(_ => nextTypeVariable(offset))
+            val actualType = TypeConstructor(offset, moduleName, interfaceName, typeArguments, Some(RequestResponseModifier))
+            equalityConstraint(offset, expectedType, actualType)
+            val instantiatedTypeDefinition = instantiateTypeDefinition(offset, typeDefinition, Some(typeArguments))
+            val typedMethods = saveEnvironment {
+                for(x <- thisName) environment += x -> actualType
+                methods.map { m =>
+                    val signature = instantiatedTypeDefinition.methodSignatures.find(_.name == m.name).getOrElse {
+                        throw new TypeException("No such method: " + moduleName.map(_ + ".").getOrElse("") + interfaceName + "." + m.name, Lexer.position(buffer, offset))
+                    }
+                    typeMethod(signature, m)
+                }
+            }
+            val missing = instantiatedTypeDefinition.methodSignatures.map(_.name).toSet -- methods.map(_.name)
+            if(missing.nonEmpty) {
+                throw new TypeException("The following methods are missing: " + missing.mkString(", "), Lexer.position(buffer, offset))
+            }
+            instance.copy(methods = typedMethods)
+        case Match(offset, value, methods) =>
+            /* TODO */ term
         case Lambda(offset, parameters, body) =>
             val parameterTypes = parameters.map(p => p -> nextTypeVariable(offset))
             val returnType = nextTypeVariable(offset)
-            val functionType = TypeConstructor(offset, Some("_"), "F" + parameters.length, parameterTypes.map(_._2) :+ returnType)
+            val functionType = TypeConstructor(offset, None, "F" + parameters.length, parameterTypes.map(_._2) :+ returnType, None)
             equalityConstraint(offset, expectedType, functionType)
             val typedBody = saveEnvironment {
                 environment ++= parameterTypes
@@ -140,7 +304,12 @@ class Typer(buffer : Array[Char]) {
     }
 
     def typeMethodDefinitions(methodDefinitions : List[MethodDefinition]) : List[MethodDefinition] = {
-        /* TODO */ methodDefinitions
+        methodDefinitions.map { m =>
+            saveEnvironment {
+                for(p <- m.signature.parameters) environment += p.name -> p.parameterType
+                m.copy(body = typeBody(m.offset, m.signature.returnType, m.body))
+            }
+        }
     }
 
     def typeImports(imports : List[Import]) : List[Import] = {

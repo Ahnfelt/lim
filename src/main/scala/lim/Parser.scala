@@ -47,7 +47,13 @@ class Parser(cursor : Cursor, buffer : Array[Char]) {
             cursor.skip()
             result
         }
-        TypeConstructor(position, moduleName, name, typeArguments)
+        val modifier = (cursor(0).token, cursor(1).token) match {
+            case (Question, Exclamation) => cursor.skipWith(Some(RequestResponseModifier), 2)
+            case (Question, _) => cursor.skipWith(Some(RequestModifier))
+            case (Exclamation, _) => cursor.skipWith(Some(ResponseModifier))
+            case _ => None
+        }
+        TypeConstructor(position, moduleName, name, typeArguments, modifier)
     }
 
     def parseType() : Type = {
@@ -59,7 +65,7 @@ class Parser(cursor : Cursor, buffer : Array[Char]) {
             val position = cursor.offset
             cursor.skip()
             val right = parseType()
-            TypeConstructor(position, Some("_"), "F" + typeArguments.length, typeArguments ++ List(right))
+            TypeConstructor(position, None, "F" + typeArguments.length, typeArguments ++ List(right), None)
         } else {
             val left = if(cursor().token != Lower) parseTypeConstructor() else {
                 val typeParameter = TypeParameter(cursor.offset, Lexer.text(buffer, cursor().from, cursor().to))
@@ -70,7 +76,7 @@ class Parser(cursor : Cursor, buffer : Array[Char]) {
                 val position = cursor.offset
                 cursor.skip()
                 val right = parseType()
-                TypeConstructor(position, Some("_"), "F1", List(right))
+                TypeConstructor(position, None, "F1", List(right), None)
             }
         }
     }
@@ -221,12 +227,15 @@ class Parser(cursor : Cursor, buffer : Array[Char]) {
                 result = MethodCall(position, result, methodName, List(), List())
             } else {
                 cursor.skip()
-                val arguments = commaList(parseTerm, () => cursor().token == RightRound ||
+                val arguments = if(cursor().token == Lower && cursor(1).token == TokenType.Assign) List() else
+                    commaList(parseTerm, () => cursor().token == RightRound ||
                     (cursor().token == Comma && cursor(1).token == Lower && cursor(2).token == TokenType.Assign))
-                val hasNamedArguments = cursor().token == Comma
-                cursor.skip()
+                val hasNamedArguments = if(cursor().token == Comma) { cursor.skip(); true } else
+                    cursor().token == Lower && cursor(1).token == TokenType.Assign
                 val namedArguments = if(!hasNamedArguments) List() else commaList(parseNamedArgument, () => cursor().token == RightRound)
-                result = MethodCall(position, result, methodName, arguments, namedArguments)
+                if(cursor().token != RightRound) throw new ParseException("Expected ), got " + cursor().token, Lexer.position(buffer, cursor().from))
+                cursor.skip()
+                result = MethodCall(position, result, methodName, arguments, namedArguments.zipWithIndex.map { case ((x, a), i) => (i, x, a) })
             }
         }
         result
@@ -283,6 +292,7 @@ class Parser(cursor : Cursor, buffer : Array[Char]) {
                 cursor.skip(2)
                 val variableType = if(cursor().token == Lexer.TokenType.Assign) None else Some(parseType())
                 if(cursor().token != Lexer.TokenType.Assign) throw new ParseException("Expected =, got " + cursor().token, Lexer.position(buffer, cursor().from))
+                cursor.skip()
                 val value = parseTerm()
                 Let(offset, name, variableType, value)
             case (Lower, Lexer.TokenType.Assign) =>
@@ -337,7 +347,7 @@ class Parser(cursor : Cursor, buffer : Array[Char]) {
         val returnType = if(cursor().token == Colon) {
             cursor.skip()
             parseType()
-        } else TypeConstructor(cursor.offset, Some("_"), "Void", List())
+        } else TypeConstructor(cursor.offset, None, "Void", List(), None)
         MethodSignature(offset, name, typeParameters, parameters, returnType)
     }
 
@@ -397,7 +407,7 @@ class Parser(cursor : Cursor, buffer : Array[Char]) {
             cursor.skip()
             val parameters = commaList(parseParameter, () => cursor().token == RightRound)
             cursor.skip()
-            List(MethodSignature(offset, name.head.toLower + name.tail, List(), parameters, TypeConstructor(offset, Some("_"), "Void", List())))
+            List(MethodSignature(offset, name.head.toLower + name.tail, List(), parameters, TypeConstructor(offset, None, "Void", List(), None)))
         } else parseMethodSignatures()
         TypeDefinition(offset, name, typeParameters, defaultModifier, methodSignatures)
     }
@@ -443,8 +453,7 @@ object Parser {
     case class FloatingValue(offset : Int, value : Double) extends Term
     case class ClassOrModule(offset : Int, module : Option[String], classOrModule : String) extends Term
     case class Variable(offset : Int, name : String) extends Term
-    case class MethodCall(offset : Int, value : Term, methodName : String, arguments : List[Term], namedArguments : List[(String, Term)]) extends Term
-    case class Copy(offset : Int, value : Term, fields : List[(String, Term)]) extends Term
+    case class MethodCall(offset : Int, value : Term, methodName : String, arguments : List[Term], namedArguments : List[(Int, String, Term)]) extends Term
     case class Instance(offset : Int, moduleName : Option[String], interfaceName : String, thisName : Option[String], methods : List[MethodImplementation]) extends Term
     case class Match(offset : Int, value : Term, methods : List[MethodImplementation]) extends Term
     case class Lambda(offset : Int, parameters : List[String], body : List[Statement]) extends Term
@@ -456,8 +465,17 @@ object Parser {
     case class Increment(offset : Int, variable : String, value : Term) extends Statement
     case class Decrement(offset : Int, variable : String, value : Term) extends Statement
 
-    sealed abstract class Type
-    case class TypeConstructor(offset : Int, module : Option[String], name : String, typeArguments : List[Type]) extends Type
+    sealed abstract class Type {
+        override def toString = this match {
+            case TypeConstructor(offset, module, name, typeArguments, modifier) =>
+                val a = if(typeArguments.isEmpty) "" else "[" + typeArguments.mkString(", ") + "]"
+                val m = modifier.map { case RequestModifier => "?"; case ResponseModifier => "!"; case RequestResponseModifier => "?!" }.getOrElse("")
+                module.map(_ + ".").getOrElse("") + name + a + m
+            case TypeParameter(offset, name) => name
+            case TypeVariable(offset, id) => "_" + id
+        }
+    }
+    case class TypeConstructor(offset : Int, module : Option[String], name : String, typeArguments : List[Type], modifier : Option[TypeModifier]) extends Type
     case class TypeParameter(offset : Int, name : String) extends Type
     case class TypeVariable(offset : Int, id : Int) extends Type
 
@@ -502,7 +520,7 @@ object Parser {
     def main(args : Array[String]) {
         val p1 = test("""
 
-        origo := 0
+        origo := 0 + 1
 
         Iterator[t] {
             next() : Option[t]
@@ -511,7 +529,7 @@ object Parser {
         newIntIterator(i : Int) : Iterator[Int] {
             Iterator {
                 next() {
-                    Option.none
+                    Option.some(42)
                 }
             }
         }
