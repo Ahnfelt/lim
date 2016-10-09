@@ -563,7 +563,7 @@ object Parser {
         bar := "bar"
         quux := "quux"
 
-        string := "foo\(bar)baz\(quux)ok"
+        string := "foo\r\n\\\"\U00013\(bar)baz\(quux)ok"
 
         origo := Point(0, 0)
 

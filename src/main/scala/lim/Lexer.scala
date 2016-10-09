@@ -109,9 +109,22 @@ class Lexer(cursor : Cursor) {
                 cursor.push('"')
                 cursor.skipWhitespace()
                 return Some(Token(if(middle) TextMiddle else TextStart, from, to))
+            } else if(cursor() == '\\') {
+                cursor.skip()
+                cursor() match {
+                    case 'n' => cursor.skip()
+                    case 'r' => cursor.skip()
+                    case 't' => cursor.skip()
+                    case '\'' => cursor.skip()
+                    case '\"' => cursor.skip()
+                    case '\\' => cursor.skip()
+                    case 'U' => cursor.skip(6)
+                    case _ => throw new ParseException("Unknown escape sequence: \\" + cursor(), position(cursor.buffer, from))
+                }
+            } else {
+                if(cursor.pastEnd) throw new ParseException("Unexpected end of file inside this string", position(cursor.buffer, from))
+                cursor.skip()
             }
-            if(cursor.pastEnd) throw new ParseException("Unexpected end of file inside this string", position(cursor.buffer, from))
-            cursor.skip() // TODO: Escape sequences
         }
         val to = cursor.offset
         cursor.skip()
