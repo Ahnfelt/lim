@@ -490,6 +490,7 @@ object Parser {
     case class ThisModule(offset : Int) extends Term
     case class Variable(offset : Int, name : String) extends Term
     case class MethodCall(offset : Int, value : Term, methodName : String, arguments : List[Term], namedArguments : List[(Int, String, Term)]) extends Term
+    case class ArrayAccess(offset : Int, value : Term, index : Term) extends Term
     case class FieldAccess(offset : Int, value : Term, fieldName : String) extends Term
     case class Instance(offset : Int, moduleName : Option[String], interfaceName : String, thisName : Option[String], methods : List[MethodImplementation]) extends Term
     case class Match(offset : Int, value : Term, methods : List[(MethodImplementation, List[String])]) extends Term

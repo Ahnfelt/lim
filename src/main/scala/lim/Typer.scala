@@ -18,6 +18,7 @@ class Typer(buffer : Array[Char]) {
         (None, "Int") -> TypeDefinition(0, "Int", List(), RequestModifier, List()),
         (None, "Float") -> TypeDefinition(0, "Float", List(), RequestModifier, List()),
         (None, "String") -> TypeDefinition(0, "String", List(), RequestModifier, List()),
+        // TODO: Make this use native false / true (it's a non-working mix of native and non-native right now)
         (None, "Bool") -> TypeDefinition(0, "Bool", List(), RequestModifier, List(
             MethodSignature(0, "false", List(), List(), TypeConstructor(0, None, "Void", List(), None), None),
             MethodSignature(0, "true", List(), List(), TypeConstructor(0, None, "Void", List(), None), None)
@@ -26,8 +27,9 @@ class Typer(buffer : Array[Char]) {
             MethodSignature(0, "none", List(), List(), TypeConstructor(0, None, "Void", List(), None), None),
             MethodSignature(0, "some", List(), List(Parameter(0, "value", TypeParameter(0, "t"))), TypeConstructor(0, None, "Void", List(), None), None)
         )),
+        // TODO: Don't support push since arrays are immutable
         (None, "Array") -> TypeDefinition(0, "Array", List("t"), RequestResponseModifier, List(
-            MethodSignature(0, "invoke", List(), List(Parameter(0, "index", TypeConstructor(0, None, "Int", List(), None))), TypeParameter(0, "t"), None),
+            MethodSignature(0, "invoke", List(), List(Parameter(0, "index", TypeConstructor(0, None, "Int", List(), None))), TypeParameter(0, "t"), Some((value, terms) => ArrayAccess(0, value, terms.head))),
             MethodSignature(0, "push", List(), List(Parameter(0, "element", TypeParameter(0, "t"))), TypeConstructor(0, None, "Void", List(), None), None),
             MethodSignature(0, "size", List(), List(), TypeConstructor(0, None, "Int", List(), None), Some((value, _) => FieldAccess(0, value, "length")))
         )),
@@ -216,6 +218,8 @@ class Typer(buffer : Array[Char]) {
         case ClassOrModule(offset, module, classOrModule) => throw new TypeException("Lone interface or module: " + module.map(_ + ".").getOrElse("") + classOrModule, Lexer.position(buffer, offset))
 
         case ThisModule(offset) => throw new TypeException("Lone this module", Lexer.position(buffer, offset))
+
+        case ArrayAccess(offset, _, _) => throw new TypeException("Lone array access", Lexer.position(buffer, offset))
 
         case FieldAccess(offset, _, _) => throw new TypeException("Lone field access", Lexer.position(buffer, offset))
 

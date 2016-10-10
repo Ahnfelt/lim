@@ -102,6 +102,11 @@ class Emitter {
                 emitTerm(builder, a)
             }
             builder ++= ")"
+        case ArrayAccess(offset, value, index) =>
+            emitTerm(builder, value)
+            builder ++= "["
+            emitTerm(builder, index)
+            builder ++= "]"
         case FieldAccess(offset, value, fieldName) =>
             emitTerm(builder, value)
             builder ++= "." + escapeMethod(fieldName)
@@ -183,7 +188,7 @@ class Emitter {
         builder ++= "function "
         builder ++= escapeMethod(methodDefinition.signature.name)
         builder ++= "("
-        builder ++= methodDefinition.signature.parameters.map(_.name).mkString(", ")
+        builder ++= methodDefinition.signature.parameters.map(p => escapeVariable(p.name)).mkString(", ")
         builder ++= ") {\n"
         emitStatements(builder, methodDefinition.body)
         builder ++= "}\n\n"
