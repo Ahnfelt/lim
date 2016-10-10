@@ -77,7 +77,7 @@ class Parser(cursor : Cursor, buffer : Array[Char]) {
                 val position = cursor().from
                 cursor.skip()
                 val right = parseType()
-                TypeConstructor(position, None, "F1", List(right), None)
+                TypeConstructor(position, None, "F1", List(left, right), None)
             }
         }
     }
@@ -303,6 +303,7 @@ class Parser(cursor : Cursor, buffer : Array[Char]) {
     def parseBody() : List[Statement] = {
         if(cursor().token != LeftCurly) throw new ParseException("Expected {, got " + cursor().token, Lexer.position(buffer, cursor().from))
         cursor.skip()
+        if(cursor().token == Separator) cursor.skip()
         val result = ListBuffer[Statement]()
         while(cursor().token != RightCurly) {
             if(cursor().token == Separator) cursor.skip()
@@ -380,7 +381,7 @@ class Parser(cursor : Cursor, buffer : Array[Char]) {
             cursor.skip()
             parseType()
         } else TypeConstructor(cursor().from, None, "Void", List(), None)
-        MethodSignature(offset, name, typeParameters, parameters, returnType)
+        MethodSignature(offset, name, typeParameters, parameters, returnType, None)
     }
 
     def parseMethodDefinition() = {
@@ -439,7 +440,7 @@ class Parser(cursor : Cursor, buffer : Array[Char]) {
             cursor.skip()
             val parameters = commaList(parseParameter, () => cursor().token == RightRound)
             cursor.skip()
-            List(MethodSignature(offset, name.head.toLower + name.tail, List(), parameters, TypeConstructor(offset, None, "Void", List(), None)))
+            List(MethodSignature(offset, name.head.toLower + name.tail, List(), parameters, TypeConstructor(offset, None, "Void", List(), None), None))
         } else parseMethodSignatures()
         TypeDefinition(offset, name, typeParameters, defaultModifier, methodSignatures)
     }
@@ -525,7 +526,7 @@ object Parser {
     case object ResponseModifier extends TypeModifier
     case object RequestResponseModifier extends TypeModifier
 
-    case class MethodSignature(offset : Int, name : String, typeParameters : List[String], parameters : List[Parameter], returnType : Type)
+    case class MethodSignature(offset : Int, name : String, typeParameters : List[String], parameters : List[Parameter], returnType : Type, forceImplementation : Option[(Term, List[Term]) => Term])
 
     case class MethodImplementation(offset : Int, name : String, parameters : List[String], body : List[Statement])
 
@@ -555,39 +556,61 @@ object Parser {
 
     def main(args : Array[String]) {
         val p1 = test("""
+            ArrayBuilder[t] {
+                drain() : Array[t]
+                push(element : t)
+                pushAll(elements : Array[t])
+                size : Int
+            }
 
-        Point(x : Int, y : Int)
-
-        list := [(x, y) => x]
-
-        bar := "bar"
-        quux := "quux"
-
-        string := "foo\r\n\\\"\{00013q}\(bar)baz\(quux)ok"
-
-        origo := Point(0, 0)
-
-        Iterator[t] {
-            next() : Option[t]
-        }
-
-        newIntIterator(i : Int) : Iterator[Int] {
-            Iterator {
-                next() {
-                    Option.some(42)
+            if(condition : Bool, then : () => Void, else : () => Void) {
+                condition ? {
+                    true { then() }
+                    false { else() }
                 }
             }
-        }
 
-        foo(bar : Option[Int]) : Int {
-            baz := newIntIterator(7)
-            baz.next
-            bar ? {
-                some(x) { x * x }
-                none { origo.y }
+            when(condition : Bool, then : () => Void) {
+                condition ? {
+                    true { then() }
+                    false {}
+                }
             }
-        }
 
+            while(condition : () => Bool, body : () => Void) {
+                when(condition(), {
+                    body()
+                    while(condition, body)
+                })
+            }
+
+            each[t](array : Array[t], body : t => Void) {
+                i := 0
+                while({i < array.size}, {
+                    body(array(i))
+                    i += 1
+                })
+            }
+
+            newArrayBuilder[t]() : ArrayBuilder[t] {
+                array := []
+                ArrayBuilder { this =>
+                    drain() {
+                        result := array
+                        array = []
+                        result
+                    }
+                    push(element) {
+                        array.push(element)
+                    }
+                    pushAll(elements) {
+                        each(elements, e => this.push(e))
+                    }
+                    size() {
+                        array.size()
+                    }
+                }
+            }
         """)
 
         println(p1)

@@ -6,11 +6,11 @@ import lim.Parser._
 class Emitter {
 
     def escapeVariable(name : String) = {
-        name
+        if(Emitter.reservedWords(name)) name + "_" else name
     }
 
     def escapeMethod(name : String) = {
-        name
+        if(Emitter.reservedWords(name)) name + "_" else name
     }
 
     def escapeUpper(name : String) : String = {
@@ -18,7 +18,7 @@ class Emitter {
     }
 
     def escapeString(value : String) = {
-        "\"" + value + "\""
+        "\"" + value + "\"" // TODO: Support \{12345} escape literals
     }
 
     def emitTerm(builder : StringBuilder, term : Term) : Unit = term match {
@@ -235,4 +235,52 @@ class Emitter {
         emitExports(builder, module.exports)
         builder ++= "})(this, void(0));\n"
     }
+}
+
+object Emitter {
+    val reservedWords = Set(
+        "break",
+        "case",
+        "catch",
+        "class",
+        "const",
+        "continue",
+        "debugger",
+        "default",
+        "delete",
+        "do",
+        "else",
+        "export",
+        "extends",
+        "finally",
+        "for",
+        "function",
+        "if",
+        "import",
+        "in",
+        "instanceof",
+        "new",
+        "return",
+        "super",
+        "switch",
+        "this",
+        "throw",
+        "try",
+        "typeof",
+        "var",
+        "void",
+        "while",
+        "with",
+        "yield",
+        "enum",
+        "implements",
+        "interface",
+        "let",
+        "package",
+        "private",
+        "protected",
+        "public",
+        "static",
+        "await"
+    )
 }

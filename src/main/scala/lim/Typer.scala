@@ -19,24 +19,29 @@ class Typer(buffer : Array[Char]) {
         (None, "Float") -> TypeDefinition(0, "Float", List(), RequestModifier, List()),
         (None, "String") -> TypeDefinition(0, "String", List(), RequestModifier, List()),
         (None, "Bool") -> TypeDefinition(0, "Bool", List(), RequestModifier, List(
-            MethodSignature(0, "false", List(), List(), TypeConstructor(0, None, "Void", List(), None)),
-            MethodSignature(0, "true", List(), List(), TypeConstructor(0, None, "Void", List(), None))
+            MethodSignature(0, "false", List(), List(), TypeConstructor(0, None, "Void", List(), None), None),
+            MethodSignature(0, "true", List(), List(), TypeConstructor(0, None, "Void", List(), None), None)
         )),
         (None, "Option") -> TypeDefinition(0, "Option", List("t"), RequestModifier, List(
-            MethodSignature(0, "none", List(), List(), TypeConstructor(0, None, "Void", List(), None)),
-            MethodSignature(0, "some", List(), List(Parameter(0, "value", TypeParameter(0, "t"))), TypeConstructor(0, None, "Void", List(), None))
+            MethodSignature(0, "none", List(), List(), TypeConstructor(0, None, "Void", List(), None), None),
+            MethodSignature(0, "some", List(), List(Parameter(0, "value", TypeParameter(0, "t"))), TypeConstructor(0, None, "Void", List(), None), None)
         )),
-        (None, "F0") -> TypeDefinition(0, "F0", List(), RequestModifier, List(
-            MethodSignature(0, "invoke", List("r"), List(), TypeParameter(0, "r"))
+        (None, "Array") -> TypeDefinition(0, "Array", List("t"), RequestResponseModifier, List(
+            MethodSignature(0, "invoke", List(), List(Parameter(0, "index", TypeConstructor(0, None, "Int", List(), None))), TypeParameter(0, "t"), None),
+            MethodSignature(0, "push", List(), List(Parameter(0, "element", TypeParameter(0, "t"))), TypeConstructor(0, None, "Void", List(), None), None),
+            MethodSignature(0, "size", List(), List(), TypeConstructor(0, None, "Int", List(), None), Some((value, _) => FieldAccess(0, value, "length")))
         )),
-        (None, "F1") -> TypeDefinition(0, "F1", List(), RequestModifier, List(
-            MethodSignature(0, "invoke", List("p1", "r"), List(Parameter(0, "a1", TypeParameter(0, "p1"))), TypeParameter(0, "r"))
+        (None, "F0") -> TypeDefinition(0, "F0", List("r"), RequestResponseModifier, List(
+            MethodSignature(0, "invoke", List(), List(), TypeParameter(0, "r"), None)
         )),
-        (None, "F2") -> TypeDefinition(0, "F2", List(), RequestModifier, List(
-            MethodSignature(0, "invoke", List("p1", "p2", "r"), List(Parameter(0, "a1", TypeParameter(0, "p1")), Parameter(0, "a2", TypeParameter(0, "p2"))), TypeParameter(0, "r"))
+        (None, "F1") -> TypeDefinition(0, "F1", List("p1", "r"), RequestResponseModifier, List(
+            MethodSignature(0, "invoke", List(), List(Parameter(0, "a1", TypeParameter(0, "p1"))), TypeParameter(0, "r"), None)
         )),
-        (None, "F3") -> TypeDefinition(0, "F3", List(), RequestModifier, List(
-            MethodSignature(0, "invoke", List("p1", "p2", "p3", "r"), List(Parameter(0, "a1", TypeParameter(0, "p1")), Parameter(0, "a2", TypeParameter(0, "p2")), Parameter(0, "a3", TypeParameter(0, "p3"))), TypeParameter(0, "r"))
+        (None, "F2") -> TypeDefinition(0, "F2", List("p1", "p2", "r"), RequestResponseModifier, List(
+            MethodSignature(0, "invoke", List(), List(Parameter(0, "a1", TypeParameter(0, "p1")), Parameter(0, "a2", TypeParameter(0, "p2"))), TypeParameter(0, "r"), None)
+        )),
+        (None, "F3") -> TypeDefinition(0, "F3", List("p1", "p2", "p3", "r"), RequestResponseModifier, List(
+            MethodSignature(0, "invoke", List(), List(Parameter(0, "a1", TypeParameter(0, "p1")), Parameter(0, "a2", TypeParameter(0, "p2")), Parameter(0, "a3", TypeParameter(0, "p3"))), TypeParameter(0, "r"), None)
         ))
     )
 
@@ -212,6 +217,8 @@ class Typer(buffer : Array[Char]) {
 
         case ThisModule(offset) => throw new TypeException("Lone this module", Lexer.position(buffer, offset))
 
+        case FieldAccess(offset, _, _) => throw new TypeException("Lone field access", Lexer.position(buffer, offset))
+
         case ArrayValue(offset, elements) =>
             val elementType = nextTypeVariable(offset)
             equalityConstraint(offset, expectedType, TypeConstructor(offset, None, "Array", List(elementType), None))
@@ -292,7 +299,10 @@ class Typer(buffer : Array[Char]) {
                 }
                 (i, x, typeTerm(p.parameterType, a))
             }
-            MethodCall(offset, typedValue, methodName, unnamed, named)
+            signature.forceImplementation match {
+                case Some(f) => f(typedValue, unnamed ++ named.map(_._3)) // TODO: Respect order of evaluation
+                case None => MethodCall(offset, typedValue, methodName, unnamed, named)
+            }
 
         case instance@Instance(offset, moduleName, interfaceName, thisName, methods) =>
             val typeDefinition = typeEnvironment.getOrElse(moduleName -> interfaceName, {
