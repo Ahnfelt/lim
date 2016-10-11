@@ -102,14 +102,6 @@ class Emitter {
                 emitTerm(builder, a)
             }
             builder ++= ")"
-        case ArrayAccess(offset, value, index) =>
-            emitTerm(builder, value)
-            builder ++= "["
-            emitTerm(builder, index)
-            builder ++= "]"
-        case FieldAccess(offset, value, fieldName) =>
-            emitTerm(builder, value)
-            builder ++= "." + escapeMethod(fieldName)
         case Instance(offset, moduleName, interfaceName, thisName, methods) =>
             builder ++= "{\n"
             for((m, i) <- methods.zipWithIndex) {
@@ -137,7 +129,28 @@ class Emitter {
             emitTerm(builder, value)
             builder ++= ")"
         case Lambda(offset, parameters, body) =>
-            emitTerm(builder, Instance(offset, None, "F" + parameters.length, None, List(MethodImplementation(offset, "invoke", parameters, body))))
+            //emitTerm(builder, Instance(offset, None, "F" + parameters.length, None, List(MethodImplementation(offset, "invoke", parameters, body))))
+            builder ++= "(function("
+            builder ++= parameters.mkString(", ")
+            builder ++= ") {\n"
+            emitStatements(builder, body)
+            builder ++= "})"
+        case NativeArrayAccess(offset, value, index) =>
+            emitTerm(builder, value)
+            builder ++= "["
+            emitTerm(builder, index)
+            builder ++= "]"
+        case NativeFieldAccess(offset, value, fieldName) =>
+            emitTerm(builder, value)
+            builder ++= "." + escapeMethod(fieldName)
+        case NativeFunctionCall(offset, value, arguments) =>
+            emitTerm(builder, value)
+            builder ++= "("
+            for((a, i) <- arguments.zipWithIndex) {
+                if(i != 0) builder ++= ", "
+                emitTerm(builder, a)
+            }
+            builder ++= ")"
     }
 
     def emitValueDefinition(builder : StringBuilder, valueDefinition : ValueDefinition) = {

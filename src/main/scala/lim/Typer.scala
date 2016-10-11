@@ -29,21 +29,21 @@ class Typer(buffer : Array[Char]) {
         )),
         // TODO: Don't support push since arrays are immutable
         (None, "Array") -> TypeDefinition(0, "Array", List("t"), RequestResponseModifier, List(
-            MethodSignature(0, "invoke", List(), List(Parameter(0, "index", TypeConstructor(0, None, "Int", List(), None))), TypeParameter(0, "t"), Some((value, terms) => ArrayAccess(0, value, terms.head))),
+            MethodSignature(0, "invoke", List(), List(Parameter(0, "index", TypeConstructor(0, None, "Int", List(), None))), TypeParameter(0, "t"), Some((value, terms) => NativeArrayAccess(0, value, terms.head))),
             MethodSignature(0, "push", List(), List(Parameter(0, "element", TypeParameter(0, "t"))), TypeConstructor(0, None, "Void", List(), None), None),
-            MethodSignature(0, "size", List(), List(), TypeConstructor(0, None, "Int", List(), None), Some((value, _) => FieldAccess(0, value, "length")))
+            MethodSignature(0, "size", List(), List(), TypeConstructor(0, None, "Int", List(), None), Some((value, _) => NativeFieldAccess(0, value, "length")))
         )),
         (None, "F0") -> TypeDefinition(0, "F0", List("r"), RequestResponseModifier, List(
-            MethodSignature(0, "invoke", List(), List(), TypeParameter(0, "r"), None)
+            MethodSignature(0, "invoke", List(), List(), TypeParameter(0, "r"), Some((value, arguments) => NativeFunctionCall(0, value, arguments)))
         )),
         (None, "F1") -> TypeDefinition(0, "F1", List("p1", "r"), RequestResponseModifier, List(
-            MethodSignature(0, "invoke", List(), List(Parameter(0, "a1", TypeParameter(0, "p1"))), TypeParameter(0, "r"), None)
+            MethodSignature(0, "invoke", List(), List(Parameter(0, "a1", TypeParameter(0, "p1"))), TypeParameter(0, "r"), Some((value, arguments) => NativeFunctionCall(0, value, arguments)))
         )),
         (None, "F2") -> TypeDefinition(0, "F2", List("p1", "p2", "r"), RequestResponseModifier, List(
-            MethodSignature(0, "invoke", List(), List(Parameter(0, "a1", TypeParameter(0, "p1")), Parameter(0, "a2", TypeParameter(0, "p2"))), TypeParameter(0, "r"), None)
+            MethodSignature(0, "invoke", List(), List(Parameter(0, "a1", TypeParameter(0, "p1")), Parameter(0, "a2", TypeParameter(0, "p2"))), TypeParameter(0, "r"), Some((value, arguments) => NativeFunctionCall(0, value, arguments)))
         )),
         (None, "F3") -> TypeDefinition(0, "F3", List("p1", "p2", "p3", "r"), RequestResponseModifier, List(
-            MethodSignature(0, "invoke", List(), List(Parameter(0, "a1", TypeParameter(0, "p1")), Parameter(0, "a2", TypeParameter(0, "p2")), Parameter(0, "a3", TypeParameter(0, "p3"))), TypeParameter(0, "r"), None)
+            MethodSignature(0, "invoke", List(), List(Parameter(0, "a1", TypeParameter(0, "p1")), Parameter(0, "a2", TypeParameter(0, "p2")), Parameter(0, "a3", TypeParameter(0, "p3"))), TypeParameter(0, "r"), Some((value, arguments) => NativeFunctionCall(0, value, arguments)))
         ))
     )
 
@@ -219,9 +219,9 @@ class Typer(buffer : Array[Char]) {
 
         case ThisModule(offset) => throw new TypeException("Lone this module", Lexer.position(buffer, offset))
 
-        case ArrayAccess(offset, _, _) => throw new TypeException("Lone array access", Lexer.position(buffer, offset))
+        case NativeArrayAccess(offset, _, _) => throw new TypeException("Lone array access", Lexer.position(buffer, offset))
 
-        case FieldAccess(offset, _, _) => throw new TypeException("Lone field access", Lexer.position(buffer, offset))
+        case NativeFieldAccess(offset, _, _) => throw new TypeException("Lone field access", Lexer.position(buffer, offset))
 
         case ArrayValue(offset, elements) =>
             val elementType = nextTypeVariable(offset)
@@ -274,7 +274,7 @@ class Typer(buffer : Array[Char]) {
                 if(modifier.getOrElse(defaultModifier) == RequestModifier && methodSignatures.length == 1 && methodSignatures.head.parameters.map(_.name).contains(methodName) && arguments.isEmpty && namedArguments.isEmpty) {
                     val methodSignature = instantiateMethodSignature(offset, methodSignatures.head, None)
                     equalityConstraint(offset, expectedType, methodSignature.parameters.head.parameterType)
-                    return FieldAccess(offset, typedValue, methodName)
+                    return NativeFieldAccess(offset, typedValue, methodName)
                 } else {
                     val sigil = modifier.getOrElse(defaultModifier) match {
                         case RequestModifier => "?"
