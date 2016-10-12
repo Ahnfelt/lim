@@ -500,6 +500,7 @@ object Parser {
     case class NativeFieldAccess(value : Term, fieldName : String) extends NativeOperation
     case class NativeFunctionCall(value : Term, arguments : List[Term]) extends NativeOperation
     case class NativeToString(value : Term) extends NativeOperation
+    case class NativeBool(value : Boolean) extends NativeOperation
     case class NativeIf(condition : Term, thenBody : List[Statement], elseBody : List[Statement]) extends NativeOperation
 
     sealed abstract class Statement
@@ -563,6 +564,8 @@ object Parser {
 
     def main(args : Array[String]) {
         val p1 = test("""
+            truism := Bool.true
+
             ArrayBuilder[t] {
                 drain() : Array[t]
                 push(element : t)

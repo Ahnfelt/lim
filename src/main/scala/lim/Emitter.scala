@@ -50,6 +50,8 @@ class Emitter {
             builder ++= " : "
             emitScope(builder, elseBody)
             builder ++= ")"
+        case NativeBool(value) =>
+            builder ++= (if(value) "true" else "false")
     }
 
     def emitTerm(builder : StringBuilder, term : Term) : Unit = term match {

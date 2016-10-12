@@ -309,9 +309,13 @@ class Typer(buffer : Array[Char]) {
                 }
                 (i, x, typeTerm(p.parameterType, a))
             }
-            signature.forceImplementation match {
-                case Some(f) => f(typedValue, unnamed ++ named.map(_._3)) // TODO: Respect order of evaluation
-                case None => MethodCall(offset, typedValue, methodName, unnamed, named)
+            if(module.isEmpty && name == "Bool") { // TODO: Find a better way to detect built-in types
+                Native(offset, NativeBool(methodName == "true"))
+            } else {
+                signature.forceImplementation match {
+                    case Some(f) => f(typedValue, unnamed ++ named.map(_._3)) // TODO: Respect order of evaluation
+                    case None => MethodCall(offset, typedValue, methodName, unnamed, named)
+                }
             }
 
         case instance@Instance(offset, moduleName, interfaceName, thisName, methods) =>
