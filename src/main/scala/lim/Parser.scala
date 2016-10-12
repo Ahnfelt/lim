@@ -564,8 +564,6 @@ object Parser {
 
     def main(args : Array[String]) {
         val p1 = test("""
-            truism := Bool.true
-
             ArrayBuilder[t] {
                 drain() : Array[t]
                 push(element : t)

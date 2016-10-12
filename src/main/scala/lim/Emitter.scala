@@ -46,9 +46,9 @@ class Emitter {
             builder ++= "("
             emitTerm(builder, condition)
             builder ++= " ? "
-            emitScope(builder, thenBody)
+            emitStatementsAsTerm(builder, thenBody)
             builder ++= " : "
-            emitScope(builder, elseBody)
+            emitStatementsAsTerm(builder, elseBody)
             builder ++= ")"
         case NativeBool(value) =>
             builder ++= (if(value) "true" else "false")
@@ -214,7 +214,7 @@ class Emitter {
         emitStatement(builder, body.last)
     }
 
-    def emitScope(builder : StringBuilder, body : List[Statement]) : Unit = {
+    def emitStatementsAsTerm(builder : StringBuilder, body : List[Statement]) : Unit = {
         body match {
             case List() => builder ++= "void(0)"
             case List(TermStatement(_, term)) => emitTerm(builder, term)
