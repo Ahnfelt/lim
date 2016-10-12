@@ -588,9 +588,10 @@ object Parser {
 
             case[t](condition : () => Bool, body : () => t) : Case[t] {
                 if(condition(), {
+                    result := body()
                     Case { this =>
                         case(a, b) { this }
-                        else(b) { body() }
+                        else(b) { result }
                     }
                 }, {
                     Case {
@@ -598,6 +599,16 @@ object Parser {
                         else(body) { body() }
                     }
                 })
+            }
+
+            f() {
+            x := 1
+            y := 2
+            z := (
+                case({x > y}, {x}).
+                case({x == y}, {0}).
+                else({y})
+            )
             }
 
             ArrayBuilder[t] {
