@@ -493,9 +493,14 @@ object Parser {
     case class Instance(offset : Int, moduleName : Option[String], interfaceName : String, thisName : Option[String], methods : List[MethodImplementation]) extends Term
     case class Match(offset : Int, value : Term, methods : List[(MethodImplementation, List[String])]) extends Term
     case class Lambda(offset : Int, parameters : List[String], body : List[Statement]) extends Term
-    case class NativeArrayAccess(offset : Int, value : Term, index : Term) extends Term
-    case class NativeFieldAccess(offset : Int, value : Term, fieldName : String) extends Term
-    case class NativeFunctionCall(offset : Int, value : Term, arguments : List[Term]) extends Term
+    case class Native(offset : Int, operation : NativeOperation) extends Term
+
+    sealed abstract class NativeOperation
+    case class NativeArrayAccess(value : Term, index : Term) extends NativeOperation
+    case class NativeFieldAccess(value : Term, fieldName : String) extends NativeOperation
+    case class NativeFunctionCall(value : Term, arguments : List[Term]) extends NativeOperation
+    case class NativeToString(value : Term) extends NativeOperation
+    case class NativeIf(condition : Term, thenBody : List[Statement], elseBody : List[Statement]) extends NativeOperation
 
     sealed abstract class Statement
     case class TermStatement(offset : Int, term : Term) extends Statement
@@ -565,7 +570,7 @@ object Parser {
                 size : Int
             }
 
-            if(condition : Bool, then : () => Void, else : () => Void) {
+            if[t](condition : Bool, then : () => t, else : () => t) {
                 condition ? {
                     true { then() }
                     false { else() }

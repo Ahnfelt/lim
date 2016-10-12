@@ -14,10 +14,18 @@ class Typer(buffer : Array[Char]) {
     var methodEnvironment = Map[String, MethodSignature]()
     var typeVariables = Map[Int, Type]()
     var typeEnvironment = Map[(Option[String], String), TypeDefinition](
-        (None, "Void") -> TypeDefinition(0, "Void", List(), RequestModifier, List()),
-        (None, "Int") -> TypeDefinition(0, "Int", List(), RequestModifier, List()),
-        (None, "Float") -> TypeDefinition(0, "Float", List(), RequestModifier, List()),
-        (None, "String") -> TypeDefinition(0, "String", List(), RequestModifier, List()),
+        (None, "Void") -> TypeDefinition(0, "Void", List(), RequestResponseModifier, List(
+            MethodSignature(0, "toString", List(), List(), TypeConstructor(0, None, "String", List(), None), Some((_, _) => TextValue(0, "undefined")))
+        )),
+        (None, "Int") -> TypeDefinition(0, "Int", List(), RequestResponseModifier, List(
+            MethodSignature(0, "toString", List(), List(), TypeConstructor(0, None, "String", List(), None), Some((value, _) => Native(0, NativeToString(value))))
+        )),
+        (None, "Float") -> TypeDefinition(0, "Float", List(), RequestResponseModifier, List(
+            MethodSignature(0, "toString", List(), List(), TypeConstructor(0, None, "String", List(), None), Some((value, _) => Native(0, NativeToString(value))))
+        )),
+        (None, "String") -> TypeDefinition(0, "String", List(), RequestResponseModifier, List(
+            MethodSignature(0, "size", List(), List(), TypeConstructor(0, None, "Int", List(), None), Some((value, _) => Native(0, NativeFieldAccess(value, "length"))))
+        )),
         // TODO: Make this use native false / true (it's a non-working mix of native and non-native right now)
         (None, "Bool") -> TypeDefinition(0, "Bool", List(), RequestModifier, List(
             MethodSignature(0, "false", List(), List(), TypeConstructor(0, None, "Void", List(), None), None),
@@ -29,21 +37,21 @@ class Typer(buffer : Array[Char]) {
         )),
         // TODO: Don't support push since arrays are immutable
         (None, "Array") -> TypeDefinition(0, "Array", List("t"), RequestResponseModifier, List(
-            MethodSignature(0, "invoke", List(), List(Parameter(0, "index", TypeConstructor(0, None, "Int", List(), None))), TypeParameter(0, "t"), Some((value, terms) => NativeArrayAccess(0, value, terms.head))),
+            MethodSignature(0, "invoke", List(), List(Parameter(0, "index", TypeConstructor(0, None, "Int", List(), None))), TypeParameter(0, "t"), Some((value, terms) => Native(0, NativeArrayAccess(value, terms.head)))),
             MethodSignature(0, "push", List(), List(Parameter(0, "element", TypeParameter(0, "t"))), TypeConstructor(0, None, "Void", List(), None), None),
-            MethodSignature(0, "size", List(), List(), TypeConstructor(0, None, "Int", List(), None), Some((value, _) => NativeFieldAccess(0, value, "length")))
+            MethodSignature(0, "size", List(), List(), TypeConstructor(0, None, "Int", List(), None), Some((value, _) => Native(0, NativeFieldAccess(value, "length"))))
         )),
         (None, "F0") -> TypeDefinition(0, "F0", List("r"), RequestResponseModifier, List(
-            MethodSignature(0, "invoke", List(), List(), TypeParameter(0, "r"), Some((value, arguments) => NativeFunctionCall(0, value, arguments)))
+            MethodSignature(0, "invoke", List(), List(), TypeParameter(0, "r"), Some((value, arguments) => Native(0, NativeFunctionCall(value, arguments))))
         )),
         (None, "F1") -> TypeDefinition(0, "F1", List("p1", "r"), RequestResponseModifier, List(
-            MethodSignature(0, "invoke", List(), List(Parameter(0, "a1", TypeParameter(0, "p1"))), TypeParameter(0, "r"), Some((value, arguments) => NativeFunctionCall(0, value, arguments)))
+            MethodSignature(0, "invoke", List(), List(Parameter(0, "a1", TypeParameter(0, "p1"))), TypeParameter(0, "r"), Some((value, arguments) => Native(0, NativeFunctionCall(value, arguments))))
         )),
         (None, "F2") -> TypeDefinition(0, "F2", List("p1", "p2", "r"), RequestResponseModifier, List(
-            MethodSignature(0, "invoke", List(), List(Parameter(0, "a1", TypeParameter(0, "p1")), Parameter(0, "a2", TypeParameter(0, "p2"))), TypeParameter(0, "r"), Some((value, arguments) => NativeFunctionCall(0, value, arguments)))
+            MethodSignature(0, "invoke", List(), List(Parameter(0, "a1", TypeParameter(0, "p1")), Parameter(0, "a2", TypeParameter(0, "p2"))), TypeParameter(0, "r"), Some((value, arguments) => Native(0, NativeFunctionCall(value, arguments))))
         )),
         (None, "F3") -> TypeDefinition(0, "F3", List("p1", "p2", "p3", "r"), RequestResponseModifier, List(
-            MethodSignature(0, "invoke", List(), List(Parameter(0, "a1", TypeParameter(0, "p1")), Parameter(0, "a2", TypeParameter(0, "p2")), Parameter(0, "a3", TypeParameter(0, "p3"))), TypeParameter(0, "r"), Some((value, arguments) => NativeFunctionCall(0, value, arguments)))
+            MethodSignature(0, "invoke", List(), List(Parameter(0, "a1", TypeParameter(0, "p1")), Parameter(0, "a2", TypeParameter(0, "p2")), Parameter(0, "a3", TypeParameter(0, "p3"))), TypeParameter(0, "r"), Some((value, arguments) => Native(0, NativeFunctionCall(value, arguments))))
         ))
     )
 
@@ -219,9 +227,7 @@ class Typer(buffer : Array[Char]) {
 
         case ThisModule(offset) => throw new TypeException("Lone this module", Lexer.position(buffer, offset))
 
-        case NativeArrayAccess(offset, _, _) => throw new TypeException("Lone array access", Lexer.position(buffer, offset))
-
-        case NativeFieldAccess(offset, _, _) => throw new TypeException("Lone field access", Lexer.position(buffer, offset))
+        case Native(offset, _) => throw new TypeException("Unexpected native operation", Lexer.position(buffer, offset))
 
         case ArrayValue(offset, elements) =>
             val elementType = nextTypeVariable(offset)
@@ -274,7 +280,7 @@ class Typer(buffer : Array[Char]) {
                 if(modifier.getOrElse(defaultModifier) == RequestModifier && methodSignatures.length == 1 && methodSignatures.head.parameters.map(_.name).contains(methodName) && arguments.isEmpty && namedArguments.isEmpty) {
                     val methodSignature = instantiateMethodSignature(offset, methodSignatures.head, None)
                     equalityConstraint(offset, expectedType, methodSignature.parameters.head.parameterType)
-                    return NativeFieldAccess(offset, typedValue, methodName)
+                    return Native(offset, NativeFieldAccess(typedValue, methodName))
                 } else {
                     val sigil = modifier.getOrElse(defaultModifier) match {
                         case RequestModifier => "?"
@@ -334,7 +340,7 @@ class Typer(buffer : Array[Char]) {
         case Match(offset, value, methodsWithFieldNames) =>
             val valueType = nextTypeVariable(offset)
             val typedValue = typeTerm(valueType, value)
-            val methodSignatures = expandType(valueType) match {
+            val (methodSignatures, moduleName, typeName) = expandType(valueType) match {
                 case t@TypeConstructor(_, module1, name1, typeArguments1, modifier1) =>
                     val definition = typeEnvironment.get(module1 -> name1).map(instantiateTypeDefinition(offset, _, Some(typeArguments1))).getOrElse {
                         throw new TypeException("No such type: " + module1.map(_ + ".").getOrElse("") + name1, Lexer.position(buffer, offset))
@@ -343,7 +349,7 @@ class Typer(buffer : Array[Char]) {
                     if(modifier1.getOrElse(definition.defaultModifier) != RequestModifier) {
                         throw new TypeException("Can't match on non-request type: " + t, Lexer.position(buffer, offset))
                     }
-                    definition.methodSignatures
+                    (definition.methodSignatures, module1, name1)
                 case t@TypeParameter(_, name1) => throw new TypeException("Can't match on type parameter: " + t, Lexer.position(buffer, offset))
                 case t@TypeVariable(_, id) => throw new TypeException("Can't match on unknown type: " + t, Lexer.position(buffer, offset))
             }
@@ -359,7 +365,11 @@ class Typer(buffer : Array[Char]) {
             if(missing.nonEmpty) {
                 throw new TypeException("The following cases must be implemented: " + missing.mkString(", "), Lexer.position(buffer, offset))
             }
-            Match(offset, typedValue, typedMethods)
+            if(moduleName.isEmpty && typeName == "Bool") { // TODO: Better native type detection
+                Native(offset, NativeIf(typedValue, typedMethods.find(_._1.name == "true").get._1.body, typedMethods.find(_._1.name == "false").get._1.body))
+            } else {
+                Match(offset, typedValue, typedMethods)
+            }
 
         case Lambda(offset, parameters, body) =>
             val parameterTypes = parameters.map(p => p -> nextTypeVariable(offset))

@@ -21,6 +21,37 @@ class Emitter {
         "\"" + value + "\"" // TODO: Support \{12345} escape literals
     }
 
+    def emitNative(builder : StringBuilder, operation : NativeOperation) : Unit = operation match {
+        case NativeArrayAccess(value, index) =>
+            emitTerm(builder, value)
+            builder ++= "["
+            emitTerm(builder, index)
+            builder ++= "]"
+        case NativeFieldAccess(value, fieldName) =>
+            emitTerm(builder, value)
+            builder ++= "." + escapeMethod(fieldName)
+        case NativeToString(value) =>
+            builder ++= "(\"\" + "
+            emitTerm(builder, value)
+            builder ++= ")"
+        case NativeFunctionCall(value, arguments) =>
+            emitTerm(builder, value)
+            builder ++= "("
+            for((a, i) <- arguments.zipWithIndex) {
+                if(i != 0) builder ++= ", "
+                emitTerm(builder, a)
+            }
+            builder ++= ")"
+        case NativeIf(condition, thenBody, elseBody) =>
+            builder ++= "("
+            emitTerm(builder, condition)
+            builder ++= " ? "
+            emitScope(builder, thenBody)
+            builder ++= " : "
+            emitScope(builder, elseBody)
+            builder ++= ")"
+    }
+
     def emitTerm(builder : StringBuilder, term : Term) : Unit = term match {
         case Binary(offset, operator, left, right) =>
             builder ++= "("
@@ -135,22 +166,7 @@ class Emitter {
             builder ++= ") {\n"
             emitStatements(builder, body)
             builder ++= "})"
-        case NativeArrayAccess(offset, value, index) =>
-            emitTerm(builder, value)
-            builder ++= "["
-            emitTerm(builder, index)
-            builder ++= "]"
-        case NativeFieldAccess(offset, value, fieldName) =>
-            emitTerm(builder, value)
-            builder ++= "." + escapeMethod(fieldName)
-        case NativeFunctionCall(offset, value, arguments) =>
-            emitTerm(builder, value)
-            builder ++= "("
-            for((a, i) <- arguments.zipWithIndex) {
-                if(i != 0) builder ++= ", "
-                emitTerm(builder, a)
-            }
-            builder ++= ")"
+        case Native(offset, operation) => emitNative(builder, operation)
     }
 
     def emitValueDefinition(builder : StringBuilder, valueDefinition : ValueDefinition) = {
@@ -194,6 +210,17 @@ class Emitter {
         for(s <- body.init) emitStatement(builder, s)
         if(body.last.isInstanceOf[TermStatement]) builder ++= "return "
         emitStatement(builder, body.last)
+    }
+
+    def emitScope(builder : StringBuilder, body : List[Statement]) : Unit = {
+        body match {
+            case List() => builder ++= "void(0)"
+            case List(TermStatement(_, term)) => emitTerm(builder, term)
+            case _ =>
+                builder ++= "(function() {\n"
+                emitStatements(builder, body)
+                builder ++= "})()"
+        }
     }
 
     def emitMethodDefinition(builder : StringBuilder, methodDefinition : MethodDefinition) = {
