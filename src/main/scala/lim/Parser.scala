@@ -587,20 +587,17 @@ object Parser {
             }
 
             case[t](condition : () => Bool, body : () => t) : Case[t] {
-                condition() ? {
-                    true {
-                        Case { this =>
-                            case(a, b) { this }
-                            else(b) { body() }
-                        }
+                if(condition(), {
+                    Case { this =>
+                        case(a, b) { this }
+                        else(b) { body() }
                     }
-                    false {
-                        Case {
-                            case(condition, body) { case(condition, body) }
-                            else(body) { body() }
-                        }
+                }, {
+                    Case {
+                        case(condition, body) { case(condition, body) }
+                        else(body) { body() }
                     }
-                }
+                })
             }
 
             ArrayBuilder[t] {
@@ -610,7 +607,7 @@ object Parser {
                 size : Int
             }
 
-            if[t](condition : Bool, then : () => t, else : () => t) {
+            if[t](condition : Bool, then : () => t, else : () => t) : t {
                 condition ? {
                     true { then() }
                     false { else() }
