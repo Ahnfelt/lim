@@ -35,10 +35,8 @@ class Typer(buffer : Array[Char]) {
             MethodSignature(0, "none", List(), List(), TypeConstructor(0, None, "Void", List(), None), None),
             MethodSignature(0, "some", List(), List(Parameter(0, "value", TypeParameter(0, "t"))), TypeConstructor(0, None, "Void", List(), None), None)
         )),
-        // TODO: Don't support push since arrays are immutable
         (None, "Array") -> TypeDefinition(0, "Array", List("t"), RequestResponseModifier, List(
             MethodSignature(0, "invoke", List(), List(Parameter(0, "index", TypeConstructor(0, None, "Int", List(), None))), TypeParameter(0, "t"), Some((value, terms) => Native(0, NativeArrayAccess(value, terms.head)))),
-            MethodSignature(0, "push", List(), List(Parameter(0, "element", TypeParameter(0, "t"))), TypeConstructor(0, None, "Void", List(), None), None),
             MethodSignature(0, "size", List(), List(), TypeConstructor(0, None, "Int", List(), None), Some((value, _) => Native(0, NativeFieldAccess(value, "length"))))
         )),
         (None, "F0") -> TypeDefinition(0, "F0", List("r"), RequestResponseModifier, List(
@@ -124,6 +122,7 @@ class Typer(buffer : Array[Char]) {
         case s@Decrement(_, variable, value) =>
             val t = environment.getOrElse(variable, throw new TypeException("Unknown variable: " + variable, Lexer.position(buffer, s.offset)))
             s.copy(value = typeTerm(t, value)) // TODO: Check that it's a Int or Float
+        case s@Ffi(_, language, code) => s
     }
 
     def typeBody(offset : Int, expectedType : Type, body : List[Statement]) : List[Statement] = {

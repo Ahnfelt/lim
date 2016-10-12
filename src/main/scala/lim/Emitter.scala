@@ -205,6 +205,13 @@ class Emitter {
             builder ++= " -= "
             emitTerm(builder, value)
             builder ++= ";\n"
+        case Ffi(offset, language, code) =>
+            if(language == "js") {
+                builder ++= code
+                builder ++= "\n"
+            } else {
+                builder ++= "throw 'FFI for non-JS language: " + language + "';\n"
+            }
     }
 
     def emitStatements(builder : StringBuilder, body : List[Statement]) : Unit = {

@@ -174,6 +174,18 @@ class Parser(cursor : Cursor, buffer : Array[Char]) {
         ArrayValue(offset, elements)
     }
 
+    def parseFfi() : Statement = {
+        val offset = cursor().from
+        if(cursor().token != Lower) throw new ParseException("Expected ffi, got " + cursor().token, Lexer.position(buffer, cursor().from))
+        val language = Lexer.text(buffer, cursor().from, cursor().to)
+        if(language != "js") throw new ParseException("Expected FFI js, got FFI " + language, Lexer.position(buffer, cursor().from))
+        cursor.skip()
+        if(cursor().token != Text) throw new ParseException("Expected code string, got " + cursor().token, Lexer.position(buffer, cursor().from))
+        val code = Lexer.text(buffer, cursor().from + 1, cursor().to)
+        cursor.skip()
+        Ffi(offset, language, code)
+    }
+
     def parseAtom() : Term = {
         (cursor(0).token, cursor(1).token, cursor(2).token, cursor(3).token) match {
             case (LeftSquare, _, _, _) => parseArray()
@@ -346,6 +358,7 @@ class Parser(cursor : Cursor, buffer : Array[Char]) {
                 cursor.skip(2)
                 val value = parseTerm()
                 Parser.Decrement(offset, name, value)
+            case (Lower, Text) => parseFfi()
             case _ => TermStatement(cursor().from, parseTerm())
         }
     }
@@ -494,6 +507,7 @@ object Parser {
     case class Match(offset : Int, value : Term, methods : List[(MethodImplementation, List[String])]) extends Term
     case class Lambda(offset : Int, parameters : List[String], body : List[Statement]) extends Term
     case class Native(offset : Int, operation : NativeOperation) extends Term
+    case class FfiJs(offset : Int, code : String) extends Term
 
     sealed abstract class NativeOperation
     case class NativeArrayAccess(value : Term, index : Term) extends NativeOperation
@@ -509,6 +523,7 @@ object Parser {
     case class Assign(offset : Int, variable : String, value : Term) extends Statement
     case class Increment(offset : Int, variable : String, value : Term) extends Statement
     case class Decrement(offset : Int, variable : String, value : Term) extends Statement
+    case class Ffi(offset : Int, language : String, code : String) extends Statement
 
     sealed abstract class Type {
         override def toString = this match {
@@ -612,7 +627,7 @@ object Parser {
                         result
                     }
                     push(element) {
-                        array.push(element)
+                        js"array.push(element);"
                     }
                     pushAll(elements) {
                         each(elements, e => this.push(e))
