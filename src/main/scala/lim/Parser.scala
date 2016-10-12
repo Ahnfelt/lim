@@ -586,10 +586,13 @@ object Parser {
             }
 
             while(condition : () => Bool, body : () => Void) {
-                when(condition(), {
-                    body()
-                    while(condition, body)
-                })
+                condition() ? {
+                    true {
+                        body()
+                        while(condition, body)
+                    }
+                    false {}
+                }
             }
 
             each[t](array : Array[t], body : t => Void) {
