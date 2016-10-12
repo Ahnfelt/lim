@@ -192,6 +192,7 @@ class Parser(cursor : Cursor, buffer : Array[Char]) {
             case (Lower, RightThickArrow, _, _) => parseLambda()
             case (LeftRound, Lower, Comma, _) => parseLambda()
             case (LeftRound, Lower, RightRound, RightThickArrow) => parseLambda()
+            case (LeftRound, RightRound, RightThickArrow, _) => parseLambda()
             case (LeftCurly, _, _, _) => parseLambda()
             case (Upper, LeftCurly, _, _) => parseInstance()
             case (Upper, Dot, Upper, LeftCurly) => parseInstance()
@@ -579,6 +580,29 @@ object Parser {
 
     def main(args : Array[String]) {
         val p1 = test("""
+
+            Case[t] {
+                case(condition : () => Bool, body : () => t) : Case[t]
+                else(body : () => t) : t
+            }
+
+            case[t](condition : () => Bool, body : () => t) : Case[t] {
+                condition() ? {
+                    true {
+                        Case { this =>
+                            case(a, b) { this }
+                            else(b) { body() }
+                        }
+                    }
+                    false {
+                        Case {
+                            case(condition, body) { case(condition, body) }
+                            else(body) { body() }
+                        }
+                    }
+                }
+            }
+
             ArrayBuilder[t] {
                 drain() : Array[t]
                 push(element : t)
