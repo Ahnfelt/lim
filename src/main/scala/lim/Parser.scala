@@ -601,16 +601,6 @@ object Parser {
                 })
             }
 
-            f() {
-            x := 1
-            y := 2
-            z := (
-                case({x > y}, {x}).
-                case({x == y}, {0}).
-                else({y})
-            )
-            }
-
             ArrayBuilder[t] {
                 drain() : Array[t]
                 push(element : t)
