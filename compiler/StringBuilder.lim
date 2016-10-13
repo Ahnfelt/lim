@@ -1,0 +1,22 @@
+StringBuilder {
+    drain() : String
+    append(text : String)
+    size : Int
+}
+
+newStringBuilder() : StringBuilder {
+    string := ""
+    StringBuilder { this =>
+        drain() {
+            result := string
+            string = ""
+            result
+        }
+        append(text) {
+            string = "\(string)\(text)"
+        }
+        size() {
+            string.size()
+        }
+    }
+}
