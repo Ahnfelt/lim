@@ -33,16 +33,8 @@ when(condition : Bool, then : () => Void) {
 }
 
 while(condition : () => Bool, body : () => Void) {
-    condition() ? {
-        true {
-            body()
-            while(condition, body)
-        }
-        false {}
-    }
+    js"while(condition()) body();"
 }
-
-
 
 each[a](array : Array[a], body : a => Void) {
     js"for(var i = 0; i < array.length; i++) body(array[i]);"
@@ -58,6 +50,11 @@ filter[a](array : Array[a], condition : a => Bool) : Array[a] {
     result := []
     js"for(var i = 0; i < array.length; i++) if(body(array[i])) result.push(array[i]);"
     result
+}
+
+find[a](array : Array[a], condition : a => Bool) : Option[a] {
+    js"for(var i = 0; i < array.length; i++) if(body(array[i])) return Option.some(array[i]);"
+    Option.none
 }
 
 first[a](array : Array[a]) : Option[a] {
