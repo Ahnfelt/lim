@@ -1,0 +1,69 @@
+Case[t] {
+    case(condition : () => Bool, body : () => t) : Case[t]
+    else(body : () => t) : t
+}
+
+case[t](condition : () => Bool, body : () => t) : Case[t] {
+    if(condition(), {
+        result := body()
+        Case { this =>
+            case(a, b) { this }
+            else(b) { result }
+        }
+    }, {
+        Case {
+            case(condition, body) { case(condition, body) }
+            else(body) { body() }
+        }
+    })
+}
+
+if[t](condition : Bool, then : () => t, else : () => t) : t {
+    condition ? {
+        true { then() }
+        false { else() }
+    }
+}
+
+when(condition : Bool, then : () => Void) {
+    condition ? {
+        true { then() }
+        false {}
+    }
+}
+
+while(condition : () => Bool, body : () => Void) {
+    condition() ? {
+        true {
+            body()
+            while(condition, body)
+        }
+        false {}
+    }
+}
+
+
+
+each[a](array : Array[a], body : a => Void) {
+    js"for(var i = 0; i < array.length; i++) body(array[i]);"
+}
+
+map[a, b](array : Array[a], body : a => b) : Array[b] {
+    result := []
+    js"for(var i = 0; i < array.length; i++) result.push(body(array[i]));"
+    result
+}
+
+filter[a](array : Array[a], body : a => Bool) : Array[a] {
+    result := []
+    js"for(var i = 0; i < array.length; i++) if(body(array[i])) result.push(array[i]);"
+    result
+}
+
+first[a](array : Array[a]) : Option[a] {
+    if(array.size != 0, {Option.some(array(0))}, {Option.none})
+}
+
+last[a](array : Array[a]) : Option[a] {
+    if(array.size != 0, {Option.some(array(array.size - 1))}, {Option.none})
+}

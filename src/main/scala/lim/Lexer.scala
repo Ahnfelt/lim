@@ -48,6 +48,7 @@ class Lexer(cursor : Cursor) {
             case ('+', _) => cursor.skip(1); Token(Plus, from, cursor.offset)
             case ('=', '>') => cursor.skip(2); Token(RightThickArrow, from, cursor.offset)
             case ('=', '=') => cursor.skip(2); Token(Equal, from, cursor.offset)
+            case ('!', '=') => cursor.skip(2); Token(NotEqual, from, cursor.offset)
             case ('=', _) => cursor.skip(1); Token(Assign, from, cursor.offset)
             case ('*', _) => cursor.skip(1); Token(Star, from, cursor.offset)
             case ('/', _) => cursor.skip(1); Token(Slash, from, cursor.offset)

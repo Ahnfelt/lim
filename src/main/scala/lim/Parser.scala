@@ -1,5 +1,7 @@
 package lim
 
+import java.io.File
+
 import lim.Lexer._
 import lim.Lexer.TokenType._
 import lim.Parser.Cursor
@@ -7,6 +9,7 @@ import lim.Parser._
 
 import scala.collection.mutable
 import scala.collection.mutable._
+import scala.io.Source
 
 class Parser(cursor : Cursor, buffer : Array[Char]) {
 
@@ -577,8 +580,19 @@ object Parser {
         def skipWith[T](result : T, ahead : Int = 1) = { skip(ahead); result }
     }
 
-
     def main(args : Array[String]) {
+        val directory = new File("compiler")
+        val builder = new scala.StringBuilder()
+        for(file <- directory.listFiles()) yield {
+            builder ++= Source.fromFile(file).mkString
+            builder ++= "\n\n\n"
+        }
+        val output = test(builder.toString())
+        println(output)
+        Thread.sleep(100)
+    }
+
+    def main2(args : Array[String]) {
         val p1 = test("""
 
             Case[t] {
@@ -605,6 +619,7 @@ object Parser {
                 drain() : Array[t]
                 push(element : t)
                 pushAll(elements : Array[t])
+                invoke(index : Int) : t
                 size : Int
             }
 
@@ -653,6 +668,9 @@ object Parser {
                     }
                     pushAll(elements) {
                         each(elements, e => this.push(e))
+                    }
+                    invoke(index) {
+                        array(index)
                     }
                     size() {
                         array.size()

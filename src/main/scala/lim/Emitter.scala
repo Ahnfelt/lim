@@ -281,13 +281,13 @@ class Emitter {
     }
 
     def emitModule(builder : StringBuilder, module : Module) = {
-        builder ++= "(function(_global, _undefined) {\n\n"
+        //builder ++= "(function(_global, _undefined) {\n\n"
         emitImport(builder, module.imports)
         emitTypeDefinitions(builder, module.typeDefinitions)
         emitValueDefinitions(builder, module.valueDefinitions)
         emitMethodDefinitions(builder, module.methodDefinitions)
         emitExports(builder, module.exports)
-        builder ++= "})(this, void(0));\n"
+        //builder ++= "})(this, void(0));\n"
     }
 }
 
