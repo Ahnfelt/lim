@@ -1,5 +1,6 @@
 StringBuilder {
     drain() : String
+    toString() : String
     append(text : String)
     size : Int
 }
@@ -11,6 +12,9 @@ newStringBuilder() : StringBuilder {
             result := string
             string = ""
             result
+        }
+        toString() {
+            string
         }
         append(text) {
             string = "\(string)\(text)"
