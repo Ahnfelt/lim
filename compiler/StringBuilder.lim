@@ -7,7 +7,7 @@ StringBuilder {
 
 newStringBuilder() : StringBuilder {
     string := ""
-    StringBuilder { this =>
+    StringBuilder {
         drain() {
             result := string
             string = ""
