@@ -54,7 +54,7 @@ map[a, b](array : Array[a], body : a => b) : Array[b] {
     result
 }
 
-filter[a](array : Array[a], body : a => Bool) : Array[a] {
+filter[a](array : Array[a], condition : a => Bool) : Array[a] {
     result := []
     js"for(var i = 0; i < array.length; i++) if(body(array[i])) result.push(array[i]);"
     result
@@ -66,4 +66,20 @@ first[a](array : Array[a]) : Option[a] {
 
 last[a](array : Array[a]) : Option[a] {
     if(array.size != 0, {Option.some(array(array.size - 1))}, {Option.none})
+}
+
+any[a](array : Array[a], condition : a => Bool) : Bool {
+    js"for(var i = 0; i < array.length; i++) if(condition(array[i])) return true;"
+    Bool.false
+}
+
+all[a](array : Array[a], condition : a => Bool) : Bool {
+    js"for(var i = 0; i < array.length; i++) if(!condition(array[i])) return false;"
+    Bool.true
+}
+
+flatten[a](array : Array[Array[a]]) : Array[a] {
+    result := []
+    js"for(var i = 0; i < array.length; i++) for(var j = 0; j < array[i].length; j++) result.push(array[i][j]);"
+    result
 }
