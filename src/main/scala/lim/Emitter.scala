@@ -265,14 +265,21 @@ class Emitter {
             builder ++= ": "
             builder ++= "function("
             builder ++= m.parameters.map(_.name).mkString(", ")
-            builder ++= ") { return {\n"
-            builder ++= "_: " + escapeString(m.name) + ""
-            for(p <- m.parameters) builder ++= ",\n" + escapeMethod(p.name) + ": " + escapeVariable(p.name)
-            builder ++= "\n}}"
+            builder ++= ") { return "
+            if(m.parameters.nonEmpty) {
+                builder ++= "{\n"
+                builder ++= "_: " + escapeString(m.name)
+                for(p <- m.parameters) builder ++= ",\n" + escapeMethod(p.name) + ": " + escapeVariable(p.name)
+                builder ++= "\n}}"
+            } else {
+                builder ++= escapeUpper(definition.name) + "." + escapeMethod(m.name) + "_enum; },\n"
+                builder ++= escapeMethod(m.name) + "_enum: {_: " + escapeString(m.name) + "}"
+            }
             if(i < definition.methodSignatures.length - 1) builder ++= ","
             builder ++= "\n"
         }
-        builder ++= "};\n\n"
+        builder ++= "};\n"
+        builder ++= "\n"
     }
 
     def emitTypeDefinitions(builder : StringBuilder, typeDefinitions : List[TypeDefinition]) = {
