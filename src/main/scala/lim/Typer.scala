@@ -24,6 +24,7 @@ class Typer(buffer : Array[Char]) {
             MethodSignature(0, "toString", List(), List(), TypeConstructor(0, None, "String", List(), None), Some((value, _) => Native(0, NativeToString(value))))
         )),
         (None, "String") -> TypeDefinition(0, "String", List(), RequestResponseModifier, List(
+            MethodSignature(0, "invoke", List(), List(Parameter(0, "index", TypeConstructor(0, None, "Int", List(), None))), TypeConstructor(0, None, "Int", List(), None), Some((value, terms) => MethodCall(0, value, "charCodeAt", terms, List()))),
             MethodSignature(0, "size", List(), List(), TypeConstructor(0, None, "Int", List(), None), Some((value, _) => Native(0, NativeFieldAccess(value, "length"))))
         )),
         // TODO: Make this use native false / true (it's a non-working mix of native and non-native right now)
@@ -210,6 +211,8 @@ class Typer(buffer : Array[Char]) {
         case Unary(offset, Minus, value) => equalityConstraint(offset, expectedType, TypeConstructor(offset, None, "Int", List(), None)); Unary(offset, Minus, typeTerm(expectedType, value))
         case Unary(offset, Exclamation, value) => equalityConstraint(offset, expectedType, TypeConstructor(offset, None, "Bool", List(), None)); Unary(offset, Exclamation, typeTerm(expectedType, value))
         case Unary(offset, operator, value) => throw new TypeException("Unknown unary operator: " + operator, Lexer.position(buffer, offset))
+
+        case CodeUnitValue(offset, value) => equalityConstraint(offset, expectedType, TypeConstructor(offset, None, "Int", List(), None)); term
 
         case TextValue(offset, value) => equalityConstraint(offset, expectedType, TypeConstructor(offset, None, "String", List(), None)); term
 

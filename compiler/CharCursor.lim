@@ -1,0 +1,60 @@
+CharCursor {
+    invoke(ahead : Int) : Int
+    skip(ahead : Int)
+    pastEnd : Bool
+    top(closeSymbol : Int) : Bool
+    push(closeSymbol : Int)
+    pop(closeSymbol : Int)
+    skipWhitespace()
+}
+
+newCharCursor(buffer : String, stack : ArrayBuilder[Int]) : CharCursor {
+    offset := 0
+    positionText : Int => String = offset => offset.toString
+
+    CharCursor { this =>
+
+        invoke(ahead) {
+            i := offset + ahead
+            if(i < 0 || i >= buffer.size, {0}, {buffer(i)})
+        }
+
+        skip(ahead) {
+            offset += ahead
+        }
+
+        pastEnd {
+            offset >= buffer.size
+        }
+
+        top(closeSymbol) {
+            stack.size != 0 && stack(stack.size - 1) == closeSymbol
+        }
+
+        push(closeSymbol) {
+            stack.push(closeSymbol)
+        }
+
+        pop(closeSymbol) {
+            when(stack.size == 0, {
+                panic("Unexpected '\(codeUnit(closeSymbol))' \(positionText(offset))")
+            })
+            when(stack(stack.size - 1) != closeSymbol, {
+                panic("Expected '\(codeUnit(stack(stack.size - 1)))', got '\(codeUnit(closeSymbol))' \(positionText(offset))")
+            })
+            stack.pop()
+        }
+
+        skipWhitespace() {
+            last := stack(stack.size - 1)
+            ignoreNewLine := stack.size > 0 && (last == ')' || last == ']' || last == '"')
+            while({offset < buffer.size && (this(0) == ' ' || this(0) == '\t' || this(0) == '\r' || (ignoreNewLine && this(0) == '\n'))}, {
+                this.skip(1)
+            })
+        }
+    }
+}
+
+codeUnit(c : Int) : String {
+    js"return String.fromCharCode(c);"
+}

@@ -1,0 +1,47 @@
+Token(token : TokenType, from : Int, to : Int)
+
+TokenType ? {
+    leftThinArrow
+    rightThinArrow
+    rightThickArrow
+    leftPipe
+    rightPipe
+    atSign
+    colon
+    comma
+    dot
+    underscore
+    assign
+    increment
+    decrement
+    plus
+    minus
+    star
+    slash
+    equal
+    notEqual
+    less
+    lessEqual
+    greater
+    greaterEqual
+    and
+    ar
+    exclamation
+    question
+    leftRound
+    rightRound
+    leftSquare
+    rightSquare
+    leftCurly
+    rightCurly
+    lower
+    upper
+    text
+    textStart
+    textMiddle
+    textEnd
+    numeral
+    floating
+    separator
+    outsideFile
+}

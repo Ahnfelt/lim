@@ -219,6 +219,8 @@ class Parser(cursor : Cursor, buffer : Array[Char]) {
                 val result = Variable(cursor().from, Lexer.text(buffer, cursor().from, cursor().to))
                 cursor.skip()
                 result
+            case (CodeUnit, _, _, _) =>
+                cursor.skipWith(CodeUnitValue(cursor().from, Lexer.text(buffer, cursor().from + 1, cursor().to - 1)))
             case (Text, _, _, _) =>
                 cursor.skipWith(TextValue(cursor().from, Lexer.text(buffer, cursor().from + 1, cursor().to)))
             case (TextStart, _, _, _) =>
@@ -498,6 +500,7 @@ object Parser {
     sealed abstract class Term
     case class Binary(offset : Int, operator : TokenType, left : Term, right : Term) extends Term
     case class Unary(offset : Int, operator : TokenType, value : Term) extends Term
+    case class CodeUnitValue(offset : Int, value : String) extends Term
     case class TextValue(offset : Int, value : String) extends Term
     case class TextLiteral(offset : Int, parts : List[Term]) extends Term
     case class IntegerValue(offset : Int, value : Long) extends Term
@@ -583,7 +586,7 @@ object Parser {
     def main(args : Array[String]) {
         val directory = new File("compiler")
         val builder = new scala.StringBuilder()
-        for(file <- directory.listFiles()) yield {
+        for(file <- directory.listFiles().sortBy(_.lastModified()).reverse) yield {
             builder ++= Source.fromFile(file).mkString
             builder ++= "\n\n\n"
         }

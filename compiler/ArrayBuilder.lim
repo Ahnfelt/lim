@@ -2,9 +2,11 @@ ArrayBuilder[t] {
     drain() : Array[t]
     push(element : t)
     pushAll(elements : Array[t])
+    pop() : t
+    top() : Option[t]
     each(body : t => Void)
     map[a](body : t => a) : ArrayBuilder[a]
-    filter(body : t => Bool) : ArrayBuilder[Bool]
+    filter(body : t => Bool) : ArrayBuilder[t]
     invoke(index : Int) : t
     size : Int
 }
@@ -22,6 +24,14 @@ newArrayBuilder[t]() : ArrayBuilder[t] {
         }
         pushAll(elements) {
             each(elements, e => this.push(e))
+        }
+        pop() {
+            js"return array.pop()"
+        }
+        top() {
+            result := Option.none
+            when(array.size > 0, {js"result = Option.some(array[array.length - 1])"})
+            result
         }
         each(body) {
             js"for(var i = 0; i < array.length; i++) body(array[i]);"

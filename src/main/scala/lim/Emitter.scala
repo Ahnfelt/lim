@@ -84,6 +84,9 @@ class Emitter {
             }
             emitTerm(builder, value)
             builder ++= ")"
+        case CodeUnitValue(offset, value) =>
+            // TODO: Handle escapes
+            builder ++= escapeString(value) + ".charCodeAt(0)"
         case TextValue(offset, value) =>
             // TODO: Handle \{12345} escapes
             builder ++= escapeString(value)

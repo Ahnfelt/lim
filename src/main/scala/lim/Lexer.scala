@@ -10,7 +10,7 @@ import scala.collection.mutable.ArrayBuffer
 class Lexer(cursor : Cursor) {
     
     def token() : Option[Token] = {
-        identifier().orElse(operator()).orElse(text()).orElse(brackets()).orElse(separator()).orElse(number())
+        identifier().orElse(operator()).orElse(codeUnit()).orElse(text()).orElse(brackets()).orElse(separator()).orElse(number())
     }
 
     def separator() : Option[Token] = {
@@ -88,6 +88,19 @@ class Lexer(cursor : Cursor) {
         }
         cursor.skipWhitespace()
         Some(result)
+    }
+
+    def codeUnit() : Option[Token] = {
+        val from = cursor.offset
+        if(cursor() != '\'') return None
+        cursor.skip()
+        if(cursor() == '\\') cursor.skip()
+        cursor.skip()
+        if(cursor() != '\'') throw new ParseException("Expected ', but got: " + cursor(), position(cursor.buffer, from))
+        cursor.skip()
+        val to = cursor.offset
+        cursor.skipWhitespace()
+        Some(Token(CodeUnit, from, to))
     }
 
     def text() : Option[Token] = {
@@ -200,6 +213,7 @@ object Lexer {
         case object RightCurly extends TokenType
         case object Lower extends TokenType
         case object Upper extends TokenType
+        case object CodeUnit extends TokenType
         case object Text extends TokenType
         case object TextStart extends TokenType
         case object TextMiddle extends TokenType
@@ -210,8 +224,7 @@ object Lexer {
         case object OutsideFile extends TokenType
     }
     
-    
-    case class Position(line : Int, column : Int)
+    case class Position(line : Int, column : Int, offset : Int)
     
     
     def position(buffer : Array[Char], offset : Int) : Position = {
@@ -227,9 +240,16 @@ object Lexer {
             }
             at += 1
         }
-        Position(line, column)
+        Position(line, column, offset)
     }
 
+    def lineText(buffer : Array[Char], offset : Int) : String = {
+        var from = offset
+        var to = offset
+        while(from > 0 && buffer(from) != '\n') from -= 1
+        while(to < buffer.length && buffer(to) != '\n') to += 1
+        text(buffer, from, to)
+    }
 
     def text(buffer : Array[Char], from : Int, to : Int) : String = {
         new String(buffer, from, to - from)
