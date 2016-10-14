@@ -85,8 +85,16 @@ class Emitter {
             emitTerm(builder, value)
             builder ++= ")"
         case CodeUnitValue(offset, value) =>
-            // TODO: Handle escapes
-            builder ++= escapeString(value) + ".charCodeAt(0)"
+            val code = value match {
+                case "\\\\" => '\\'.toInt
+                case "\\\"" => '\"'.toInt
+                case "\\'" => '\''.toInt
+                case "\\r" => '\r'.toInt
+                case "\\n" => '\n'.toInt
+                case "\\t" => '\t'.toInt
+                case _ => value.charAt(0).toInt
+            }
+            builder ++= code.toString
         case TextValue(offset, value) =>
             // TODO: Handle \{12345} escapes
             builder ++= escapeString(value)
