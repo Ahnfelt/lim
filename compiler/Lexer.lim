@@ -1,0 +1,183 @@
+lexToken(cursor : CharCursor) : Option[Token] {
+    orElse([
+        lexIdentifier(cursor),
+        lexOperator(cursor),
+        lexCodeUnit(cursor),
+        lexText(cursor),
+        lexBrackets(cursor),
+        lexSeparator(cursor),
+        lexNumber(cursor)
+    ])
+}
+
+lexSeparator(cursor : CharCursor) : Option[Token] {
+    cursor.skipWhitespace()
+    if(cursor(0) == '\n', {
+        Option.none
+    }, {
+        from := cursor.offset
+        while({cursor(0) == '\n'}, {
+            cursor.skip(1)
+            cursor.skipWhitespace()
+        })
+        Option.some(Token(TokenType.separator, from, from + 1))
+    })
+}
+
+lexIdentifier(cursor : CharCursor) : Option[Token] {
+    upper := isBetween(cursor(0), 'A', 'Z')
+    if(!upper && !isBetween(cursor(0), 'a', 'z'), {
+        Option.none
+    }, {
+        from := cursor.offset
+        while({isBetween(cursor(0), 'a', 'z') || isBetween(cursor(0), 'A', 'Z') || isBetween(cursor(0), '0', '9')}, {
+            cursor.skip(1)
+        })
+        to := cursor.offset
+        cursor.skipWhitespace()
+        Option.some(Token(if(upper, {TokenType.upper}, {TokenType.lower}), from, to))
+    })
+}
+
+lexOperator(cursor : CharCursor) : Option[Token] {
+    from := cursor.offset
+    result := (
+        case({cursor.lookAhead(['-', '>'])}, {cursor.skip(2); Option.some(Token(TokenType.rightThinArrow, from, cursor.offset))}).
+        case({cursor.lookAhead(['-', '='])}, {cursor.skip(2); Option.some(Token(TokenType.decrement, from, cursor.offset))}).
+        case({cursor.lookAhead(['-'])}, {cursor.skip(1); Option.some(Token(TokenType.minus, from, cursor.offset))}).
+        case({cursor.lookAhead(['+', '='])}, {cursor.skip(2); Option.some(Token(TokenType.increment, from, cursor.offset))}).
+        case({cursor.lookAhead(['+'])}, {cursor.skip(1); Option.some(Token(TokenType.plus, from, cursor.offset))}).
+        case({cursor.lookAhead(['=', '>'])}, {cursor.skip(2); Option.some(Token(TokenType.rightThickArrow, from, cursor.offset))}).
+        case({cursor.lookAhead(['=', '='])}, {cursor.skip(2); Option.some(Token(TokenType.equal, from, cursor.offset))}).
+        case({cursor.lookAhead(['!', '='])}, {cursor.skip(2); Option.some(Token(TokenType.notEqual, from, cursor.offset))}).
+        case({cursor.lookAhead(['='])}, {cursor.skip(1); Option.some(Token(TokenType.assign, from, cursor.offset))}).
+        case({cursor.lookAhead(['*'])}, {cursor.skip(1); Option.some(Token(TokenType.star, from, cursor.offset))}).
+        case({cursor.lookAhead(['/'])}, {cursor.skip(1); Option.some(Token(TokenType.slash, from, cursor.offset))}).
+        case({cursor.lookAhead(['&', '&'])}, {cursor.skip(2); Option.some(Token(TokenType.and, from, cursor.offset))}).
+        case({cursor.lookAhead(['|', '|'])}, {cursor.skip(2); Option.some(Token(TokenType.or, from, cursor.offset))}).
+        case({cursor.lookAhead(['|', '>'])}, {cursor.skip(2); Option.some(Token(TokenType.rightPipe, from, cursor.offset))}).
+        case({cursor.lookAhead(['<', '|'])}, {cursor.skip(2); Option.some(Token(TokenType.leftPipe, from, cursor.offset))}).
+        case({cursor.lookAhead(['?'])}, {cursor.skip(1); Option.some(Token(TokenType.question, from, cursor.offset))}).
+        case({cursor.lookAhead(['!'])}, {cursor.skip(1); Option.some(Token(TokenType.exclamation, from, cursor.offset))}).
+        case({cursor.lookAhead([':'])}, {cursor.skip(1); Option.some(Token(TokenType.colon, from, cursor.offset))}).
+        case({cursor.lookAhead(['@'])}, {cursor.skip(1); Option.some(Token(TokenType.atSign, from, cursor.offset))}).
+        case({cursor.lookAhead(['.'])}, {cursor.skip(1); Option.some(Token(TokenType.dot, from, cursor.offset))}).
+        case({cursor.lookAhead([','])}, {cursor.skip(1); Option.some(Token(TokenType.comma, from, cursor.offset))}).
+        case({cursor.lookAhead(['_'])}, {cursor.skip(1); Option.some(Token(TokenType.underscore, from, cursor.offset))}).
+        case({cursor.lookAhead(['<', '-'])}, {cursor.skip(2); Option.some(Token(TokenType.leftThinArrow, from, cursor.offset))}).
+        case({cursor.lookAhead(['<', '='])}, {cursor.skip(2); Option.some(Token(TokenType.lessEqual, from, cursor.offset))}).
+        case({cursor.lookAhead(['<'])}, {cursor.skip(2); Option.some(Token(TokenType.less, from, cursor.offset))}).
+        case({cursor.lookAhead(['>', '='])}, {cursor.skip(2); Option.some(Token(TokenType.greaterEqual, from, cursor.offset))}).
+        case({cursor.lookAhead(['>'])}, {cursor.skip(2); Option.some(Token(TokenType.greater, from, cursor.offset))}).
+        else({Option.none})
+    )
+    when(result != Option.none, {cursor.skipWhitespace()})
+    result
+}
+
+lexBrackets(cursor : CharCursor) : Option[Token] {
+    c := cursor(0)
+    from := cursor.offset
+    result := (
+        case({cursor.lookAhead(['('])}, {cursor.skip(1); cursor.push('('); Option.some(Token(TokenType.leftRound, from, cursor.offset))}).
+        case({cursor.lookAhead([')'])}, {cursor.skip(1); cursor.push(')'); Option.some(Token(TokenType.rightRound, from, cursor.offset))}).
+        case({cursor.lookAhead(['['])}, {cursor.skip(1); cursor.push('['); Option.some(Token(TokenType.leftSquare, from, cursor.offset))}).
+        case({cursor.lookAhead([']'])}, {cursor.skip(1); cursor.push(']'); Option.some(Token(TokenType.rightSquare, from, cursor.offset))}).
+        case({cursor.lookAhead(['{'])}, {cursor.skip(1); cursor.push('{'); Option.some(Token(TokenType.leftCurly, from, cursor.offset))}).
+        case({cursor.lookAhead(['}'])}, {cursor.skip(1); cursor.push('}'); Option.some(Token(TokenType.rightCurly, from, cursor.offset))}).
+        else({Option.none})
+    )
+    when(result != Option.none, {cursor.skipWhitespace()})
+    result
+}
+
+lexCodeUnit(cursor : CharCursor) : Option[Token] {
+    from := cursor.offset
+    if(cursor(0) != '\'', {Option.none}, {
+        cursor.skip(1)
+        when(cursor(0) == '\\', {cursor.skip(1)})
+        cursor.skip(1)
+        when(cursor(0) != '\'', {panic("Expected ', but got: \(codeUnit(cursor(0))) \(positionText(cursor.buffer, from))")})
+        cursor.skip(1)
+        to := cursor.offset
+        cursor.skipWhitespace()
+        Option.some(Token(TokenType.codeUnit, from, to))
+    })
+}
+
+lexText(cursor : CharCursor) : Option[Token] {
+    c := cursor(0)
+    from := cursor.offset
+    stop := Bool.false
+    middle := if(c == ')' && cursor.top('"'), {
+        cursor.pop('"')
+        Bool.true
+    }, {
+        when(c != '"', {stop = Bool.true})
+        Bool.false
+    })
+    if(stop, {Option.none}, {
+        cursor.skip(1)
+        while({!stop && cursor(0) != '"'}, {
+            if(cursor(0) == '\\' && cursor(1) == '(', {
+                cursor.skip(1)
+                cursor.push('"')
+                stop := Bool.true
+            }, {
+                if(cursor(0) == '\\', {
+                    cursor.skip(1)
+                    c := cursor(0)
+                    if(c == 'n' || c == 'r' || c == 't' || c == '\'' || c == '\"' || c == '\\', {cursor.skip(1)}, {
+                        if(c == '{', {
+                            cursor.skip(1)
+                            while({cursor(0) != '}'}, {
+                                when(cursor.pastEnd, {panic("Unexpected end of file inside unicode escape sequence \(positionText(cursor.buffer, from))")})
+                                c := cursor(0)
+                                if((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'), {cursor.skip(1)}, {
+                                    panic("Unexpected non-hexadecimal inside unicode escape sequence: \(codeUnit(c)) \(positionText(cursor.buffer, from))")
+                                })
+                            })
+                            cursor.skip(1)
+                        }, {
+                            panic("Unknown escape sequence: \\\(codeUnit(cursor(0))) \(positionText(cursor.buffer, from))")
+                        })
+                    })
+                }, {
+                    when(cursor.pastEnd, {panic("Unexpected end of file inside this string \(positionText(cursor.buffer, from))")})
+                    cursor.skip(1)
+                })
+            })
+        })
+        to := cursor.offset
+        cursor.skip(1)
+        cursor.skipWhitespace()
+        tokenType := if(stop, {
+            if(middle, {TokenType.textMiddle}, {TokenType.textStart})
+        }, {
+            if(middle, {TokenType.textEnd}, {TokenType.text})
+        })
+        Option.some(Token(tokenType, from, to))
+    })
+}
+
+lexNumber(cursor : CharCursor) : Option[Token] {
+    c := cursor(0)
+    if(c < '0' || c > '9', {Option.none}, {
+        from := cursor.offset
+        while({cursor(0) >= '0' && cursor(0) <= '9'}, {
+            when(cursor.pastEnd, {panic("Unexpected end of file inside this number \(positionText(cursor.buffer, from))")})
+            cursor.skip(1)
+        })
+        to := cursor.offset
+        cursor.skipWhitespace()
+        Option.some(Token(TokenType.numeral, from, to))
+    })
+}
+
+isBetween(c : Int, from : Int, to : Int) : Bool {
+    c >= from && c <= to
+}
+
+positionText[a, b](a : a, b : b) : String {
+    "at TODO: implement location"
+}

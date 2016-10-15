@@ -36,6 +36,10 @@ while(condition : () => Bool, body : () => Void) {
     js"while(condition()) body();"
 }
 
+do[t](body : () => t) {
+    body()
+}
+
 each[a](array : Array[a], body : a => Void) {
     js"for(var i = 0; i < array.length; i++) body(array[i]);"
 }
@@ -83,4 +87,13 @@ flatten[a](array : Array[Array[a]]) : Array[a] {
 
 panic[a](problem : String) : a {
     js"throw problem;"
+}
+
+orElse[a](options : Array[Option[a]]) : Option[a] {
+    result := Option.none
+    i := 0
+    while({result == Option.none && i < options.size}, {
+        when(options(i) != Option.none, {result = options(i)})
+    })
+    result
 }

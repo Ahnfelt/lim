@@ -15,9 +15,9 @@ class Lexer(cursor : Cursor) {
 
     def separator() : Option[Token] = {
         cursor.skipWhitespace() // To make sure we ignore line breaks when appropriate
-        if(cursor() != '\n') return None
+        if(cursor() != '\n' && cursor() != ';') return None
         val from = cursor.offset
-        while(cursor() == '\n') {
+        while(cursor() == '\n' || cursor() == ';') {
             cursor.skip()
             cursor.skipWhitespace()
         }

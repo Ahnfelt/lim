@@ -1,7 +1,10 @@
 CharCursor {
+    offset : Int
+    buffer : String
     invoke(ahead : Int) : Int
     skip(ahead : Int)
     pastEnd : Bool
+    lookAhead(ahead : Array[Int]) : Bool
     top(closeSymbol : Int) : Bool
     push(closeSymbol : Int)
     pop(closeSymbol : Int)
@@ -14,6 +17,9 @@ newCharCursor(buffer : String, stack : ArrayBuilder[Int]) : CharCursor {
 
     CharCursor { this =>
 
+        offset { offset }
+        buffer { buffer }
+
         invoke(ahead) {
             i := offset + ahead
             if(i < 0 || i >= buffer.size, {0}, {buffer(i)})
@@ -25,6 +31,15 @@ newCharCursor(buffer : String, stack : ArrayBuilder[Int]) : CharCursor {
 
         pastEnd {
             offset >= buffer.size
+        }
+
+        lookAhead(ahead) {
+            result := Bool.true
+            i := 0
+            while({i < ahead.size}, {
+                when(ahead(i) != this(i), {result = Bool.false})
+            })
+            result
         }
 
         top(closeSymbol) {

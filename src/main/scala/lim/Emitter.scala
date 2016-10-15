@@ -18,7 +18,7 @@ class Emitter {
     }
 
     def escapeString(value : String) = {
-        "\"" + value + "\"" // TODO: Support \{12345} escape literals
+        "\"" + value.replace("\r", "\\r").replace("\n", "\\n").replace("\t", "\\t") + "\"" // TODO: Support \{12345} escape literals
     }
 
     def emitNative(builder : StringBuilder, operation : NativeOperation) : Unit = operation match {
