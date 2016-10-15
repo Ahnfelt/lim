@@ -11,7 +11,8 @@ CharCursor {
     skipWhitespace()
 }
 
-newCharCursor(buffer : String, stack : ArrayBuilder[Int]) : CharCursor {
+newCharCursor(buffer : String) : CharCursor {
+    stack := newArrayBuilder()
     offset := 0
     positionText : Int => String = offset => offset.toString
 
@@ -38,6 +39,7 @@ newCharCursor(buffer : String, stack : ArrayBuilder[Int]) : CharCursor {
             i := 0
             while({i < ahead.size}, {
                 when(ahead(i) != this(i), {result = Bool.false})
+                i += 1
             })
             result
         }

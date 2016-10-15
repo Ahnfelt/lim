@@ -283,7 +283,11 @@ class Emitter {
     }
 
     def emitTypeDefinitions(builder : StringBuilder, typeDefinitions : List[TypeDefinition]) = {
-        for(d <- typeDefinitions) emitTypeDefinition(builder, d)
+        val optionType = TypeDefinition(0, "Option", List("t"), RequestModifier, List(
+            MethodSignature(0, "none", List(), List(), TypeConstructor(0, None, "Void", List(), None), None),
+            MethodSignature(0, "some", List(), List(Parameter(0, "value", TypeParameter(0, "t"))), TypeConstructor(0, None, "Void", List(), None), None)
+        ))
+        for(d <- optionType +: typeDefinitions) emitTypeDefinition(builder, d)
     }
 
     def emitValueDefinitions(builder : StringBuilder, valueDefinitions : List[ValueDefinition]) = {

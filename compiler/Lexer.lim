@@ -1,22 +1,22 @@
 lexToken(cursor : CharCursor) : Option[Token] {
     orElse([
-        lexIdentifier(cursor),
-        lexOperator(cursor),
-        lexCodeUnit(cursor),
-        lexText(cursor),
-        lexBrackets(cursor),
-        lexSeparator(cursor),
-        lexNumber(cursor)
+        {lexIdentifier(cursor)},
+        {lexOperator(cursor)},
+        {lexCodeUnit(cursor)},
+        {lexText(cursor)},
+        {lexBrackets(cursor)},
+        {lexSeparator(cursor)},
+        {lexNumber(cursor)}
     ])
 }
 
 lexSeparator(cursor : CharCursor) : Option[Token] {
     cursor.skipWhitespace()
-    if(cursor(0) == '\n', {
+    if(cursor(0) != '\n' && cursor(0) != ';', {
         Option.none
     }, {
         from := cursor.offset
-        while({cursor(0) == '\n'}, {
+        while({cursor(0) == '\n' || cursor(0) == ';'}, {
             cursor.skip(1)
             cursor.skipWhitespace()
         })
@@ -133,7 +133,9 @@ lexText(cursor : CharCursor) : Option[Token] {
                             while({cursor(0) != '}'}, {
                                 when(cursor.pastEnd, {panic("Unexpected end of file inside unicode escape sequence \(positionText(cursor.buffer, from))")})
                                 c := cursor(0)
-                                if((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'), {cursor.skip(1)}, {
+                                if((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'), {
+                                    cursor.skip(1)
+                                }, {
                                     panic("Unexpected non-hexadecimal inside unicode escape sequence: \(codeUnit(c)) \(positionText(cursor.buffer, from))")
                                 })
                             })
@@ -174,10 +176,31 @@ lexNumber(cursor : CharCursor) : Option[Token] {
     })
 }
 
+lexTokens(buffer : String) : Array[Token] {
+    builder := newArrayBuilder()
+    cursor := newCharCursor(buffer)
+    lastToken : Option[Token] = Option.none
+    while({ lastToken = lexToken(cursor); lastToken != Option.none }, {builder.push(orPanic(lastToken))})
+    when(!cursor.pastEnd, {
+        panic("Unexpected character: \(codeUnit(cursor(0))) \(positionText(buffer, cursor.offset))")
+    })
+    builder.push(Token(TokenType.outsideFile, cursor.offset, cursor.offset))
+    builder.push(Token(TokenType.outsideFile, cursor.offset, cursor.offset))
+    builder.push(Token(TokenType.outsideFile, cursor.offset, cursor.offset))
+    builder.push(Token(TokenType.outsideFile, cursor.offset, cursor.offset))
+    builder.push(Token(TokenType.outsideFile, cursor.offset, cursor.offset))
+    builder.drain
+}
+
 isBetween(c : Int, from : Int, to : Int) : Bool {
     c >= from && c <= to
 }
 
 positionText[a, b](a : a, b : b) : String {
     "at TODO: implement location"
+}
+
+testLexer() {
+    result := lexTokens("while({x > 1}, { y += '\n' }) ")
+    js"for(var i = 0; i < result.length; i++) console.log(result[i].token._);"
 }
