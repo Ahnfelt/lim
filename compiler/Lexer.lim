@@ -201,6 +201,6 @@ positionText[a, b](a : a, b : b) : String {
 }
 
 testLexer() {
-    result := lexTokens("while({x > 1}, { y += '\n' }) ")
+    result := lexTokens("while({x > 1}, { y += '\n' })")
     js"for(var i = 0; i < result.length; i++) console.log(result[i].token._);"
 }
