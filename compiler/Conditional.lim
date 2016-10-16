@@ -40,6 +40,10 @@ do[t](body : () => t) {
     body()
 }
 
+repeat(times : Int, body : () => Void) {
+    js"for(var i = 0; i < times; i++) body();"
+}
+
 each[a](array : Array[a], body : a => Void) {
     js"for(var i = 0; i < array.length; i++) body(array[i]);"
 }

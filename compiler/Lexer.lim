@@ -184,11 +184,7 @@ lexTokens(buffer : String) : Array[Token] {
     when(!cursor.pastEnd, {
         panic("Unexpected character: \(codeUnit(cursor(0))) \(positionText(buffer, cursor.offset))")
     })
-    builder.push(Token(TokenType.outsideFile, cursor.offset, cursor.offset))
-    builder.push(Token(TokenType.outsideFile, cursor.offset, cursor.offset))
-    builder.push(Token(TokenType.outsideFile, cursor.offset, cursor.offset))
-    builder.push(Token(TokenType.outsideFile, cursor.offset, cursor.offset))
-    builder.push(Token(TokenType.outsideFile, cursor.offset, cursor.offset))
+    repeat(5, {builder.push(Token(TokenType.outsideFile, cursor.offset, cursor.offset))})
     builder.drain
 }
 
