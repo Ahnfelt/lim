@@ -112,6 +112,9 @@ class Typer(buffer : Array[Char]) {
             val newType = variableType.getOrElse(nextTypeVariable(s.offset))
             val newValue = typeTerm(newType, value)
             val expandedType = expandType(newType)
+            if(environment.contains(variable)) {
+                throw new TypeException("Suspicious shadowing of variable: " + variable, Lexer.position(buffer, s.offset))
+            }
             environment += (variable -> expandedType)
             Let(s.offset, variable, Some(expandedType), newValue)
         case s@Assign(_, variable, value) =>

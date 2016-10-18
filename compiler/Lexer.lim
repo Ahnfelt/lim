@@ -122,14 +122,14 @@ lexCodeUnit(cursor : CharCursor) : Option[Token] {
 }
 
 lexText(cursor : CharCursor) : Option[Token] {
-    c := cursor(0)
+    f := cursor(0)
     from := cursor.offset
     stop := Bool.false
-    middle := if(c == ')' && cursor.top('"'), {
+    middle := if(f == ')' && cursor.top('"'), {
         cursor.pop('"')
         Bool.true
     }, {
-        when(c != '"', {stop = Bool.true})
+        when(f != '"', {stop = Bool.true})
         Bool.false
     })
     if(stop, {Option.none}, {
@@ -138,7 +138,7 @@ lexText(cursor : CharCursor) : Option[Token] {
             if(cursor(0) == '\\' && cursor(1) == '(', {
                 cursor.skip(1)
                 cursor.push('"')
-                stop := Bool.true
+                stop = Bool.true
             }, {
                 if(cursor(0) == '\\', {
                     cursor.skip(1)
