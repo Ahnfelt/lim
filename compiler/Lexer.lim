@@ -41,36 +41,52 @@ lexIdentifier(cursor : CharCursor) : Option[Token] {
 
 lexOperator(cursor : CharCursor) : Option[Token] {
     from := cursor.offset
-    result := (
-        case({cursor.lookAhead(['-', '>'])}, {cursor.skip(2); Option.some(Token(TokenType.rightThinArrow, from, cursor.offset))}).
-        case({cursor.lookAhead(['-', '='])}, {cursor.skip(2); Option.some(Token(TokenType.decrement, from, cursor.offset))}).
-        case({cursor.lookAhead(['-'])}, {cursor.skip(1); Option.some(Token(TokenType.minus, from, cursor.offset))}).
-        case({cursor.lookAhead(['+', '='])}, {cursor.skip(2); Option.some(Token(TokenType.increment, from, cursor.offset))}).
-        case({cursor.lookAhead(['+'])}, {cursor.skip(1); Option.some(Token(TokenType.plus, from, cursor.offset))}).
-        case({cursor.lookAhead(['=', '>'])}, {cursor.skip(2); Option.some(Token(TokenType.rightThickArrow, from, cursor.offset))}).
-        case({cursor.lookAhead(['=', '='])}, {cursor.skip(2); Option.some(Token(TokenType.equal, from, cursor.offset))}).
-        case({cursor.lookAhead(['!', '='])}, {cursor.skip(2); Option.some(Token(TokenType.notEqual, from, cursor.offset))}).
-        case({cursor.lookAhead(['='])}, {cursor.skip(1); Option.some(Token(TokenType.assign, from, cursor.offset))}).
-        case({cursor.lookAhead(['*'])}, {cursor.skip(1); Option.some(Token(TokenType.star, from, cursor.offset))}).
-        case({cursor.lookAhead(['/'])}, {cursor.skip(1); Option.some(Token(TokenType.slash, from, cursor.offset))}).
-        case({cursor.lookAhead(['&', '&'])}, {cursor.skip(2); Option.some(Token(TokenType.and, from, cursor.offset))}).
-        case({cursor.lookAhead(['|', '|'])}, {cursor.skip(2); Option.some(Token(TokenType.or, from, cursor.offset))}).
-        case({cursor.lookAhead(['|', '>'])}, {cursor.skip(2); Option.some(Token(TokenType.rightPipe, from, cursor.offset))}).
-        case({cursor.lookAhead(['<', '|'])}, {cursor.skip(2); Option.some(Token(TokenType.leftPipe, from, cursor.offset))}).
-        case({cursor.lookAhead(['?'])}, {cursor.skip(1); Option.some(Token(TokenType.question, from, cursor.offset))}).
-        case({cursor.lookAhead(['!'])}, {cursor.skip(1); Option.some(Token(TokenType.exclamation, from, cursor.offset))}).
-        case({cursor.lookAhead([':'])}, {cursor.skip(1); Option.some(Token(TokenType.colon, from, cursor.offset))}).
-        case({cursor.lookAhead(['@'])}, {cursor.skip(1); Option.some(Token(TokenType.atSign, from, cursor.offset))}).
-        case({cursor.lookAhead(['.'])}, {cursor.skip(1); Option.some(Token(TokenType.dot, from, cursor.offset))}).
-        case({cursor.lookAhead([','])}, {cursor.skip(1); Option.some(Token(TokenType.comma, from, cursor.offset))}).
-        case({cursor.lookAhead(['_'])}, {cursor.skip(1); Option.some(Token(TokenType.underscore, from, cursor.offset))}).
-        case({cursor.lookAhead(['<', '-'])}, {cursor.skip(2); Option.some(Token(TokenType.leftThinArrow, from, cursor.offset))}).
-        case({cursor.lookAhead(['<', '='])}, {cursor.skip(2); Option.some(Token(TokenType.lessEqual, from, cursor.offset))}).
-        case({cursor.lookAhead(['<'])}, {cursor.skip(2); Option.some(Token(TokenType.less, from, cursor.offset))}).
-        case({cursor.lookAhead(['>', '='])}, {cursor.skip(2); Option.some(Token(TokenType.greaterEqual, from, cursor.offset))}).
-        case({cursor.lookAhead(['>'])}, {cursor.skip(2); Option.some(Token(TokenType.greater, from, cursor.offset))}).
-        else({Option.none})
-    )
+    token := (ahead, tokenType) => () => {
+        if(cursor.lookAhead(ahead), {
+            cursor.skip(ahead.size);
+            Option.some(Token(tokenType, from, cursor.offset))
+        }, {Option.none})
+    }
+    firstAcceptedToken := bodies => {
+        i := 0
+        result := Option.none
+        array : Array[() => Option[Token]] = bodies
+        while({i < array.size}, {
+            result = array(i)()
+            when(result != Option.none, { i = array.size })
+            i += 1
+        })
+        result
+    }
+    result := firstAcceptedToken([
+        token(['-', '>'], TokenType.rightThinArrow),
+        token(['-', '='], TokenType.decrement),
+        token(['-'], TokenType.minus),
+        token(['+', '='], TokenType.increment),
+        token(['+'], TokenType.plus),
+        token(['=', '>'], TokenType.rightThickArrow),
+        token(['=', '='], TokenType.equal),
+        token(['!', '='], TokenType.notEqual),
+        token(['='], TokenType.assign),
+        token(['*'], TokenType.star),
+        token(['/'], TokenType.slash),
+        token(['&', '&'], TokenType.and),
+        token(['|', '|'], TokenType.or),
+        token(['|', '>'], TokenType.rightPipe),
+        token(['<', '|'], TokenType.leftPipe),
+        token(['?'], TokenType.question),
+        token(['!'], TokenType.exclamation),
+        token([':'], TokenType.colon),
+        token(['@'], TokenType.atSign),
+        token(['.'], TokenType.dot),
+        token([','], TokenType.comma),
+        token(['_'], TokenType.underscore),
+        token(['<', '-'], TokenType.leftThinArrow),
+        token(['<', '='], TokenType.lessEqual),
+        token(['<'], TokenType.less),
+        token(['>', '='], TokenType.greaterEqual),
+        token(['>'], TokenType.greater)
+    ])
     when(result != Option.none, {cursor.skipWhitespace()})
     result
 }
@@ -132,11 +148,11 @@ lexText(cursor : CharCursor) : Option[Token] {
                             cursor.skip(1)
                             while({cursor(0) != '}'}, {
                                 when(cursor.pastEnd, {panic("Unexpected end of file inside unicode escape sequence \(positionText(cursor.buffer, from))")})
-                                c := cursor(0)
-                                if((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'), {
+                                h := cursor(0)
+                                if((h >= '0' && h <= '9') || (h >= 'a' && c <= 'f') || (h >= 'A' && c <= 'F'), {
                                     cursor.skip(1)
                                 }, {
-                                    panic("Unexpected non-hexadecimal inside unicode escape sequence: \(codeUnit(c)) \(positionText(cursor.buffer, from))")
+                                    panic("Unexpected non-hexadecimal inside unicode escape sequence: \(codeUnit(h)) \(positionText(cursor.buffer, from))")
                                 })
                             })
                             cursor.skip(1)
@@ -192,8 +208,8 @@ isBetween(c : Int, from : Int, to : Int) : Bool {
     c >= from && c <= to
 }
 
-positionText[a, b](a : a, b : b) : String {
-    "at TODO: implement location"
+positionText[a](a : a, offset : Int) : String {
+    "at code unit \(offset.toString)"
 }
 
 testLexer() {

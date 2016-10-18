@@ -97,8 +97,7 @@ orElse[a](options : Array[() => Option[a]]) : Option[a] {
     result := Option.none
     i := 0
     while({result == Option.none && i < options.size}, {
-        option := options(i)()
-        when(option != Option.none, {result = option})
+        result = options(i)()
         i += 1
     })
     result

@@ -272,8 +272,8 @@ class Emitter {
                 for(p <- m.parameters) builder ++= ",\n" + escapeMethod(p.name) + ": " + escapeVariable(p.name)
                 builder ++= "\n}}"
             } else {
-                builder ++= escapeUpper(definition.name) + "." + escapeMethod(m.name) + "_enum; },\n"
-                builder ++= escapeMethod(m.name) + "_enum: {_: " + escapeString(m.name) + "}"
+                builder ++= escapeUpper(definition.name) + "." + escapeMethod(m.name) + "_k; },\n"
+                builder ++= escapeMethod(m.name) + "_k: {_: " + escapeString(m.name) + "}"
             }
             if(i < definition.methodSignatures.length - 1) builder ++= ","
             builder ++= "\n"
