@@ -113,7 +113,7 @@ lexCodeUnit(cursor : CharCursor) : Option[Token] {
         cursor.skip(1)
         when(cursor(0) == '\\', {cursor.skip(1)})
         cursor.skip(1)
-        when(cursor(0) != '\'', {panic("Expected ', but got: \(codeUnit(cursor(0))) \(positionText(cursor.buffer, from))")})
+        when(cursor(0) != '\'', {panic("Expected ', but got: \(codeUnit(cursor(0))) \(positionText(cursor, from))")})
         cursor.skip(1)
         to := cursor.offset
         cursor.skipWhitespace()
@@ -147,21 +147,21 @@ lexText(cursor : CharCursor) : Option[Token] {
                         if(c == '{', {
                             cursor.skip(1)
                             while({cursor(0) != '}'}, {
-                                when(cursor.pastEnd, {panic("Unexpected end of file inside unicode escape sequence \(positionText(cursor.buffer, from))")})
+                                when(cursor.pastEnd, {panic("Unexpected end of file inside unicode escape sequence \(positionText(cursor, from))")})
                                 h := cursor(0)
                                 if((h >= '0' && h <= '9') || (h >= 'a' && c <= 'f') || (h >= 'A' && c <= 'F'), {
                                     cursor.skip(1)
                                 }, {
-                                    panic("Unexpected non-hexadecimal inside unicode escape sequence: \(codeUnit(h)) \(positionText(cursor.buffer, from))")
+                                    panic("Unexpected non-hexadecimal inside unicode escape sequence: \(codeUnit(h)) \(positionText(cursor, from))")
                                 })
                             })
                             cursor.skip(1)
                         }, {
-                            panic("Unknown escape sequence: \\\(codeUnit(cursor(0))) \(positionText(cursor.buffer, from))")
+                            panic("Unknown escape sequence: \\\(codeUnit(cursor(0))) \(positionText(cursor, from))")
                         })
                     })
                 }, {
-                    when(cursor.pastEnd, {panic("Unexpected end of file inside this string \(positionText(cursor.buffer, from))")})
+                    when(cursor.pastEnd, {panic("Unexpected end of file inside this string \(positionText(cursor, from))")})
                     cursor.skip(1)
                 })
             })
@@ -183,7 +183,7 @@ lexNumber(cursor : CharCursor) : Option[Token] {
     if(c < '0' || c > '9', {Option.none}, {
         from := cursor.offset
         while({cursor(0) >= '0' && cursor(0) <= '9'}, {
-            when(cursor.pastEnd, {panic("Unexpected end of file inside this number \(positionText(cursor.buffer, from))")})
+            when(cursor.pastEnd, {panic("Unexpected end of file inside this number \(positionText(cursor, from))")})
             cursor.skip(1)
         })
         to := cursor.offset
@@ -198,7 +198,7 @@ lexTokens(buffer : String) : Array[Token] {
     lastToken : Option[Token] = Option.none
     while({ lastToken = lexToken(cursor); lastToken != Option.none }, {builder.push(orPanic(lastToken))})
     when(!cursor.pastEnd, {
-        panic("Unexpected character: \(codeUnit(cursor(0))) \(positionText(buffer, cursor.offset))")
+        panic("Unexpected character: \(codeUnit(cursor(0))) \(positionText(cursor, cursor.offset))")
     })
     repeat(5, {builder.push(Token(TokenType.outsideFile, cursor.offset, cursor.offset))})
     builder.drain
@@ -208,11 +208,11 @@ isBetween(c : Int, from : Int, to : Int) : Bool {
     c >= from && c <= to
 }
 
-positionText[a](a : a, offset : Int) : String {
-    "at code unit \(offset.toString)"
-}
-
 testLexer() {
-    result := lexTokens("while({x > 1}, { y += '\n' })")
+    result := lexTokens("
+        while({x > 1}, {
+            y += '\n'
+        })
+    ")
     js"for(var i = 0; i < result.length; i++) console.log(result[i].token._);"
 }

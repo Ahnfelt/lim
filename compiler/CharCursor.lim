@@ -1,3 +1,5 @@
+Position(line : Int, column : Int, buffer : String, offset : Int)
+
 CharCursor {
     offset : Int
     buffer : String
@@ -9,12 +11,12 @@ CharCursor {
     push(closeSymbol : Int)
     pop(closeSymbol : Int)
     skipWhitespace()
+    position(offset : Int) : Position
 }
 
 newCharCursor(buffer : String) : CharCursor {
     stack := newArrayBuilder()
     offset := 0
-    positionText : Int => String = offset => offset.toString
 
     CharCursor { this =>
 
@@ -54,10 +56,10 @@ newCharCursor(buffer : String) : CharCursor {
 
         pop(closeSymbol) {
             when(stack.size == 0, {
-                panic("Unexpected '\(codeUnit(closeSymbol))' \(positionText(offset))")
+                panic("Unexpected '\(codeUnit(closeSymbol))' \(positionText(this, offset))")
             })
             when(stack(stack.size - 1) != closeSymbol, {
-                panic("Expected '\(codeUnit(stack(stack.size - 1)))', got '\(codeUnit(closeSymbol))' \(positionText(offset))")
+                panic("Expected '\(codeUnit(stack(stack.size - 1)))', got '\(codeUnit(closeSymbol))' \(positionText(this, offset))")
             })
             stack.pop()
         }
@@ -68,9 +70,30 @@ newCharCursor(buffer : String) : CharCursor {
                 this.skip(1)
             })
         }
+
+        position(offset) {
+            at := 0
+            line := 1
+            column := 1
+            while({at < offset}, {
+                if(at < buffer.size && buffer(at) == '\n', {
+                    line += 1
+                    column = 1
+                }, {
+                    column += 1
+                })
+                at += 1
+            })
+            Position(line = line, column = column, buffer = buffer, offset = offset)
+        }
     }
 }
 
 codeUnit(c : Int) : String {
     js"return String.fromCharCode(c);"
+}
+
+positionText[a](cursor : CharCursor, offset : Int) : String {
+    position := cursor.position(offset)
+    "at line \(position.line.toString) column \(position.column.toString)"
 }
