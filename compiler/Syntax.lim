@@ -1,0 +1,76 @@
+Term ? {
+    binary(offset : Int, operator : TokenType, left : Term, right : Term)
+    unary(offset : Int, operator : TokenType, value : Term)
+    codeUnitValue(offset : Int, value : String)
+    textValue(offset : Int, value : String)
+    textLiteral(offset : Int, parts : List[Term])
+    integerValue(offset : Int, value : Int)
+    floatingValue(offset : Int, value : Float)
+    arrayValue(offset : Int, elements : List[Term])
+    classOrModule(offset : Int, module : Option[String], classOrModule : String)
+    thisModule(offset : Int)
+    variable(offset : Int, name : String)
+    methodCall(offset : Int, value : Term, methodName : String, arguments : List[Term], namedArguments : List[NamedArgument])
+    instance(offset : Int, moduleName : Option[String], interfaceName : String, thisName : Option[String], methods : List[MethodImplementation])
+    match(offset : Int, value : Term, cases : List[Case])
+    lambda(offset : Int, parameters : List[String], body : List[Statement])
+    native(offset : Int, operation : NativeOperation)
+    ffiJs(offset : Int, code : String)
+}
+
+Case(body : MethodImplementation, fieldNames : List[String])
+
+NamedArgument(order : Int, name : String, value : Term)
+
+NativeOperation ? {
+    arrayAccess(value : Term, index : Term)
+    fieldAccess(value : Term, fieldName : String)
+    functionCall(value : Term, arguments : List[Term])
+    toString(value : Term)
+    bool(value : Bool)
+    if(condition : Term, thenBody : List[Statement], elseBody : List[Statement])
+}
+
+Statement ? {
+    term(offset : Int, term : Term)
+    let(offset : Int, variable : String, variableType : Option[Type], value : Term)
+    assign(offset : Int, variable : String, value : Term)
+    increment(offset : Int, variable : String, value : Term)
+    decrement(offset : Int, variable : String, value : Term)
+    ffi(offset : Int, language : String, code : String)
+}
+
+
+Type ? {
+    constructor(offset : Int, module : Option[String], name : String, typeArguments : List[Type], modifier : Option[TypeModifier])
+    parameter(offset : Int, name : String)
+    variable(offset : Int, id : Int)
+}
+
+Definition ? {
+    interface(offset : Int, name : String, typeParameters : List[String], methodSignatures : List[MethodSignature])
+    sum(offset : Int, name : String, typeParameters : List[String], constructorSignatures : List[ConstructorSignature])
+    method(offset : Int, signature : MethodSignature, body : List[Statement])
+    value(offset : Int, name : String, valueType : Option[Type], value : Term)
+}
+
+MethodSignature(offset : Int, name : String, typeParameters : List[String], parameters : List[Parameter], returnType : Type)
+
+ConstructorSignature(offset : Int, name : String, typeParameters : List[String], parameters : List[Parameter], returnType : Type)
+
+MethodImplementation(offset : Int, name : String, parameters : List[String], body : List[Statement])
+
+Parameter(offset : Int, name : String, parameterType : Type)
+
+
+Module(
+    exports : List[ExportedSymbol],
+    imports : List[Import],
+    typeDefinitions : List[TypeDefinition],
+    methodDefinitions : List[MethodDefinition],
+    valueDefinitions : List[ValueDefinition]
+)
+
+Import(offset : Int, moduleName : String, symbol : ExportedSymbol)
+
+ExportedSymbol(offset : Int, name : String, everything : Bool)

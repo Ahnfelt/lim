@@ -1,0 +1,13 @@
+TokenCursor {
+    invoke(ahead : Int) : Token
+    skip(ahead : Int)
+    skipWith[t](result : t, ahead : Int) : t
+}
+
+newTokenCursor(tokens : Array[Token], offset : Int) : TokenCursor {
+    TokenCursor { this =>
+        invoke(ahead) { tokens(offset + ahead) }
+        skip(ahead) { offset += ahead }
+        skipWith(result, ahead) { this.skip(ahead); result }
+    }
+}

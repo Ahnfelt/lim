@@ -107,8 +107,9 @@ class Typer(buffer : Array[Char]) {
     }
 
     def typeStatement(expectedType : Type, statement : Statement) : Statement = statement match {
-        case s@TermStatement(_, term) => s.copy(term = typeTerm(expectedType, term))
-        case s@Let(_, variable, variableType, value) =>
+        case s@TermStatement(offset, term) =>
+            s.copy(term = typeTerm(expectedType, term))
+        case s@Let(offset, variable, variableType, value) =>
             val newType = variableType.getOrElse(nextTypeVariable(s.offset))
             val newValue = typeTerm(newType, value)
             val expandedType = expandType(newType)
@@ -116,17 +117,22 @@ class Typer(buffer : Array[Char]) {
                 throw new TypeException("Suspicious shadowing of variable: " + variable, Lexer.position(buffer, s.offset))
             }
             environment += (variable -> expandedType)
+            equalityConstraint(offset, expectedType, TypeConstructor(offset, None, "Void", List(), None))
             Let(s.offset, variable, Some(expandedType), newValue)
-        case s@Assign(_, variable, value) =>
+        case s@Assign(offset, variable, value) =>
             val t = environment.getOrElse(variable, throw new TypeException("Unknown variable: " + variable, Lexer.position(buffer, s.offset)))
+            equalityConstraint(offset, expectedType, TypeConstructor(offset, None, "Void", List(), None))
             s.copy(value = typeTerm(t, value))
-        case s@Increment(_, variable, value) =>
+        case s@Increment(offset, variable, value) =>
             val t = environment.getOrElse(variable, throw new TypeException("Unknown variable: " + variable, Lexer.position(buffer, s.offset)))
+            equalityConstraint(offset, expectedType, TypeConstructor(offset, None, "Void", List(), None))
             s.copy(value = typeTerm(t, value)) // TODO: Check that it's a Int or Float
-        case s@Decrement(_, variable, value) =>
+        case s@Decrement(offset, variable, value) =>
             val t = environment.getOrElse(variable, throw new TypeException("Unknown variable: " + variable, Lexer.position(buffer, s.offset)))
+            equalityConstraint(offset, expectedType, TypeConstructor(offset, None, "Void", List(), None))
             s.copy(value = typeTerm(t, value)) // TODO: Check that it's a Int or Float
-        case s@Ffi(_, language, code) => s
+        case s@Ffi(offset, language, code) =>
+            s
     }
 
     def typeBody(offset : Int, expectedType : Type, body : List[Statement]) : List[Statement] = {
