@@ -12,13 +12,13 @@ Term ? {
     variable(offset : Int, name : String)
     methodCall(offset : Int, value : Term, methodName : String, arguments : Array[Term], namedArguments : Array[NamedArgument])
     instance(offset : Int, moduleName : Option[String], interfaceName : String, thisName : Option[String], methods : Array[MethodImplementation])
-    match(offset : Int, value : Term, cases : Array[Case])
+    match(offset : Int, value : Term, cases : Array[MatchCase])
     lambda(offset : Int, parameters : Array[String], body : Array[Statement])
     native(offset : Int, operation : NativeOperation)
     ffiJs(offset : Int, code : String)
 }
 
-Case(body : MethodImplementation, fieldNames : Array[String])
+MatchCase(body : MethodImplementation, fieldNames : Array[String])
 
 NamedArgument(order : Int, name : String, value : Term)
 
@@ -42,7 +42,7 @@ Statement ? {
 
 
 Type ? {
-    constructor(offset : Int, module : Option[String], name : String, typeArguments : Array[Type], modifier : Option[TypeModifier])
+    constructor(offset : Int, module : Option[String], name : String, typeArguments : Array[Type])
     parameter(offset : Int, name : String)
     variable(offset : Int, id : Int)
 }
@@ -51,7 +51,6 @@ Definition ? {
     interface(offset : Int, name : String, typeParameters : Array[String], methodSignatures : Array[MethodSignature])
     sum(offset : Int, name : String, typeParameters : Array[String], constructorSignatures : Array[ConstructorSignature])
     method(offset : Int, signature : MethodSignature, body : Array[Statement])
-    value(offset : Int, name : String, valueType : Option[Type], value : Term)
 }
 
 MethodSignature(offset : Int, name : String, typeParameters : Array[String], parameters : Array[Parameter], returnType : Type)

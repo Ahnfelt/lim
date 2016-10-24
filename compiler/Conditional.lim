@@ -109,3 +109,5 @@ orPanic[a](option : Option[a]) : a {
         some(value) { value }
     }
 }
+
+Pair[a, b](first : a, second : b)

@@ -38,7 +38,8 @@ class Typer(buffer : Array[Char]) {
         )),
         (None, "Array") -> TypeDefinition(0, "Array", List("t"), RequestResponseModifier, List(
             MethodSignature(0, "invoke", List(), List(Parameter(0, "index", TypeConstructor(0, None, "Int", List(), None))), TypeParameter(0, "t"), Some((value, terms) => Native(0, NativeArrayAccess(value, terms.head)))),
-            MethodSignature(0, "size", List(), List(), TypeConstructor(0, None, "Int", List(), None), Some((value, _) => Native(0, NativeFieldAccess(value, "length"))))
+            MethodSignature(0, "size", List(), List(), TypeConstructor(0, None, "Int", List(), None), Some((value, _) => Native(0, NativeFieldAccess(value, "length")))),
+            MethodSignature(0, "concat", List(), List(Parameter(0, "array", TypeConstructor(0, None, "Array", List(TypeParameter(0, "t")), None))), TypeConstructor(0, None, "Array", List(TypeParameter(0, "t")), None), None)
         )),
         (None, "F0") -> TypeDefinition(0, "F0", List("r"), RequestResponseModifier, List(
             MethodSignature(0, "invoke", List(), List(), TypeParameter(0, "r"), Some((value, arguments) => Native(0, NativeFunctionCall(value, arguments))))
@@ -290,7 +291,7 @@ class Typer(buffer : Array[Char]) {
             if(!value.isInstanceOf[ClassOrModule] && modifier.getOrElse(defaultModifier) != RequestResponseModifier) {
                 if(modifier.getOrElse(defaultModifier) == RequestModifier && methodSignatures.length == 1 && methodSignatures.head.parameters.map(_.name).contains(methodName) && arguments.isEmpty && namedArguments.isEmpty) {
                     val methodSignature = instantiateMethodSignature(offset, methodSignatures.head, None)
-                    equalityConstraint(offset, expectedType, methodSignature.parameters.head.parameterType)
+                    equalityConstraint(offset, expectedType, methodSignature.parameters.find(_.name == methodName).get.parameterType)
                     return Native(offset, NativeFieldAccess(typedValue, methodName))
                 } else {
                     val sigil = modifier.getOrElse(defaultModifier) match {

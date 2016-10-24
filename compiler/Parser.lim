@@ -1,0 +1,134 @@
+parseCommaList[t](pc : Pc, parse : () => t, end : TokenType) : Array[t] {
+    result := newArrayBuilder()
+    while({
+        pc.many("comma separated list", [
+            Pair([end], { Bool.false }),
+            Pair([], { Bool.true })
+        ])
+    }, {
+        result.push(parse())
+        pc.many("comma", [
+            Pair([end], { }),
+            Pair([], { pc.only(TokenType.comma) })
+        ])
+    })
+    result.drain
+}
+
+parseTypeConstructor(pc : Pc) : Type {
+    position := pc.position
+    moduleName := pc.many("type constructor", [
+        Pair([TokenType.upper, TokenType.dot], {
+            name := pc.only(TokenType.upper)
+            pc.only(TokenType.dot)
+            Option.some(name)
+        }),
+        Pair([], { Option.none })
+    ])
+    name := pc.only(TokenType.upper)
+    typeArguments := pc.many("type arguments", [
+         Pair([TokenType.leftSquare], {
+             pc.only(TokenType.leftSquare)
+             result := parseCommaList(pc, { parseType(pc) }, TokenType.rightSquare)
+             pc.only(TokenType.rightSquare)
+             result
+         }),
+         Pair([], { [] })
+     ])
+     Type.constructor(position, moduleName, name, typeArguments)
+}
+
+parseType(pc : Pc) : Type {
+    pc.many("type", [
+        Pair([TokenType.leftRound], {
+            pc.only(TokenType.leftRound)
+            typeArguments := parseCommaList(pc, { parseType(pc) }, TokenType.rightRound)
+            pc.only(TokenType.rightRound)
+            pc.only(TokenType.rightThickArrow)
+            position := pc.position
+            returnType := parseType(pc)
+            Type.constructor(position, Option.none, "F\(typeArguments.size.toString)", typeArguments.concat([returnType]))
+        }),
+        Pair([TokenType.lower], {
+            position := pc.position
+            name := pc.only(TokenType.lower)
+            Type.parameter(position, name)
+        }),
+        Pair([], { parseTypeConstructor(pc) })
+    ])
+}
+
+parseLambda(pc : Pc) : Term {
+    position := pc.position
+    pc.many("lambda function", [
+        Pair([TokenType.leftCurly], {
+            body := parseBody(pc)
+            Term.lambda(position, [], body)
+        }),
+        Pair([], {
+            parameters := pc.many("lambda function", [
+                Pair([TokenType.lower], {
+                    [pc.only(TokenType.lower)]
+                }),
+                Pair([TokenType.leftRound], {
+                    pc.only(TokenType.leftRound)
+                    result := parseCommaList(pc, { pc.only(TokenType.lower) }, TokenType.rightRound)
+                    pc.only(TokenType.rightRound)
+                    result
+                })
+            ])
+            pc.only(TokenType.rightThickArrow)
+            body := pc.many("lambda body", [
+                Pair([TokenType.leftCurly], {
+                    parseBody(pc)
+                }),
+                Pair([], {
+                    [Statement.term(position, parseTerm(pc))]
+                })
+            ])
+            Term.lambda(position, parameters, body)
+        })
+    ])
+}
+
+parseInstance(pc : Pc) : Term {
+    panic("TODO")
+}
+
+parseArray(pc : Pc) : Term {
+    position := pc.position
+    pc.only(TokenType.leftSquare)
+    elements := parseCommaList(pc, { parseTerm(pc) }, TokenType.rightSquare)
+    pc.only(TokenType.rightSquare)
+    Term.arrayValue(position, elements)
+}
+
+parseAtom(pc : Pc) : Term {
+    pc.many("atom", [
+        Pair([TokenType.leftSquare], { parseArray(pc) }),
+        Pair([TokenType.lower, TokenType.rightThickArrow], { parseLambda(pc) }),
+        Pair([TokenType.leftRound, TokenType.lower, TokenType.comma], { parseLambda(pc) }),
+        Pair([TokenType.leftRound, TokenType.lower, TokenType.rightRound, TokenType.rightThickArrow], { parseLambda(pc) }),
+        Pair([TokenType.leftRound, TokenType.rightRound, TokenType.rightThickArrow], { parseLambda(pc) }),
+        Pair([TokenType.leftCurly], { parseLambda(pc) }),
+        Pair([TokenType.upper, TokenType.leftCurly], { parseInstance(pc) }),
+        Pair([TokenType.upper, TokenType.dot, TokenType.upper, TokenType.leftCurly], { parseInstance(pc) }),
+        Pair([], { panic("TODO: Rest") })
+    ])
+}
+
+parseTerm(pc : Pc) : Term {
+    panic("TODO")
+}
+
+parseFfi(pc : Pc) : Statement {
+    position := pc.position
+    language := pc.only(TokenType.lower)
+    when(language != "js", { panic("Expected FFI js, got FFI \(language)") })
+    code := pc.only(TokenType.text)
+    Statement.ffi(position, language, code)
+}
+
+parseBody(pc : Pc) : Array[Statement] {
+    panic("TODO")
+}

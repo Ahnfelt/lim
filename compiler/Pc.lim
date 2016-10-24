@@ -1,0 +1,85 @@
+Pc {
+    position : Int
+    only(tokenType : TokenType) : String
+    one[t](expected : String, cases : Array[Pair[TokenType, String => t]]) : t
+    many[t](expected : String, cases : Array[Pair[Array[TokenType], () => t]]) : t
+}
+
+newPc(cursor : TokenCursor, buffer : String) : Pc {
+    tokenTypeText := tokenType => {
+        js"return tokenType._;"
+    }
+
+    tokenText := token => {
+        js"return buffer.substr(token.from, token.to);"
+    }
+
+    positionText := token => {
+        token2 : Token = token
+        position := newCharCursor(buffer).position(token.from)
+        "at line \(position.line.toString) column \(position.column.toString)"
+    }
+
+    Pc {
+        position {
+            cursor(0).from
+        }
+
+        only(tokenType) {
+            ahead := cursor(0)
+            when(ahead.token != tokenType, { panic("Expected \(tokenTypeText(ahead.token)), got \(tokenText(ahead)) \(positionText(ahead))") })
+            text := tokenText(ahead)
+            cursor.skip(1)
+            text
+        }
+
+        one(expected, cases) {
+            i := 0
+            result := Option.none
+            ahead := cursor(0)
+            while({ i < cases.size && result == Option.none }, {
+                case := cases(i)
+                when(case.first == ahead.token, {
+                    result = Option.some(case.second()(tokenText(ahead)))
+                    cursor.skip(1)
+                })
+                i += 1
+            })
+            result ? {
+                none {
+                    panic("Expected \(expected), got \(tokenText(ahead)) \(positionText(ahead))")
+                }
+                some(value) {
+                    value
+                }
+            }
+        }
+
+        many(expected, cases) {
+            i := 0
+            result := Option.none
+            while({ i < cases.size && result == Option.none }, {
+                case := cases(i)
+                j := 0
+                match := Bool.true
+                while({ j < case.first.size }, {
+                    match = match && case.first()(j) == cursor(j).token
+                    j += 1
+                })
+                when(match, {
+                    result = Option.some(case.second()())
+                })
+                i += 1
+            })
+            result ? {
+                none {
+                    ahead := cursor(0)
+                    panic("Expected \(expected), got \(tokenText(ahead)) \(positionText(ahead))")
+                }
+                some(value) {
+                    value
+                }
+            }
+        }
+    }
+}
