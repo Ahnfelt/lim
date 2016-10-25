@@ -1,8 +1,7 @@
 Pc {
     position : Int
-    only(tokenType : TokenType) : String
-    one[t](expected : String, cases : Array[Pair[TokenType, String => t]]) : t
-    many[t](expected : String, cases : Array[Pair[Array[TokenType], () => t]]) : t
+    consume(tokenType : TokenType) : String
+    lookahead[t](expected : String, cases : Array[Pair[Array[TokenType], () => t]]) : t
 }
 
 newPc(cursor : TokenCursor, buffer : String) : Pc {
@@ -25,7 +24,7 @@ newPc(cursor : TokenCursor, buffer : String) : Pc {
             cursor(0).from
         }
 
-        only(tokenType) {
+        consume(tokenType) {
             ahead := cursor(0)
             when(ahead.token != tokenType, { panic("Expected \(tokenTypeText(ahead.token)), got \(tokenText(ahead)) \(positionText(ahead))") })
             text := tokenText(ahead)
@@ -33,29 +32,7 @@ newPc(cursor : TokenCursor, buffer : String) : Pc {
             text
         }
 
-        one(expected, cases) {
-            i := 0
-            result := Option.none
-            ahead := cursor(0)
-            while({ i < cases.size && result == Option.none }, {
-                case := cases(i)
-                when(case.first == ahead.token, {
-                    result = Option.some(case.second()(tokenText(ahead)))
-                    cursor.skip(1)
-                })
-                i += 1
-            })
-            result ? {
-                none {
-                    panic("Expected \(expected), got \(tokenText(ahead)) \(positionText(ahead))")
-                }
-                some(value) {
-                    value
-                }
-            }
-        }
-
-        many(expected, cases) {
+        lookahead(expected, cases) {
             i := 0
             result := Option.none
             while({ i < cases.size && result == Option.none }, {
