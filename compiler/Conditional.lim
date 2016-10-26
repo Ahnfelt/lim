@@ -48,6 +48,12 @@ each[a](array : Array[a], body : a => Void) {
     js"for(var i = 0; i < array.length; i++) body(array[i]);"
 }
 
+indexed[a](array : Array[a]) : Array[Pair[Int, a]] {
+    result := []
+    js"for(var i = 0; i < array.length; i++) result.push(body(Pair.pair(i, array[i])));"
+    result
+}
+
 map[a, b](array : Array[a], body : a => b) : Array[b] {
     result := []
     js"for(var i = 0; i < array.length; i++) result.push(body(array[i]));"

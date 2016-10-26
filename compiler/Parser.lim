@@ -15,6 +15,17 @@ parseCommaList[t](pc : Pc, parse : () => t, end : TokenType) : Array[t] {
     result.drain
 }
 
+parseLeftAssociative(pc : Pc, next : () => Term, operators : Array[TokenType]) : Term {
+    result := next()
+    cases := map(operators, o => Pair([o], {
+        position := pc.position
+        result = Term.binary(position, o, result, next())
+        Bool.true
+    })).concat([Pair([], { Bool.false })])
+    while({ pc.lookahead("operator", cases) }, {})
+    result
+}
+
 parseTypeConstructor(pc : Pc) : Type {
     position := pc.position
     moduleName := pc.lookahead("type constructor", [
@@ -250,9 +261,91 @@ parseText(pc : Pc) : Term {
     Term.textLiteral(position, parts.drain)
 }
 
-parseTerm(pc : Pc) : Term {
-    panic("TODO")
+parseNamedArgument(pc : Pc) : Pair[String, Term] {
+    name := pc.consume(TokenType.lower)
+    pc.consume(TokenType.assign)
+    term := parseTerm(pc)
+    Pair(name, term)
 }
+
+parseCall(pc : Pc) : Term {
+    result := parseAtom(pc)
+    while({ pc.lookahead("method", [
+        Pair([TokenType.leftRound], { Bool.true }),
+        Pair([TokenType.dot], { Bool.true }),
+        Pair([], { Bool.false })
+    ]) }, {
+        named := Bool.false
+        position := pc.position
+        methodName := pc.lookahead("method name", [
+            Pair([TokenType.dot], { pc.consume(TokenType.dot); pc.consume(TokenType.lower) }),
+            Pair([], { "invoke" })
+        ])
+        result = pc.lookahead("method call", [
+            Pair([TokenType.leftRound], {
+                pc.consume(TokenType.leftRound)
+                arguments := parseCommaList(pc, { pc.lookahead("method argument", [
+                    Pair([TokenType.lower, TokenType.assign], {
+                        named = Bool.true
+                        name := pc.consume(TokenType.lower);
+                        pc.consume(TokenType.assign)
+                        Pair(name, parseTerm(pc))
+                    }),
+                    Pair([], {
+                        when(named, { panic("Unexpected unnamed argument after named argument") })
+                        Pair("", parseTerm(pc))
+                    })
+                ])}, TokenType.rightRound)
+                pc.consume(TokenType.rightRound)
+                Term.methodCall(position, result, methodName,
+                    arguments = map(filter(arguments, a => a.first == ""), a => a.second),
+                    namedArguments = map(indexed(filter(arguments, a => a.first != "")), i => NamedArgument(i.first, i.second.first, i.second.second))
+                )
+            }),
+            Pair([], {
+                 Term.methodCall(position, result, methodName, [], [])
+            })
+        ])
+    })
+    result
+}
+
+parseMinusNot(pc : Pc) : Term {
+    position := pc.position
+    pc.lookahead("unary operator", [
+        Pair([TokenType.minus], {
+            pc.consume(TokenType.minus)
+            Term.unary(position, TokenType.minus, parseCall(pc))
+        }),
+        Pair([TokenType.exclamation], {
+            pc.consume(TokenType.exclamation)
+            Term.unary(position, TokenType.exclamation, parseCall(pc))
+        }),
+        Pair([], { parseCall(pc) })
+    ])
+}
+
+parseTimesDivide(pc : Pc) : Term { parseLeftAssociative(pc, { parseMinusNot(pc) }, [TokenType.star, TokenType.slash]) }
+parsePlusMinus(pc : Pc) : Term { parseLeftAssociative(pc, { parseTimesDivide(pc) }, [TokenType.plus, TokenType.minus]) }
+parseInequality(pc : Pc) : Term { parseLeftAssociative(pc, { parsePlusMinus(pc) }, [TokenType.equal, TokenType.notEqual, TokenType.less, TokenType.lessEqual, TokenType.greater, TokenType.greaterEqual]) }
+parseAndOr(pc : Pc) : Term { parseLeftAssociative(pc, { parseInequality(pc) }, [TokenType.and, TokenType.or]) }
+
+parseMatch(pc : Pc) : Term {
+    value := parseAndOr(pc)
+    pc.lookahead("match", [
+        Pair([TokenType.question], {
+            position := pc.position
+            pc.consume(TokenType.question)
+            cases := parseMethodImplementations(pc, Bool.false)
+            Term.match(position, value, map(cases.second, m => MatchCase(m, [])))
+        }),
+        Pair([], {
+            value
+        })
+    ])
+}
+
+parseTerm(pc : Pc) : Term { parseMatch(pc) }
 
 parseFfi(pc : Pc) : Statement {
     position := pc.position
@@ -264,4 +357,13 @@ parseFfi(pc : Pc) : Statement {
 
 parseBody(pc : Pc) : Array[Statement] {
     panic("TODO")
+}
+
+
+testParser() {
+    program := "1 + 2"
+    tokens := lexTokens(program)
+    pc := newPc(newTokenCursor(tokens, 0), program)
+    result := parseTerm(pc)
+    js"console.dir(result);"
 }
