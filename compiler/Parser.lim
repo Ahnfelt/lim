@@ -44,8 +44,8 @@ parseType(pc : Pc) : Type {
             pc.consume(TokenType.leftRound)
             typeArguments := parseCommaList(pc, { parseType(pc) }, TokenType.rightRound)
             pc.consume(TokenType.rightRound)
-            pc.consume(TokenType.rightThickArrow)
             position := pc.position
+            pc.consume(TokenType.rightThickArrow)
             returnType := parseType(pc)
             Type.constructor(position, Option.none, "F\(typeArguments.size.toString)", typeArguments.concat([returnType]))
         }),
@@ -91,8 +91,71 @@ parseLambda(pc : Pc) : Term {
     ])
 }
 
+parseMethodImplementation(pc : Pc) : MethodImplementation {
+    position := pc.position
+    name := pc.consume(TokenType.lower)
+    parameters := pc.lookahead("method parameter", [
+        Pair([TokenType.leftRound], {
+            pc.consume(TokenType.leftRound)
+            result := parseCommaList(pc, { pc.consume(TokenType.lower) }, TokenType.rightRound)
+            pc.consume(TokenType.rightRound)
+            result
+        }),
+        Pair([], { [] })
+    ])
+    body := parseBody(pc)
+    MethodImplementation(position, name, parameters, body)
+}
+
+parseMethodImplementations(pc : Pc, allowThisName : Bool) : Pair[Option[String], Array[MethodImplementation]] {
+    pc.consume(TokenType.leftCurly)
+    thisName := if(!allowThisName, { Option.none }, {
+        pc.lookahead("this =>", [
+            Pair([TokenType.lower, TokenType.rightThickArrow], {
+                name := pc.consume(TokenType.lower)
+                pc.consume(TokenType.rightThickArrow)
+                Option.some(name)
+            }),
+            Pair([], { Option.none })
+        ])
+    })
+    result := newArrayBuilder()
+    while({
+        pc.lookahead("method implementation", [
+            Pair([TokenType.separator, TokenType.rightCurly], {
+                pc.consume(TokenType.separator)
+                pc.consume(TokenType.rightCurly)
+                Bool.false
+            }),
+            Pair([TokenType.rightCurly], {
+                pc.consume(TokenType.rightCurly)
+                Bool.false
+            }),
+            Pair([TokenType.separator], {
+                pc.consume(TokenType.separator)
+                Bool.true
+            }),
+            Pair([], { Bool.true })
+        ])
+    }, {
+        result.push(parseMethodImplementation(pc))
+    })
+    Pair(thisName, result.drain)
+}
+
 parseInstance(pc : Pc) : Term {
-    panic("TODO")
+    position := pc.position
+    moduleName := pc.lookahead("type constructor", [
+        Pair([TokenType.upper, TokenType.dot], {
+            name := pc.consume(TokenType.upper)
+            pc.consume(TokenType.dot)
+            Option.some(name)
+        }),
+        Pair([], { Option.none })
+    ])
+    name := pc.consume(TokenType.upper)
+    pair := parseMethodImplementations(pc, Bool.true)
+    Term.instance(position, moduleName, name, pair.first, pair.second)
 }
 
 parseArray(pc : Pc) : Term {
