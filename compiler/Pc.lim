@@ -10,7 +10,7 @@ newPc(cursor : TokenCursor, buffer : String) : Pc {
     }
 
     tokenText := token => {
-        js"return buffer.substr(token.from, token.to);"
+        js"return buffer.substring(token.from, token.to);"
     }
 
     positionText := token => {

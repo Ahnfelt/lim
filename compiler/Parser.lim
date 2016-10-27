@@ -19,6 +19,7 @@ parseLeftAssociative(pc : Pc, next : () => Term, operators : Array[TokenType]) :
     result := next()
     cases := map(operators, o => Pair([o], {
         position := pc.position
+        pc.consume(o)
         result = Term.binary(position, o, result, next())
         Bool.true
     })).concat([Pair([], { Bool.false })])
@@ -356,9 +357,26 @@ parseFfi(pc : Pc) : Statement {
 }
 
 parseBody(pc : Pc) : Array[Statement] {
-    panic("TODO")
+    pc.consume(TokenType.leftCurly)
+    result := newArrayBuilder()
+    while({ pc.lookahead("statement or }", [
+        Pair([TokenType.rightCurly], { pc.consume(TokenType.rightCurly); Bool.false }),
+        Pair([TokenType.separator, TokenType.rightCurly], { pc.consume(TokenType.rightCurly); Bool.false }),
+        Pair([TokenType.separator], { pc.consume(TokenType.separator); Bool.true }),
+        Pair([], { Bool.true })
+    ]) }, {
+        result.push(parseStatement(pc))
+        pc.lookahead("line break, ';' or '}'", [
+            Pair([TokenType.rightCurly], {}),
+            Pair([TokenType.separator], {})
+        ])
+    })
+    result.drain
 }
 
+parseStatement(pc : Pc) : Statement {
+    panic("TODO")
+}
 
 testParser() {
     program := "1 + 2"
