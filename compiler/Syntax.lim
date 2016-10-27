@@ -7,11 +7,11 @@ Term ? {
     integerValue(position : Int, value : String)
     floatingValue(position : Int, value : String)
     arrayValue(position : Int, elements : Array[Term])
-    classOrModule(position : Int, module : Option[String], classOrModule : String)
+    classOrModule(position : Int, symbol : String)
     thisModule(position : Int)
-    variable(position : Int, name : String)
+    variable(position : Int, symbol : String)
     methodCall(position : Int, value : Term, methodName : String, arguments : Array[Term], namedArguments : Array[NamedArgument])
-    instance(position : Int, moduleName : Option[String], interfaceName : String, thisName : Option[String], methods : Array[MethodImplementation])
+    instance(position : Int, symbol : String, thisName : Option[String], methods : Array[MethodImplementation])
     match(position : Int, value : Term, cases : Array[MatchCase])
     lambda(position : Int, parameters : Array[String], body : Array[Statement])
     native(position : Int, operation : NativeOperation)
@@ -21,15 +21,6 @@ Term ? {
 MatchCase(body : MethodImplementation, fieldNames : Array[String])
 
 NamedArgument(order : Int, name : String, value : Term)
-
-NativeOperation ? {
-    arrayAccess(value : Term, index : Term)
-    fieldAccess(value : Term, fieldName : String)
-    functionCall(value : Term, arguments : Array[Term])
-    toString(value : Term)
-    bool(value : Bool)
-    if(condition : Term, thenBody : Array[Statement], elseBody : Array[Statement])
-}
 
 Statement ? {
     term(position : Int, term : Term)
@@ -43,7 +34,7 @@ Statement ? {
 
 
 Type ? {
-    constructor(position : Int, module : Option[String], name : String, typeArguments : Array[Type])
+    constructor(position : Int, symbol : String, typeArguments : Array[Type])
     parameter(position : Int, name : String)
     variable(position : Int, id : Int)
 }
@@ -62,7 +53,3 @@ Module(
     typeDefinitions : Array[TypeDefinition],
     functionDefinitions : Array[FunctionDefinition]
 )
-
-Import(position : Int, moduleName : String, symbol : ExportedSymbol)
-
-ExportedSymbol(position : Int, name : String, everything : Bool)

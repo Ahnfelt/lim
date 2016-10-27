@@ -47,7 +47,7 @@ parseTypeConstructor(pc : Pc) : Type {
          }),
          Pair([], { [] })
      ])
-     Type.constructor(position, moduleName, name, typeArguments)
+     Type.constructor(position, moduleName ? { some(m) { "\(m).\(name)" }; none { name } }, typeArguments)
 }
 
 parseType(pc : Pc) : Type {
@@ -59,7 +59,7 @@ parseType(pc : Pc) : Type {
             position := pc.position
             pc.consume(TokenType.rightThickArrow)
             returnType := parseType(pc)
-            Type.constructor(position, Option.none, "F\(typeArguments.size.toString)", typeArguments.concat([returnType]))
+            Type.constructor(position, "_.F\(typeArguments.size.toString)", typeArguments.concat([returnType]))
         }),
         Pair([TokenType.lower], {
             position := pc.position
@@ -167,7 +167,7 @@ parseInstance(pc : Pc) : Term {
     ])
     name := pc.consume(TokenType.upper)
     pair := parseMethodImplementations(pc, Bool.true)
-    Term.instance(position, moduleName, name, pair.first, pair.second)
+    Term.instance(position, moduleName ? { some(m) { "\(m).\(name)" }; none { name } }, pair.first, pair.second)
 }
 
 parseArray(pc : Pc) : Term {
@@ -198,13 +198,13 @@ parseAtom(pc : Pc) : Term {
             module := pc.consume(TokenType.upper)
             pc.consume(TokenType.dot)
             position := pc.position
-            class := pc.consume(TokenType.upper)
-            Term.classOrModule(position, Option.some(module), class)
+            name := pc.consume(TokenType.upper)
+            Term.classOrModule(position, "\(module).\(name)")
         }),
         Pair([TokenType.upper], {
             position := pc.position
-            class := pc.consume(TokenType.upper)
-            Term.classOrModule(position, Option.none, class)
+            name := pc.consume(TokenType.upper)
+            Term.classOrModule(position, name)
         }),
         Pair([TokenType.lower], {
             position := pc.position
@@ -455,7 +455,7 @@ parseMethodSignature(pc : Pc) : MethodSignature {
             pc.consume(TokenType.colon)
             parseType(pc)
         }),
-        Pair([], { Type.constructor(position, Option.none, "Void", []) })
+        Pair([], { Type.constructor(position, "_.Void", []) })
     ])
     MethodSignature(position, name, typeParameters, parameters, returnType)
 }
@@ -513,7 +513,7 @@ parseTypeDefinition(pc : Pc) : TypeDefinition {
             pc.consume(TokenType.rightRound)
             methodName := "\(name.take(1).toLower)\(name.drop(1))"
             isRecord = Bool.true
-            [MethodSignature(methodPosition, methodName, [], parameters, Type.constructor(methodPosition, Option.none, "Void", []))]
+            [MethodSignature(methodPosition, methodName, [], parameters, Type.constructor(methodPosition, "_.Void", []))]
         }),
         Pair([], { parseMethodSignatures(pc) })
     ])
