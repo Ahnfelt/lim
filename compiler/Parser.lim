@@ -504,6 +504,7 @@ parseTypeDefinition(pc : Pc) : TypeDefinition {
         }),
         Pair([], { Bool.false })
     ])
+    isRecord := Bool.false
     methodSignatures := pc.lookahead("method signatures", [
         Pair([TokenType.leftRound], {
             methodPosition := position
@@ -511,11 +512,12 @@ parseTypeDefinition(pc : Pc) : TypeDefinition {
             parameters := parseCommaList(pc, { parseParameter(pc) }, TokenType.rightRound)
             pc.consume(TokenType.rightRound)
             methodName := "\(name.take(1).toLower)\(name.drop(1))"
+            isRecord = Bool.true
             [MethodSignature(methodPosition, methodName, [], parameters, Type.constructor(methodPosition, Option.none, "Void", []))]
         }),
         Pair([], { parseMethodSignatures(pc) })
     ])
-    TypeDefinition(position, name, typeParameters, isSum, methodSignatures)
+    TypeDefinition(position, name, typeParameters, isSum || isRecord, methodSignatures)
 }
 
 parseModule(pc : Pc) : Module {

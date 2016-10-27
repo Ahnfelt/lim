@@ -1,21 +1,21 @@
 Term ? {
-    binary(offset : Int, operator : TokenType, left : Term, right : Term)
-    unary(offset : Int, operator : TokenType, value : Term)
-    codeUnitValue(offset : Int, value : String)
-    textValue(offset : Int, value : String)
-    textLiteral(offset : Int, parts : Array[Term])
-    integerValue(offset : Int, value : String)
-    floatingValue(offset : Int, value : String)
-    arrayValue(offset : Int, elements : Array[Term])
-    classOrModule(offset : Int, module : Option[String], classOrModule : String)
-    thisModule(offset : Int)
-    variable(offset : Int, name : String)
-    methodCall(offset : Int, value : Term, methodName : String, arguments : Array[Term], namedArguments : Array[NamedArgument])
-    instance(offset : Int, moduleName : Option[String], interfaceName : String, thisName : Option[String], methods : Array[MethodImplementation])
-    match(offset : Int, value : Term, cases : Array[MatchCase])
-    lambda(offset : Int, parameters : Array[String], body : Array[Statement])
-    native(offset : Int, operation : NativeOperation)
-    ffiJs(offset : Int, code : String)
+    binary(position : Int, operator : TokenType, left : Term, right : Term)
+    unary(position : Int, operator : TokenType, value : Term)
+    codeUnitValue(position : Int, value : String)
+    textValue(position : Int, value : String)
+    textLiteral(position : Int, parts : Array[Term])
+    integerValue(position : Int, value : String)
+    floatingValue(position : Int, value : String)
+    arrayValue(position : Int, elements : Array[Term])
+    classOrModule(position : Int, module : Option[String], classOrModule : String)
+    thisModule(position : Int)
+    variable(position : Int, name : String)
+    methodCall(position : Int, value : Term, methodName : String, arguments : Array[Term], namedArguments : Array[NamedArgument])
+    instance(position : Int, moduleName : Option[String], interfaceName : String, thisName : Option[String], methods : Array[MethodImplementation])
+    match(position : Int, value : Term, cases : Array[MatchCase])
+    lambda(position : Int, parameters : Array[String], body : Array[Statement])
+    native(position : Int, operation : NativeOperation)
+    ffiJs(position : Int, code : String)
 }
 
 MatchCase(body : MethodImplementation, fieldNames : Array[String])
@@ -32,30 +32,30 @@ NativeOperation ? {
 }
 
 Statement ? {
-    term(offset : Int, term : Term)
-    let(offset : Int, variable : String, variableType : Option[Type], value : Term)
+    term(position : Int, term : Term)
+    let(position : Int, variable : String, variableType : Option[Type], value : Term)
     function(definition : FunctionDefinition)
-    assign(offset : Int, variable : String, value : Term)
-    increment(offset : Int, variable : String, value : Term)
-    decrement(offset : Int, variable : String, value : Term)
-    ffi(offset : Int, language : String, code : String)
+    assign(position : Int, variable : String, value : Term)
+    increment(position : Int, variable : String, value : Term)
+    decrement(position : Int, variable : String, value : Term)
+    ffi(position : Int, language : String, code : String)
 }
 
 
 Type ? {
-    constructor(offset : Int, module : Option[String], name : String, typeArguments : Array[Type])
-    parameter(offset : Int, name : String)
-    variable(offset : Int, id : Int)
+    constructor(position : Int, module : Option[String], name : String, typeArguments : Array[Type])
+    parameter(position : Int, name : String)
+    variable(position : Int, id : Int)
 }
 
-TypeDefinition(offset : Int, name : String, typeParameters : Array[String], isSum : Bool, methodSignatures : Array[MethodSignature])
-FunctionDefinition(offset : Int, signature : MethodSignature, body : Array[Statement])
+TypeDefinition(position : Int, name : String, typeParameters : Array[String], isSum : Bool, methodSignatures : Array[MethodSignature])
+FunctionDefinition(position : Int, signature : MethodSignature, body : Array[Statement])
 
-MethodSignature(offset : Int, name : String, typeParameters : Array[String], parameters : Array[Parameter], returnType : Type)
+MethodSignature(position : Int, name : String, typeParameters : Array[String], parameters : Array[Parameter], returnType : Type)
 
-MethodImplementation(offset : Int, name : String, parameters : Array[String], body : Array[Statement])
+MethodImplementation(position : Int, name : String, parameters : Array[String], body : Array[Statement])
 
-Parameter(offset : Int, name : String, parameterType : Type)
+Parameter(position : Int, name : String, parameterType : Type)
 
 
 Module(
@@ -63,6 +63,6 @@ Module(
     functionDefinitions : Array[FunctionDefinition]
 )
 
-Import(offset : Int, moduleName : String, symbol : ExportedSymbol)
+Import(position : Int, moduleName : String, symbol : ExportedSymbol)
 
-ExportedSymbol(offset : Int, name : String, everything : Bool)
+ExportedSymbol(position : Int, name : String, everything : Bool)
