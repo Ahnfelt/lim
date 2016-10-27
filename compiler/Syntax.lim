@@ -39,10 +39,10 @@ Type ? {
     variable(position : Int, id : Int)
 }
 
-TypeDefinition(position : Int, name : String, typeParameters : Array[String], isSum : Bool, methodSignatures : Array[MethodSignature])
+TypeDefinition(position : Int, symbol : String, typeParameters : Array[String], isSum : Bool, methodSignatures : Array[MethodSignature])
 FunctionDefinition(position : Int, signature : MethodSignature, body : Array[Statement])
 
-MethodSignature(position : Int, name : String, typeParameters : Array[String], parameters : Array[Parameter], returnType : Type)
+MethodSignature(position : Int, symbol : String, typeParameters : Array[String], parameters : Array[Parameter], returnType : Type)
 
 MethodImplementation(position : Int, name : String, parameters : Array[String], body : Array[Statement])
 
@@ -50,6 +50,8 @@ Parameter(position : Int, name : String, parameterType : Type)
 
 
 Module(
+    package : String,
+    file : String,
     typeDefinitions : Array[TypeDefinition],
     functionDefinitions : Array[FunctionDefinition]
 )

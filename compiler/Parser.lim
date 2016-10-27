@@ -520,7 +520,7 @@ parseTypeDefinition(pc : Pc) : TypeDefinition {
     TypeDefinition(position, name, typeParameters, isSum || isRecord, methodSignatures)
 }
 
-parseModule(pc : Pc) : Module {
+parseModule(pc : Pc, package : String, file : String) : Module {
     typeDefinitions := newArrayBuilder()
     functionDefinitions := newArrayBuilder()
     while({ pc.lookahead("definition or end of file", [
@@ -539,6 +539,8 @@ parseModule(pc : Pc) : Module {
         ])
     })
     Module(
+        package = package,
+        file = file,
         typeDefinitions = typeDefinitions.drain,
         functionDefinitions = functionDefinitions.drain
     )
@@ -548,6 +550,6 @@ testParser(program : String) {
     tokens := lexTokens(program)
     js"for(var i = 0; i < tokens.length && i < 50; i++) console.log(tokens[i].token._);"
     pc := newPc(newTokenCursor(tokens, 0), program)
-    result := parseModule(pc)
+    result := parseModule(pc, "testPackage", "testFile")
     js"console.dir(result);"
 }

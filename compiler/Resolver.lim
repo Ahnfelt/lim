@@ -1,0 +1,51 @@
+resolveModule(resolver : Resolver, module : Module) : Module {
+    Module(
+        package = module.package,
+        file = module.file,
+        typeDefinitions = map(module.typeDefinitions, d => resolveTypeDefinition(resolver, d)),
+        functionDefinitions = map(module.functionDefinitions, d => resolveFunctionDefinition(resolver, d))
+    )
+}
+
+resolveTypeDefinition(resolver : Resolver, typeDefinition : TypeDefinition) : TypeDefinition {
+    panic("TODO")
+}
+
+resolveFunctionDefinition(resolver : Resolver, functionDefinition : FunctionDefinition) : FunctionDefinition {
+    panic("TODO")
+}
+
+
+Resolver {
+    typeConstructor(position : Int, symbol : String) : String
+    typeParameter(position : Int, symbol : String) : String
+    variable(position : Int, symbol : String) : String
+    scoped[t](body : () => t) : t
+}
+
+newResolver(unresolved : Array[Module], resolved : Array[Module]) : Resolver {
+    typeConstructors := flatten(map(unresolved.concat(resolved), m => map(m.typeDefinitions, d => Pair(d.symbol, "\(m.package).\(d.symbol)"))))
+    variables := flatten(map(unresolved.concat(resolved), m => map(m.functionDefinitions, d => Pair(d.signature.symbol, "\(m.package).\(d.signature.symbol)"))))
+    typeParameters := []
+    Resolver {
+        typeConstructor(position, symbol) {
+            panic("TODO")
+        }
+        typeParameter(position, symbol) {
+            panic("TODO")
+        }
+        variable(position, symbol) {
+            panic("TODO")
+        }
+        scoped(body) {
+            savedTypeConstructors := typeConstructors
+            savedVariables := variables
+            savedTypeParameters := typeParameters
+            result := body()
+            typeConstructors = savedTypeConstructors
+            variables = savedVariables
+            typeParameters = savedTypeParameters
+            result
+        }
+    }
+}
