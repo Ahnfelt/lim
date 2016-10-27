@@ -26,7 +26,7 @@ newPc(cursor : TokenCursor, buffer : String) : Pc {
 
         consume(tokenType) {
             ahead := cursor(0)
-            when(ahead.token != tokenType, { panic("Expected \(tokenTypeText(ahead.token)), got \(tokenText(ahead)) \(positionText(ahead))") })
+            when(ahead.token != tokenType, { panic("Expected \(tokenTypeText(tokenType)), got \(tokenText(ahead)) \(positionText(ahead))") })
             text := tokenText(ahead)
             cursor.skip(1)
             text

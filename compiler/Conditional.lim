@@ -50,7 +50,7 @@ each[a](array : Array[a], body : a => Void) {
 
 indexed[a](array : Array[a]) : Array[Pair[Int, a]] {
     result := []
-    js"for(var i = 0; i < array.length; i++) result.push(body(Pair.pair(i, array[i])));"
+    js"for(var i = 0; i < array.length; i++) result.push(Pair.pair(i, array[i]));"
     result
 }
 
@@ -62,12 +62,12 @@ map[a, b](array : Array[a], body : a => b) : Array[b] {
 
 filter[a](array : Array[a], condition : a => Bool) : Array[a] {
     result := []
-    js"for(var i = 0; i < array.length; i++) if(body(array[i])) result.push(array[i]);"
+    js"for(var i = 0; i < array.length; i++) if(condition(array[i])) result.push(array[i]);"
     result
 }
 
 find[a](array : Array[a], condition : a => Bool) : Option[a] {
-    js"for(var i = 0; i < array.length; i++) if(body(array[i])) return Option.some(array[i]);"
+    js"for(var i = 0; i < array.length; i++) if(condition(array[i])) return Option.some(array[i]);"
     Option.none
 }
 
@@ -96,6 +96,7 @@ flatten[a](array : Array[Array[a]]) : Array[a] {
 }
 
 panic[a](problem : String) : a {
+    js"debugger;"
     js"throw problem;"
 }
 

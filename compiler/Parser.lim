@@ -199,13 +199,11 @@ parseAtom(pc : Pc) : Term {
             pc.consume(TokenType.dot)
             position := pc.position
             class := pc.consume(TokenType.upper)
-            pc.consume(TokenType.rightRound)
             Term.classOrModule(position, Option.some(module), class)
         }),
         Pair([TokenType.upper], {
             position := pc.position
             class := pc.consume(TokenType.upper)
-            pc.consume(TokenType.rightRound)
             Term.classOrModule(position, Option.none, class)
         }),
         Pair([TokenType.lower], {
@@ -412,7 +410,7 @@ parseStatement(pc : Pc) : Statement {
         Pair([TokenType.lower, TokenType.text], {
             parseFfi(pc)
         }),
-        Pair([TokenType.lower, TokenType.assign], {
+        Pair([], {
             term := parseTerm(pc)
             Statement.term(position, term)
         })
@@ -546,7 +544,8 @@ parseModule(pc : Pc) : Module {
 
 testParser(program : String) {
     tokens := lexTokens(program)
+    js"for(var i = 0; i < tokens.length && i < 50; i++) console.log(tokens[i].token._);"
     pc := newPc(newTokenCursor(tokens, 0), program)
-    result := parseTerm(pc)
+    result := parseModule(pc)
     js"console.dir(result);"
 }

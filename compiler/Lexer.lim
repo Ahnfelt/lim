@@ -95,12 +95,12 @@ lexBrackets(cursor : CharCursor) : Option[Token] {
     c := cursor(0)
     from := cursor.offset
     result := (
-        case({cursor.lookAhead(['('])}, {cursor.skip(1); cursor.push('('); Option.some(Token(TokenType.leftRound, from, cursor.offset))}).
-        case({cursor.lookAhead([')'])}, {cursor.skip(1); cursor.push(')'); Option.some(Token(TokenType.rightRound, from, cursor.offset))}).
-        case({cursor.lookAhead(['['])}, {cursor.skip(1); cursor.push('['); Option.some(Token(TokenType.leftSquare, from, cursor.offset))}).
-        case({cursor.lookAhead([']'])}, {cursor.skip(1); cursor.push(']'); Option.some(Token(TokenType.rightSquare, from, cursor.offset))}).
-        case({cursor.lookAhead(['{'])}, {cursor.skip(1); cursor.push('{'); Option.some(Token(TokenType.leftCurly, from, cursor.offset))}).
-        case({cursor.lookAhead(['}'])}, {cursor.skip(1); cursor.push('}'); Option.some(Token(TokenType.rightCurly, from, cursor.offset))}).
+        case({cursor.lookAhead(['('])}, {cursor.skip(1); cursor.push(')'); Option.some(Token(TokenType.leftRound, from, cursor.offset))}).
+        case({cursor.lookAhead([')'])}, {cursor.skip(1); cursor.pop(')'); Option.some(Token(TokenType.rightRound, from, cursor.offset))}).
+        case({cursor.lookAhead(['['])}, {cursor.skip(1); cursor.push(']'); Option.some(Token(TokenType.leftSquare, from, cursor.offset))}).
+        case({cursor.lookAhead([']'])}, {cursor.skip(1); cursor.pop(']'); Option.some(Token(TokenType.rightSquare, from, cursor.offset))}).
+        case({cursor.lookAhead(['{'])}, {cursor.skip(1); cursor.push('}'); Option.some(Token(TokenType.leftCurly, from, cursor.offset))}).
+        case({cursor.lookAhead(['}'])}, {cursor.skip(1); cursor.pop('}'); Option.some(Token(TokenType.rightCurly, from, cursor.offset))}).
         else({Option.none})
     )
     when(result != Option.none, {cursor.skipWhitespace()})
