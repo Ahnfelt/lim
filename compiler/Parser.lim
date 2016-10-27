@@ -375,7 +375,45 @@ parseBody(pc : Pc) : Array[Statement] {
 }
 
 parseStatement(pc : Pc) : Statement {
-    panic("TODO")
+    position := pc.position
+    pc.lookahead("statement", [
+        Pair([TokenType.lower, TokenType.colon], {
+            name := pc.consume(TokenType.lower)
+            pc.consume(TokenType.colon)
+            type := pc.lookahead("type", [
+                Pair([TokenType.assign], { Option.none }),
+                Pair([], { Option.some(parseType(pc)) })
+            ])
+            pc.consume(TokenType.assign)
+            value := parseTerm(pc)
+            Statement.let(position, name, type, value)
+        }),
+        Pair([TokenType.lower, TokenType.assign], {
+            name := pc.consume(TokenType.lower)
+            pc.consume(TokenType.assign)
+            value := parseTerm(pc)
+            Statement.assign(position, name, value)
+        }),
+        Pair([TokenType.lower, TokenType.increment], {
+            name := pc.consume(TokenType.lower)
+            pc.consume(TokenType.increment)
+            value := parseTerm(pc)
+            Statement.increment(position, name, value)
+        }),
+        Pair([TokenType.lower, TokenType.decrement], {
+            name := pc.consume(TokenType.lower)
+            pc.consume(TokenType.decrement)
+            value := parseTerm(pc)
+            Statement.decrement(position, name, value)
+        }),
+        Pair([TokenType.lower, TokenType.text], {
+            parseFfi(pc)
+        }),
+        Pair([TokenType.lower, TokenType.assign], {
+            term := parseTerm(pc)
+            Statement.term(position, term)
+        })
+    ])
 }
 
 testParser() {
