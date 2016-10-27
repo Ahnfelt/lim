@@ -37,14 +37,18 @@ resolveStatement(resolver : Resolver, statement : Statement) : Statement {
         term(position, term) {
             Statement.term(position, resolveTerm(resolver, term))
         }
-        let(position, variable, variableType, value) {
+        let(position, variable, type, value) {
             resolver.scope({
-                resolve.addVariable(position, variable)
-                Statement.let(position, resolver.variable(position, variable), resolveType(resolver, variableType), resolveTerm(resolver, value))
+                resolver.addVariable(position, variable)
+                variableType := type ? {
+                    some(t) { Option.some(resolveType(resolver, t)) }
+                    none { Option.none }
+                }
+                Statement.let(position, resolver.variable(position, variable), variableType, resolveTerm(resolver, value))
             })
         }
         function(definition) {
-            Statement.function(resolveFunctionDefinition(definition))
+            Statement.function(resolveFunctionDefinition(resolver, definition))
         }
         assign(position, variable, value) {
             Statement.assign(position, resolver.variable(position, variable), resolveTerm(resolver, value))
@@ -59,6 +63,10 @@ resolveStatement(resolver : Resolver, statement : Statement) : Statement {
             Statement.ffi(position, language, code)
         }
     }
+}
+
+resolveType(resolver : Resolver, type : Type) : Type {
+    panic("TODO")
 }
 
 resolveTerm(resolver : Resolver, term : Term) : Term {

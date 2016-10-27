@@ -24,7 +24,7 @@ NamedArgument(order : Int, name : String, value : Term)
 
 Statement ? {
     term(position : Int, term : Term)
-    let(position : Int, variable : String, variableType : Option[Type], value : Term)
+    let(position : Int, variable : String, type : Option[Type], value : Term)
     function(definition : FunctionDefinition)
     assign(position : Int, variable : String, value : Term)
     increment(position : Int, variable : String, value : Term)
