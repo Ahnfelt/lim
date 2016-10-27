@@ -544,8 +544,7 @@ parseModule(pc : Pc) : Module {
     )
 }
 
-testParser() {
-    program := "1 + 2"
+testParser(program : String) {
     tokens := lexTokens(program)
     pc := newPc(newTokenCursor(tokens, 0), program)
     result := parseTerm(pc)
