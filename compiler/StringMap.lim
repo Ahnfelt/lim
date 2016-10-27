@@ -1,0 +1,43 @@
+StringMap[v] {
+    invoke(key : String) : v
+    get(key : String) : Option[v]
+    has(key : String) : Bool
+}
+
+StringMapBuilder[v] {
+    invoke(key : String) : v
+    get(key : String) : Option[v]
+    has(key : String) : Bool
+    set(key : String, value : v)
+    remove(key : String)
+    toArray() : Array[Pair[String, v]]
+    toStringMap() : StringMap[v]
+}
+
+newStringMap[v](array : Array[Pair[String, v]]) : StringMap[v] {
+    builder := newStringMapBuilder(array)
+    StringMap {
+        invoke(key) { builder(key) }
+        get(key) { builder.get(key) }
+        has(key) { builder.has(key) }
+    }
+}
+
+newStringMapBuilder[v](array : Array[Pair[String, v]]) : StringMapBuilder[v] {
+    js"var map = {};"
+    builder := StringMapBuilder { this =>
+        invoke(key) { if(this.has(key), { js"return map[key];" }, { panic("No such key: \(key)") }) }
+        get(key) { if(this.has(key), { js"return Option.some(map[key]);" }, { Option.none }) }
+        has(key) { js"return Object.prototype.hasOwnProperty.call(map, key);" }
+        set(key, value) { js"map[key] = value;" }
+        remove(key, value) { js"delete map[key];" }
+        toArray() {
+            result := []
+            js"for(var key in map) if(this_.has(key)) result.push(map[key]);"
+            result
+        }
+        toStringMap() { newStringMap(this.toArray) }
+    }
+    each(array, p => builder.set(p.first, p.second))
+    builder
+}

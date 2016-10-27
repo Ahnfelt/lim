@@ -81,11 +81,22 @@ class Typer(buffer : Array[Char]) {
         result
     }
 
+    def bindTypeVariable(offset : Int, id : Int, targetType : Type) : Unit = {
+        def go(t : Type) : Unit = t match {
+            case TypeConstructor(_, module, name, typeArguments, modifier) => for(a <- typeArguments) go(a)
+            case TypeParameter(_, name) =>
+            case TypeVariable(_, sameId) => if(id == sameId) throw new TypeException("Infinite type _" + id + " = " + targetType, Lexer.position(buffer, offset))
+        }
+        go(targetType)
+        typeVariables = typeVariables + (id -> targetType)
+    }
+
     def equalityConstraint(offset : Int, originalExpectedType : Type, originalActualType : Type) : Unit = {
         def go(expectedType : Type, actualType : Type) : Unit = {
             (expandType(expectedType), expandType(actualType)) match {
-                case (t1@TypeVariable(_, id), t2) => typeVariables = typeVariables + (id -> t2)
-                case (t1, t2@TypeVariable(_, id)) => typeVariables = typeVariables + (id -> t1)
+                case (TypeVariable(_, id1), TypeVariable(_, id2)) if id1 == id2 =>
+                case (t1@TypeVariable(_, id), t2) => bindTypeVariable(offset, id, t2)
+                case (t1, t2@TypeVariable(_, id)) => bindTypeVariable(offset, id, t1)
                 case (t1@TypeConstructor(_, module1, name1, typeArguments1, modifier1), t2@TypeConstructor(_, module2, name2, typeArguments2, modifier2)) if module1 == module2 && name1 == name2 && typeArguments1.length == typeArguments2.length =>
                     if(modifier1 != modifier2) {
                         val defaultModifier = typeEnvironment.getOrElse((module1, name1),

@@ -7,37 +7,105 @@ resolveModule(resolver : Resolver, module : Module) : Module {
     )
 }
 
-resolveTypeDefinition(resolver : Resolver, typeDefinition : TypeDefinition) : TypeDefinition {
+resolveTypeDefinition(resolver : Resolver, d : TypeDefinition) : TypeDefinition {
+    resolver.scope({
+        symbol := resolver.typeConstructor(d.position, d.symbol)
+        typeParameters := map(d.typeParameters, p => resolver.addTypeParameter(d.position, p))
+        methodSignatures := map(d.methodSignatures, s => resolveMethodSignature(resolver, s))
+        TypeDefinition(d.position, symbol, typeParameters, d.isSum, methodSignatures)
+    })
+}
+
+resolveFunctionDefinition(resolver : Resolver, d : FunctionDefinition) : FunctionDefinition {
+    resolver.scope({
+        signature := resolveMethodSignature(resolver, d.signature)
+        body := resolveBody(resolver, d.body)
+        FunctionDefinition(d.position, signature, body)
+    })
+}
+
+resolveMethodSignature(resolver : Resolver, s : MethodSignature) : MethodSignature {
     panic("TODO")
 }
 
-resolveFunctionDefinition(resolver : Resolver, functionDefinition : FunctionDefinition) : FunctionDefinition {
-    panic("TODO")
+resolveBody(resolver : Resolver, body : Array[Statement]) : Array[Statement] {
+    map(body, s => resolveStatement(resolver, s))
 }
 
+resolveStatement(resolver : Resolver, statement : Statement) : Statement {
+    statement ? {
+        term(position, term) {
+            Statement.term(position, resolveTerm(resolver, term))
+        }
+        let(position, variable, variableType, value) {
+            resolver.scope({
+                resolve.addVariable(position, variable)
+                Statement.let(position, resolver.variable(position, variable), resolveType(resolver, variableType), resolveTerm(resolver, value))
+            })
+        }
+        function(definition) {
+            Statement.function(resolveFunctionDefinition(definition))
+        }
+        assign(position, variable, value) {
+            Statement.assign(position, resolver.variable(position, variable), resolveTerm(resolver, value))
+        }
+        increment(position, variable, value) {
+            Statement.increment(position, resolver.variable(position, variable), resolveTerm(resolver, value))
+        }
+        decrement(position, variable, value) {
+            Statement.decrement(position, resolver.variable(position, variable), resolveTerm(resolver, value))
+        }
+        ffi(position, language, code) {
+            Statement.ffi(position, language, code)
+        }
+    }
+}
+
+resolveTerm(resolver : Resolver, term : Term) : Term {
+    panic("TODO")
+}
 
 Resolver {
     typeConstructor(position : Int, symbol : String) : String
-    typeParameter(position : Int, symbol : String) : String
     variable(position : Int, symbol : String) : String
-    scoped[t](body : () => t) : t
+    typeParameter(position : Int, symbol : String) : String
+    addVariable(position : Int, name : String) : String
+    addTypeParameter(position : Int, name : String) : String
+    scope[t](body : () => t) : t
 }
 
-newResolver(unresolved : Array[Module], resolved : Array[Module]) : Resolver {
-    typeConstructors := flatten(map(unresolved.concat(resolved), m => map(m.typeDefinitions, d => Pair(d.symbol, "\(m.package).\(d.symbol)"))))
-    variables := flatten(map(unresolved.concat(resolved), m => map(m.functionDefinitions, d => Pair(d.signature.symbol, "\(m.package).\(d.signature.symbol)"))))
-    typeParameters := []
+newResolver(modules : Array[Module]) : Resolver {
+    typeConstructors := newStringMapBuilder(flatten(map(modules, m => map(m.typeDefinitions, d => Pair(d.symbol, "\(m.package).\(d.symbol)")))))
+    variables := newStringMapBuilder(flatten(map(modules, m => map(m.functionDefinitions, d => Pair(d.signature.symbol, "\(m.package).\(d.signature.symbol)")))))
+    typeParameters := newStringMapBuilder([])
     Resolver {
         typeConstructor(position, symbol) {
-            panic("TODO")
+            typeConstructors.get(symbol) ? {
+                none { panic("No such type: \(symbol)") }
+                some(x) { x }
+            }
         }
         typeParameter(position, symbol) {
-            panic("TODO")
+            typeParameters.get(symbol) ? {
+                none { panic("No such type parameter: \(symbol)") }
+                some(x) { x }
+            }
         }
         variable(position, symbol) {
-            panic("TODO")
+            variables.get(symbol) ? {
+                none { panic("No such variable: \(symbol)") }
+                some(x) { x }
+            }
         }
-        scoped(body) {
+        addVariable(position, name) {
+            variables.set(name, name)
+            name
+        }
+        addTypeParameter(position, name) {
+            typeParameters.set(name, name)
+            name
+        }
+        scope(body) {
             savedTypeConstructors := typeConstructors
             savedVariables := variables
             savedTypeParameters := typeParameters
