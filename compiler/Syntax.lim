@@ -47,15 +47,10 @@ Type ? {
     variable(offset : Int, id : Int)
 }
 
-Definition ? {
-    interface(offset : Int, name : String, typeParameters : Array[String], methodSignatures : Array[MethodSignature])
-    sum(offset : Int, name : String, typeParameters : Array[String], constructorSignatures : Array[ConstructorSignature])
-    method(offset : Int, signature : MethodSignature, body : Array[Statement])
-}
+TypeDefinition(offset : Int, name : String, typeParameters : Array[String], isSum : Bool, methodSignatures : Array[MethodSignature])
+MethodDefinition(offset : Int, signature : MethodSignature, body : Array[Statement])
 
 MethodSignature(offset : Int, name : String, typeParameters : Array[String], parameters : Array[Parameter], returnType : Type)
-
-ConstructorSignature(offset : Int, name : String, typeParameters : Array[String], parameters : Array[Parameter], returnType : Type)
 
 MethodImplementation(offset : Int, name : String, parameters : Array[String], body : Array[Statement])
 
@@ -63,11 +58,8 @@ Parameter(offset : Int, name : String, parameterType : Type)
 
 
 Module(
-    exports : Array[ExportedSymbol],
-    imports : Array[Import],
     typeDefinitions : Array[TypeDefinition],
-    methodDefinitions : Array[MethodDefinition],
-    valueDefinitions : Array[ValueDefinition]
+    methodDefinitions : Array[MethodDefinition]
 )
 
 Import(offset : Int, moduleName : String, symbol : ExportedSymbol)

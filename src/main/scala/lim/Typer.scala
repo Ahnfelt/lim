@@ -25,7 +25,11 @@ class Typer(buffer : Array[Char]) {
         )),
         (None, "String") -> TypeDefinition(0, "String", List(), RequestResponseModifier, List(
             MethodSignature(0, "invoke", List(), List(Parameter(0, "index", TypeConstructor(0, None, "Int", List(), None))), TypeConstructor(0, None, "Int", List(), None), Some((value, terms) => MethodCall(0, value, "charCodeAt", terms, List()))),
-            MethodSignature(0, "size", List(), List(), TypeConstructor(0, None, "Int", List(), None), Some((value, _) => Native(0, NativeFieldAccess(value, "length"))))
+            MethodSignature(0, "size", List(), List(), TypeConstructor(0, None, "Int", List(), None), Some((value, _) => Native(0, NativeFieldAccess(value, "length")))),
+            MethodSignature(0, "take", List(), List(Parameter(0, "amount", TypeConstructor(0, None, "Int", List(), None))), TypeConstructor(0, None, "String", List(), None), Some((value, terms) => MethodCall(0, value, "substr", IntegerValue(0, 0) +: terms, List()))),
+            MethodSignature(0, "drop", List(), List(Parameter(0, "amount", TypeConstructor(0, None, "Int", List(), None))), TypeConstructor(0, None, "String", List(), None), Some((value, terms) => MethodCall(0, value, "substr", terms, List()))),
+            MethodSignature(0, "toUpper", List(), List(), TypeConstructor(0, None, "String", List(), None), Some((value, terms) => MethodCall(0, value, "toUpperCase", terms, List()))),
+            MethodSignature(0, "toLower", List(), List(), TypeConstructor(0, None, "String", List(), None), Some((value, terms) => MethodCall(0, value, "toLowerCase", terms, List())))
         )),
         // TODO: Make this use native false / true (it's a non-working mix of native and non-native right now)
         (None, "Bool") -> TypeDefinition(0, "Bool", List(), RequestModifier, List(

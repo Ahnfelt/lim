@@ -361,7 +361,7 @@ parseBody(pc : Pc) : Array[Statement] {
     result := newArrayBuilder()
     while({ pc.lookahead("statement or }", [
         Pair([TokenType.rightCurly], { pc.consume(TokenType.rightCurly); Bool.false }),
-        Pair([TokenType.separator, TokenType.rightCurly], { pc.consume(TokenType.rightCurly); Bool.false }),
+        Pair([TokenType.separator, TokenType.rightCurly], { pc.consume(TokenType.separator); pc.consume(TokenType.rightCurly); Bool.false }),
         Pair([TokenType.separator], { pc.consume(TokenType.separator); Bool.true }),
         Pair([], { Bool.true })
     ]) }, {
@@ -414,6 +414,131 @@ parseStatement(pc : Pc) : Statement {
             Statement.term(position, term)
         })
     ])
+}
+
+parseTypeParameter(pc : Pc) : String {
+    pc.consume(TokenType.lower)
+}
+
+parseParameter(pc : Pc) : Parameter {
+    position := pc.position
+    name := pc.consume(TokenType.lower)
+    pc.consume(TokenType.colon)
+    type := parseType(pc)
+    Parameter(position, name, type)
+}
+
+parseMethodSignature(pc : Pc) : MethodSignature {
+    position := pc.position
+    name := pc.consume(TokenType.lower)
+    typeParameters := pc.lookahead("type parameters", [
+        Pair([TokenType.leftSquare], {
+            pc.consume(TokenType.leftSquare)
+            result := parseCommaList(pc, { parseTypeParameter(pc) }, TokenType.rightSquare)
+            pc.consume(TokenType.rightSquare)
+            result
+        }),
+        Pair([], { [] })
+    ])
+    parameters := pc.lookahead("parameters", [
+        Pair([TokenType.leftRound], {
+            pc.consume(TokenType.leftRound)
+            result := parseCommaList(pc, { parseParameter(pc) }, TokenType.rightRound)
+            pc.consume(TokenType.rightRound)
+            result
+        }),
+        Pair([], { [] })
+    ])
+    returnType := pc.lookahead("return type", [
+        Pair([TokenType.colon], {
+            pc.consume(TokenType.colon)
+            parseType(pc)
+        }),
+        Pair([], { Type.constructor(position, Option.none, "Void", []) })
+    ])
+    MethodSignature(position, name, typeParameters, parameters, returnType)
+}
+
+parseMethodDefinition(pc : Pc) : MethodDefinition {
+    position := pc.position
+    signature := parseMethodSignature(pc)
+    body := parseBody(pc)
+    MethodDefinition(position, signature, body)
+}
+
+parseMethodSignatures(pc : Pc) : Array[MethodSignature] {
+    pc.consume(TokenType.leftCurly)
+    result := newArrayBuilder()
+    while({ pc.lookahead("method signature or }", [
+        Pair([TokenType.rightCurly], { pc.consume(TokenType.rightCurly); Bool.false }),
+        Pair([TokenType.separator, TokenType.rightCurly], { pc.consume(TokenType.separator); pc.consume(TokenType.rightCurly); Bool.false }),
+        Pair([TokenType.separator], { pc.consume(TokenType.separator); Bool.true }),
+        Pair([], { Bool.true })
+    ]) }, {
+        result.push(parseMethodSignature(pc))
+        pc.lookahead("line break, ';' or '}'", [
+            Pair([TokenType.rightCurly], {}),
+            Pair([TokenType.separator], {})
+        ])
+    })
+    result.drain
+}
+
+parseTypeDefinition(pc : Pc) : TypeDefinition {
+    position := pc.position
+    name := pc.consume(TokenType.upper)
+    typeParameters := pc.lookahead("type parameters", [
+        Pair([TokenType.leftSquare], {
+            pc.consume(TokenType.leftSquare)
+            result := parseCommaList(pc, { parseTypeParameter(pc) }, TokenType.rightSquare)
+            pc.consume(TokenType.rightSquare)
+            result
+        }),
+        Pair([], { [] })
+    ])
+    isSum := pc.lookahead("type parameters", [
+        Pair([TokenType.question], {
+            pc.consume(TokenType.question)
+            Bool.true
+        }),
+        Pair([], { Bool.false })
+    ])
+    methodSignatures := pc.lookahead("method signatures", [
+        Pair([TokenType.leftRound], {
+            methodPosition := position
+            pc.consume(TokenType.leftRound)
+            parameters := parseCommaList(pc, { parseParameter(pc) }, TokenType.rightRound)
+            pc.consume(TokenType.rightRound)
+            methodName := "\(name.take(1).toLower)\(name.drop(1))"
+            [MethodSignature(methodPosition, methodName, [], parameters, Type.constructor(methodPosition, Option.none, "Void", []))]
+        }),
+        Pair([], { parseMethodSignatures(pc) })
+    ])
+    TypeDefinition(position, name, typeParameters, isSum, methodSignatures)
+}
+
+parseModule(pc : Pc) : Module {
+    typeDefinitions := newArrayBuilder()
+    methodDefinitions := newArrayBuilder()
+    while({ pc.lookahead("definition or end of file", [
+        Pair([TokenType.outsideFile], { Bool.false }),
+        Pair([TokenType.separator, TokenType.outsideFile], { pc.consume(TokenType.separator); Bool.false }),
+        Pair([TokenType.separator], { pc.consume(TokenType.separator); Bool.true }),
+        Pair([], { Bool.true })
+    ]) }, {
+        pc.lookahead("definition", [
+            Pair([TokenType.lower], { methodDefinitions.push(parseMethodDefinition(pc)) }),
+            Pair([], { typeDefinitions.push(parseTypeDefinition(pc)) })
+        ])
+        pc.lookahead("line break", [
+            Pair([TokenType.outsideFile], {}),
+            Pair([TokenType.separator], {})
+        ])
+    })
+    Module(
+        typeDefinitions = typeDefinitions.drain,
+        methodDefinitions = methodDefinitions.drain
+    )
 }
 
 testParser() {
