@@ -377,6 +377,9 @@ parseBody(pc : Pc) : Array[Statement] {
 parseStatement(pc : Pc) : Statement {
     position := pc.position
     pc.lookahead("statement", [
+        Pair([TokenType.lower, TokenType.leftRound, TokenType.rightRound, TokenType.leftCurly], { Statement.function(parseFunctionDefinition(pc)) }),
+        Pair([TokenType.lower, TokenType.leftRound, TokenType.rightRound, TokenType.colon], { Statement.function(parseFunctionDefinition(pc)) }),
+        Pair([TokenType.lower, TokenType.leftRound, TokenType.lower, TokenType.colon], { Statement.function(parseFunctionDefinition(pc)) }),
         Pair([TokenType.lower, TokenType.colon], {
             name := pc.consume(TokenType.lower)
             pc.consume(TokenType.colon)

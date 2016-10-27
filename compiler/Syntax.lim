@@ -34,6 +34,7 @@ NativeOperation ? {
 Statement ? {
     term(offset : Int, term : Term)
     let(offset : Int, variable : String, variableType : Option[Type], value : Term)
+    function(definition : FunctionDefinition)
     assign(offset : Int, variable : String, value : Term)
     increment(offset : Int, variable : String, value : Term)
     decrement(offset : Int, variable : String, value : Term)
