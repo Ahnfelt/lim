@@ -459,11 +459,11 @@ parseMethodSignature(pc : Pc) : MethodSignature {
     MethodSignature(position, name, typeParameters, parameters, returnType)
 }
 
-parseMethodDefinition(pc : Pc) : MethodDefinition {
+parseFunctionDefinition(pc : Pc) : FunctionDefinition {
     position := pc.position
     signature := parseMethodSignature(pc)
     body := parseBody(pc)
-    MethodDefinition(position, signature, body)
+    FunctionDefinition(position, signature, body)
 }
 
 parseMethodSignatures(pc : Pc) : Array[MethodSignature] {
@@ -519,7 +519,7 @@ parseTypeDefinition(pc : Pc) : TypeDefinition {
 
 parseModule(pc : Pc) : Module {
     typeDefinitions := newArrayBuilder()
-    methodDefinitions := newArrayBuilder()
+    functionDefinitions := newArrayBuilder()
     while({ pc.lookahead("definition or end of file", [
         Pair([TokenType.outsideFile], { Bool.false }),
         Pair([TokenType.separator, TokenType.outsideFile], { pc.consume(TokenType.separator); Bool.false }),
@@ -527,7 +527,7 @@ parseModule(pc : Pc) : Module {
         Pair([], { Bool.true })
     ]) }, {
         pc.lookahead("definition", [
-            Pair([TokenType.lower], { methodDefinitions.push(parseMethodDefinition(pc)) }),
+            Pair([TokenType.lower], { functionDefinitions.push(parseFunctionDefinition(pc)) }),
             Pair([], { typeDefinitions.push(parseTypeDefinition(pc)) })
         ])
         pc.lookahead("line break", [
@@ -537,7 +537,7 @@ parseModule(pc : Pc) : Module {
     })
     Module(
         typeDefinitions = typeDefinitions.drain,
-        methodDefinitions = methodDefinitions.drain
+        functionDefinitions = functionDefinitions.drain
     )
 }
 

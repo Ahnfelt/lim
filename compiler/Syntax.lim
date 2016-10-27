@@ -48,7 +48,7 @@ Type ? {
 }
 
 TypeDefinition(offset : Int, name : String, typeParameters : Array[String], isSum : Bool, methodSignatures : Array[MethodSignature])
-MethodDefinition(offset : Int, signature : MethodSignature, body : Array[Statement])
+FunctionDefinition(offset : Int, signature : MethodSignature, body : Array[Statement])
 
 MethodSignature(offset : Int, name : String, typeParameters : Array[String], parameters : Array[Parameter], returnType : Type)
 
@@ -59,7 +59,7 @@ Parameter(offset : Int, name : String, parameterType : Type)
 
 Module(
     typeDefinitions : Array[TypeDefinition],
-    methodDefinitions : Array[MethodDefinition]
+    functionDefinitions : Array[FunctionDefinition]
 )
 
 Import(offset : Int, moduleName : String, symbol : ExportedSymbol)
