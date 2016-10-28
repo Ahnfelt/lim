@@ -11,21 +11,25 @@ resolveTypeDefinition(resolver : Resolver, d : TypeDefinition) : TypeDefinition 
     resolver.scope({
         symbol := resolver.typeConstructor(d.position, d.symbol)
         typeParameters := map(d.typeParameters, p => resolver.addTypeParameter(d.position, p))
-        methodSignatures := map(d.methodSignatures, s => resolveMethodSignature(resolver, s))
+        methodSignatures := map(d.methodSignatures, s => resolveMethodSignatureInScope(resolver, s))
         TypeDefinition(d.position, symbol, typeParameters, d.isSum, methodSignatures)
     })
 }
 
 resolveFunctionDefinition(resolver : Resolver, d : FunctionDefinition) : FunctionDefinition {
     resolver.scope({
-        signature := resolveMethodSignature(resolver, d.signature)
+        signature := resolveMethodSignatureInScope(resolver, d.signature)
         body := resolveBody(resolver, d.body)
         FunctionDefinition(d.position, signature, body)
     })
 }
 
-resolveMethodSignature(resolver : Resolver, s : MethodSignature) : MethodSignature {
-    panic("TODO")
+resolveMethodSignatureInScope(resolver : Resolver, s : MethodSignature) : MethodSignature {
+    symbol := resolver.variable(s.position, s.symbol)
+    typeParameters := map(s.typeParameters, p => resolver.addTypeParameter(s.position, p))
+    parameters := map(s.parameters, p => { Parameter(p.position, resolver.addVariable(p.position, p.name), resolveType(resolver, p.type)) })
+    returnType := resolveType(resolver, s.returnType)
+    MethodSignature(s.position, symbol, s.typeParameters, parameters, returnType)
 }
 
 resolveBody(resolver : Resolver, body : Array[Statement]) : Array[Statement] {
@@ -66,11 +70,71 @@ resolveStatement(resolver : Resolver, statement : Statement) : Statement {
 }
 
 resolveType(resolver : Resolver, type : Type) : Type {
-    panic("TODO")
+    type ? {
+        constructor(position, symbol, typeArguments) {
+            resolvedSymbol := resolver.typeConstructor(position, symbol)
+            resolvedTypeArguments := map(typeArguments, a => resolveType(resolver, a))
+            Type.constructor(position, resolvedSymbol, resolvedTypeArguments)
+        }
+        parameter(position, name) {
+            Type.parameter(position, resolver.typeParameter(position, name))
+        }
+        variable(position, id) {
+            type
+        }
+    }
 }
 
 resolveTerm(resolver : Resolver, term : Term) : Term {
-    panic("TODO")
+    term ? {
+        binary(position, operator, left, right) {
+            Term.binary(position, operator, resolveTerm(resolver, left), resolveTerm(resolver, right))
+        }
+        unary(position, operator, value) {
+            Term.unary(position, operator, resolveTerm(resolver, value))
+        }
+        codeUnitValue(position, value) { term }
+        textValue(position, value) { term }
+        textLiteral(position, parts) {
+            Term.textLiteral(position, map(parts, p => resolveTerm(resolver, p)))
+        }
+        integerValue(position, value) { term }
+        floatingValue(position, value) { term }
+        arrayValue(position, elements) {
+            Term.arrayValue(position, map(elements, e => resolveTerm(resolver, e)))
+        }
+        classOrModule(position, symbol) {
+
+            classOrModuleSymbol := resolver.typeConstructor(position, symbol)
+
+            Term.classOrModule(position, classOrModuleSymbol)
+
+        }
+        thisModule(position) { term }
+        variable(position, symbol) {
+            Term.variable(position, resolver.variable(position, symbol))
+        }
+        methodCall(position, value, methodName, arguments, namedArguments) {
+            resolvedValue := resolveTerm(resolver, value)
+            resolvedArguments := map(arguments, a => resolveTerm(resolver, a))
+            resolvedNamedArguments := map(namedArguments, a => NamedArgument(a.order, a.name, resolveTerm(resolver, a.value)))
+            Term.methodCall(position, resolvedValue, methodName, resolvedArguments, resolvedNamedArguments)
+        }
+        instance(position, symbol, thisName, methods) {
+            panic("TODO")
+        }
+        match(position, value, cases) {
+            panic("TODO")
+        }
+        lambda(position, parameters, body) {
+            resolver.scope({
+                resolvedParameters := map(parameters, p => resolver.addVariable(position, p))
+                resolvedBody := resolveBody(resolver, body)
+                Term.lambda(position, resolvedParameters, resolvedBody)
+            })
+        }
+        ffiJs(position, code) { term }
+    }
 }
 
 Resolver {

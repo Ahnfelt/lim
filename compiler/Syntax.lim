@@ -14,7 +14,6 @@ Term ? {
     instance(position : Int, symbol : String, thisName : Option[String], methods : Array[MethodImplementation])
     match(position : Int, value : Term, cases : Array[MatchCase])
     lambda(position : Int, parameters : Array[String], body : Array[Statement])
-    native(position : Int, operation : NativeOperation)
     ffiJs(position : Int, code : String)
 }
 
@@ -46,7 +45,7 @@ MethodSignature(position : Int, symbol : String, typeParameters : Array[String],
 
 MethodImplementation(position : Int, name : String, parameters : Array[String], body : Array[Statement])
 
-Parameter(position : Int, name : String, parameterType : Type)
+Parameter(position : Int, name : String, type : Type)
 
 
 Module(
