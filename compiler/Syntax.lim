@@ -7,10 +7,10 @@ Term ? {
     integerValue(position : Int, value : String)
     floatingValue(position : Int, value : String)
     arrayValue(position : Int, elements : Array[Term])
-    classOrModule(position : Int, symbol : String)
     thisModule(position : Int)
     variable(position : Int, symbol : String)
-    methodCall(position : Int, value : Term, methodName : String, arguments : Array[Term], namedArguments : Array[NamedArgument])
+    staticCall(position : Int, symbol : String, name : String, arguments : Arguments)
+    methodCall(position : Int, value : Term, name : String, arguments : Arguments)
     instance(position : Int, symbol : String, thisName : Option[String], methods : Array[MethodImplementation])
     match(position : Int, value : Term, cases : Array[MatchCase])
     lambda(position : Int, parameters : Array[String], body : Array[Statement])
@@ -18,6 +18,8 @@ Term ? {
 }
 
 MatchCase(body : MethodImplementation, fieldNames : Array[String])
+
+Arguments(unnamed : Array[Term], named : Array[NamedArgument])
 
 NamedArgument(order : Int, name : String, value : Term)
 

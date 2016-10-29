@@ -117,4 +117,11 @@ orPanic[a](option : Option[a]) : a {
     }
 }
 
+or[a](option : Option[a], default : a) : a {
+    option ? {
+        none { default }
+        some(value) { value }
+    }
+}
+
 Pair[a, b](first : a, second : b)

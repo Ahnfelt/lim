@@ -188,23 +188,12 @@ parseAtom(pc : Pc) : Term {
         Pair([TokenType.leftCurly], { parseLambda(pc) }),
         Pair([TokenType.upper, TokenType.leftCurly], { parseInstance(pc) }),
         Pair([TokenType.upper, TokenType.dot, TokenType.upper, TokenType.leftCurly], { parseInstance(pc) }),
+        Pair([TokenType.upper], { parseStaticCall(pc) }),
         Pair([TokenType.leftRound], {
             pc.consume(TokenType.leftRound)
             result := parseTerm(pc)
             pc.consume(TokenType.rightRound)
             result
-        }),
-        Pair([TokenType.upper, TokenType.dot, TokenType.upper], {
-            module := pc.consume(TokenType.upper)
-            pc.consume(TokenType.dot)
-            position := pc.position
-            name := pc.consume(TokenType.upper)
-            Term.classOrModule(position, "\(module).\(name)")
-        }),
-        Pair([TokenType.upper], {
-            position := pc.position
-            name := pc.consume(TokenType.upper)
-            Term.classOrModule(position, name)
         }),
         Pair([TokenType.lower], {
             position := pc.position
@@ -267,6 +256,48 @@ parseNamedArgument(pc : Pc) : Pair[String, Term] {
     Pair(name, term)
 }
 
+parseArguments(pc : Pc) : Arguments {
+    named := Bool.false
+    pc.consume(TokenType.leftRound)
+    arguments := parseCommaList(pc, { pc.lookahead("method argument", [
+        Pair([TokenType.lower, TokenType.assign], {
+            named = Bool.true
+            name := pc.consume(TokenType.lower);
+            pc.consume(TokenType.assign)
+            Pair(name, parseTerm(pc))
+        }),
+        Pair([], {
+            when(named, { panic("Unexpected unnamed argument after named argument") })
+            Pair("", parseTerm(pc))
+        })
+    ])}, TokenType.rightRound)
+    pc.consume(TokenType.rightRound)
+    Arguments(
+        unnamed = map(filter(arguments, a => a.first == ""), a => a.second),
+        named = map(indexed(filter(arguments, a => a.first != "")), i => NamedArgument(i.first, i.second.first, i.second.second))
+    )
+}
+
+parseStaticCall(pc : Pc) : Term {
+    module := pc.consume(TokenType.upper)
+    name := pc.lookahead("type name", [
+        Pair([TokenType.dot, TokenType.upper], { pc.consume(TokenType.dot); Option.some(pc.consume(TokenType.upper)) }),
+        Pair([], { Option.none })
+    ])
+    lastName := or(name, module)
+    position := pc.position
+    methodName := pc.lookahead("call", [
+        Pair([TokenType.dot, TokenType.lower], { pc.consume(TokenType.dot); pc.consume(TokenType.lower) }),
+        Pair([TokenType.leftRound], { "\(lastName.take(1).toLower)\(lastName.drop(1))" })
+    ])
+    arguments := pc.lookahead("arguments", [
+        Pair([TokenType.leftRound], { parseArguments(pc) }),
+        Pair([], { Arguments([], []) })
+    ])
+    staticName := name ? { some(n) { "\(module).\(n)" }; none { module }  }
+    Term.staticCall(position, staticName, methodName, arguments)
+}
+
 parseCall(pc : Pc) : Term {
     result := parseAtom(pc)
     while({ pc.lookahead("method", [
@@ -282,27 +313,11 @@ parseCall(pc : Pc) : Term {
         ])
         result = pc.lookahead("method call", [
             Pair([TokenType.leftRound], {
-                pc.consume(TokenType.leftRound)
-                arguments := parseCommaList(pc, { pc.lookahead("method argument", [
-                    Pair([TokenType.lower, TokenType.assign], {
-                        named = Bool.true
-                        name := pc.consume(TokenType.lower);
-                        pc.consume(TokenType.assign)
-                        Pair(name, parseTerm(pc))
-                    }),
-                    Pair([], {
-                        when(named, { panic("Unexpected unnamed argument after named argument") })
-                        Pair("", parseTerm(pc))
-                    })
-                ])}, TokenType.rightRound)
-                pc.consume(TokenType.rightRound)
-                Term.methodCall(position, result, methodName,
-                    arguments = map(filter(arguments, a => a.first == ""), a => a.second),
-                    namedArguments = map(indexed(filter(arguments, a => a.first != "")), i => NamedArgument(i.first, i.second.first, i.second.second))
-                )
+                arguments := parseArguments(pc)
+                Term.methodCall(position, result, methodName, arguments)
             }),
             Pair([], {
-                 Term.methodCall(position, result, methodName, [], [])
+                 Term.methodCall(position, result, methodName, Arguments([], []))
             })
         ])
     })

@@ -103,22 +103,19 @@ resolveTerm(resolver : Resolver, term : Term) : Term {
         arrayValue(position, elements) {
             Term.arrayValue(position, map(elements, e => resolveTerm(resolver, e)))
         }
-        classOrModule(position, symbol) {
-
-            classOrModuleSymbol := resolver.typeConstructor(position, symbol)
-
-            Term.classOrModule(position, classOrModuleSymbol)
-
-        }
         thisModule(position) { term }
         variable(position, symbol) {
             Term.variable(position, resolver.variable(position, symbol))
         }
-        methodCall(position, value, methodName, arguments, namedArguments) {
+        staticCall(position, symbol, methodName, arguments) {
+            panic("TODO")
+            Term.staticCall(position, symbol, methodName, arguments)
+        }
+        methodCall(position, value, methodName, arguments) {
             resolvedValue := resolveTerm(resolver, value)
-            resolvedArguments := map(arguments, a => resolveTerm(resolver, a))
-            resolvedNamedArguments := map(namedArguments, a => NamedArgument(a.order, a.name, resolveTerm(resolver, a.value)))
-            Term.methodCall(position, resolvedValue, methodName, resolvedArguments, resolvedNamedArguments)
+            resolvedArguments := map(arguments.unnamed, a => resolveTerm(resolver, a))
+            resolvedNamedArguments := map(arguments.named, a => NamedArgument(a.order, a.name, resolveTerm(resolver, a.value)))
+            Term.methodCall(position, resolvedValue, methodName, Arguments(resolvedArguments, resolvedNamedArguments))
         }
         instance(position, symbol, thisName, methods) {
             panic("TODO")
