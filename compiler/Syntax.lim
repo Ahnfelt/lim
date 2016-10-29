@@ -53,6 +53,7 @@ Parameter(position : Int, name : String, type : Type)
 Module(
     package : String,
     file : String,
+    alias : String,
     typeDefinitions : Array[TypeDefinition],
     functionDefinitions : Array[FunctionDefinition]
 )

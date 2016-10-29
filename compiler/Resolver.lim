@@ -2,6 +2,7 @@ resolveModule(resolver : Resolver, module : Module) : Module {
     Module(
         package = module.package,
         file = module.file,
+        alias = module.alias,
         typeDefinitions = map(module.typeDefinitions, d => resolveTypeDefinition(resolver, d)),
         functionDefinitions = map(module.functionDefinitions, d => resolveFunctionDefinition(resolver, d))
     )
@@ -108,7 +109,7 @@ resolveTerm(resolver : Resolver, term : Term) : Term {
             Term.variable(position, resolver.variable(position, symbol))
         }
         staticCall(position, symbol, methodName, arguments) {
-            resolvedSymbol := panic("TODO")
+            resolvedSymbol := resolver.staticName(position, symbol)
             resolvedArguments := map(arguments.unnamed, a => resolveTerm(resolver, a))
             resolvedNamedArguments := map(arguments.named, a => NamedArgument(a.order, a.name, resolveTerm(resolver, a.value)))
             Term.staticCall(position, resolvedSymbol, methodName, Arguments(resolvedArguments, resolvedNamedArguments))
@@ -140,6 +141,7 @@ Resolver {
     typeConstructor(position : Int, symbol : String) : String
     variable(position : Int, symbol : String) : String
     typeParameter(position : Int, symbol : String) : String
+    staticName(position : Int, symbol : String) : String
     addVariable(position : Int, name : String) : String
     addTypeParameter(position : Int, name : String) : String
     scope[t](body : () => t) : t
@@ -148,6 +150,8 @@ Resolver {
 newResolver(modules : Array[Module]) : Resolver {
     typeConstructors := newStringMapBuilder(flatten(map(modules, m => map(m.typeDefinitions, d => Pair(d.symbol, "\(m.package).\(d.symbol)")))))
     variables := newStringMapBuilder(flatten(map(modules, m => map(m.functionDefinitions, d => Pair(d.signature.symbol, "\(m.package).\(d.signature.symbol)")))))
+    moduleAliases := newStringMapBuilder(map(modules, m => Pair(m.alias, "\(m.package)")))
+    moduleTypeConstructors := newStringMapBuilder(flatten(map(modules, m => map(m.typeDefinitions, d => Pair("\(m.alias).\(d.symbol)", "\(m.package).\(d.symbol)")))))
     typeParameters := newStringMapBuilder([])
     Resolver {
         typeConstructor(position, symbol) {
@@ -158,8 +162,24 @@ newResolver(modules : Array[Module]) : Resolver {
         }
         typeParameter(position, symbol) {
             typeParameters.get(symbol) ? {
-                none { panic("No such type parameter: \(symbol)") }
                 some(x) { x }
+                none { panic("No such type parameter: \(symbol)") }
+            }
+        }
+        staticName(position, symbol) {
+            typeConstructors.get(symbol) ? {
+                some(x) { x }
+                none {
+                    moduleAliases.get(symbol) ? {
+                        some(x) { x }
+                        none {
+                            moduleTypeConstructors.get(symbol) ? {
+                                some(x) { x }
+                                none { panic("No such module or type: \(symbol)") }
+                            }
+                        }
+                    }
+                }
             }
         }
         variable(position, symbol) {
