@@ -42,7 +42,7 @@ resolveMethodImplementation(resolver : Resolver, i : MethodImplementation) : Met
 }
 
 resolveMatchCase(resolver : Resolver, case : MatchCase) : MatchCase {
-    panic("TODO")
+    MatchCase(resolveMethodImplementation(resolver, case.body), case.fieldNames)
 }
 
 resolveBody(resolver : Resolver, body : Array[Statement]) : Array[Statement] {
