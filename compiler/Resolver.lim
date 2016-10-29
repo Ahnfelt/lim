@@ -46,7 +46,9 @@ resolveMatchCase(resolver : Resolver, case : MatchCase) : MatchCase {
 }
 
 resolveBody(resolver : Resolver, body : Array[Statement]) : Array[Statement] {
-    map(body, s => resolveStatement(resolver, s))
+    resolver.scope({
+        map(body, s => resolveStatement(resolver, s))
+    })
 }
 
 resolveStatement(resolver : Resolver, statement : Statement) : Statement {
