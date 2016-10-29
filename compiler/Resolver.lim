@@ -108,8 +108,10 @@ resolveTerm(resolver : Resolver, term : Term) : Term {
             Term.variable(position, resolver.variable(position, symbol))
         }
         staticCall(position, symbol, methodName, arguments) {
-            panic("TODO")
-            Term.staticCall(position, symbol, methodName, arguments)
+            resolvedSymbol := panic("TODO")
+            resolvedArguments := map(arguments.unnamed, a => resolveTerm(resolver, a))
+            resolvedNamedArguments := map(arguments.named, a => NamedArgument(a.order, a.name, resolveTerm(resolver, a.value)))
+            Term.staticCall(position, resolvedSymbol, methodName, Arguments(resolvedArguments, resolvedNamedArguments))
         }
         methodCall(position, value, methodName, arguments) {
             resolvedValue := resolveTerm(resolver, value)
