@@ -33,8 +33,12 @@ resolveMethodSignatureInScope(resolver : Resolver, s : MethodSignature) : Method
     MethodSignature(s.position, symbol, s.typeParameters, parameters, returnType)
 }
 
-resolveMethodImplementation(resolver : Resolver, implementation : MethodImplementation) : MethodImplementation {
-    panic("TODO")
+resolveMethodImplementation(resolver : Resolver, i : MethodImplementation) : MethodImplementation {
+    resolver.scope({
+        parameters := map(i.parameters, p => resolver.addVariable(i.position, p))
+        body := resolveBody(resolver, i.body)
+        MethodImplementation(i.position, i.name, parameters, body)
+    })
 }
 
 resolveMatchCase(resolver : Resolver, case : MatchCase) : MatchCase {
@@ -51,17 +55,16 @@ resolveStatement(resolver : Resolver, statement : Statement) : Statement {
             Statement.term(position, resolveTerm(resolver, term))
         }
         let(position, variable, type, value) {
-            resolver.scope({
-                resolver.addVariable(position, variable)
-                variableType := type ? {
-                    some(t) { Option.some(resolveType(resolver, t)) }
-                    none { Option.none }
-                }
-                Statement.let(position, resolver.variable(position, variable), variableType, resolveTerm(resolver, value))
-            })
+            resolver.addVariable(position, variable)
+            variableType := type ? {
+                some(t) { Option.some(resolveType(resolver, t)) }
+                none { Option.none }
+            }
+            Statement.let(position, resolver.variable(position, variable), variableType, resolveTerm(resolver, value))
         }
-        function(definition) {
-            Statement.function(resolveFunctionDefinition(resolver, definition))
+        functions(definitions) {
+            each(definitions, d => resolver.addVariable(d.position, d.signature.symbol))
+            Statement.functions(map(definitions, d => resolveFunctionDefinition(resolver, d)))
         }
         assign(position, variable, value) {
             Statement.assign(position, resolver.variable(position, variable), resolveTerm(resolver, value))

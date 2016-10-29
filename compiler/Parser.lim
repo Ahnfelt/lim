@@ -390,9 +390,9 @@ parseBody(pc : Pc) : Array[Statement] {
 parseStatement(pc : Pc) : Statement {
     position := pc.position
     pc.lookahead("statement", [
-        Pair([TokenType.lower, TokenType.leftRound, TokenType.rightRound, TokenType.leftCurly], { Statement.function(parseFunctionDefinition(pc)) }),
-        Pair([TokenType.lower, TokenType.leftRound, TokenType.rightRound, TokenType.colon], { Statement.function(parseFunctionDefinition(pc)) }),
-        Pair([TokenType.lower, TokenType.leftRound, TokenType.lower, TokenType.colon], { Statement.function(parseFunctionDefinition(pc)) }),
+        Pair([TokenType.lower, TokenType.leftRound, TokenType.rightRound, TokenType.leftCurly], { Statement.functions(parseFunctionDefinitions(pc)) }),
+        Pair([TokenType.lower, TokenType.leftRound, TokenType.rightRound, TokenType.colon], { Statement.functions(parseFunctionDefinitions(pc)) }),
+        Pair([TokenType.lower, TokenType.leftRound, TokenType.lower, TokenType.colon], { Statement.functions(parseFunctionDefinitions(pc)) }),
         Pair([TokenType.lower, TokenType.colon], {
             name := pc.consume(TokenType.lower)
             pc.consume(TokenType.colon)
@@ -473,6 +473,21 @@ parseMethodSignature(pc : Pc) : MethodSignature {
         Pair([], { Type.constructor(position, "_.Void", []) })
     ])
     MethodSignature(position, name, typeParameters, parameters, returnType)
+}
+
+parseFunctionDefinitions(pc : Pc) : Array[FunctionDefinition] {
+    position := pc.position
+    result := newArrayBuilder()
+    while({ pc.lookahead("function", [
+        Pair([TokenType.lower, TokenType.leftRound, TokenType.rightRound, TokenType.leftCurly], { Bool.true }),
+        Pair([TokenType.lower, TokenType.leftRound, TokenType.rightRound, TokenType.colon], { Bool.true }),
+        Pair([TokenType.lower, TokenType.leftRound, TokenType.lower, TokenType.colon], { Bool.true }),
+        Pair([TokenType.separator, TokenType.lower, TokenType.leftRound, TokenType.rightRound, TokenType.leftCurly], { pc.consume(TokenType.separator); Bool.true }),
+        Pair([TokenType.separator, TokenType.lower, TokenType.leftRound, TokenType.rightRound, TokenType.colon], { pc.consume(TokenType.separator); Bool.true }),
+        Pair([TokenType.separator, TokenType.lower, TokenType.leftRound, TokenType.lower, TokenType.colon], { pc.consume(TokenType.separator); Bool.true }),
+        Pair([], { Bool.false })
+    ]) }, { result.push(parseFunctionDefinition(pc)) })
+    result.drain
 }
 
 parseFunctionDefinition(pc : Pc) : FunctionDefinition {
