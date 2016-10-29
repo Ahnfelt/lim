@@ -33,6 +33,14 @@ resolveMethodSignatureInScope(resolver : Resolver, s : MethodSignature) : Method
     MethodSignature(s.position, symbol, s.typeParameters, parameters, returnType)
 }
 
+resolveMethodImplementation(resolver : Resolver, implementation : MethodImplementation) : MethodImplementation {
+    panic("TODO")
+}
+
+resolveMatchCase(resolver : Resolver, case : MatchCase) : MatchCase {
+    panic("TODO")
+}
+
 resolveBody(resolver : Resolver, body : Array[Statement]) : Array[Statement] {
     map(body, s => resolveStatement(resolver, s))
 }
@@ -121,10 +129,14 @@ resolveTerm(resolver : Resolver, term : Term) : Term {
             Term.methodCall(position, resolvedValue, methodName, Arguments(resolvedArguments, resolvedNamedArguments))
         }
         instance(position, symbol, thisName, methods) {
-            panic("TODO")
+            resolvedSymbol := resolver.typeConstructor(position, symbol)
+            resolvedMethods := map(methods, i => resolveMethodImplementation(resolver, i))
+            Term.instance(position, resolvedSymbol, thisName, resolvedMethods)
         }
         match(position, value, cases) {
-            panic("TODO")
+            resolvedValue := resolveTerm(resolver, value)
+            resolvedCases := map(cases, c => resolveMatchCase(resolver, c))
+            Term.match(position, resolvedValue, resolvedCases)
         }
         lambda(position, parameters, body) {
             resolver.scope({
