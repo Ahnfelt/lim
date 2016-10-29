@@ -264,7 +264,7 @@ class Emitter {
             builder ++= escapeMethod(m.name)
             builder ++= ": "
             builder ++= "function("
-            builder ++= m.parameters.map(_.name).mkString(", ")
+            builder ++= m.parameters.map(p => escapeVariable(p.name)).mkString(", ")
             builder ++= ") { return "
             if(m.parameters.nonEmpty) {
                 builder ++= "{\n"

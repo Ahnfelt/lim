@@ -307,9 +307,9 @@ parseCall(pc : Pc) : Term {
     ]) }, {
         named := Bool.false
         position := pc.position
-        methodName := pc.lookahead("method name", [
+        methodName := pc.lookahead("method call", [
             Pair([TokenType.dot], { pc.consume(TokenType.dot); pc.consume(TokenType.lower) }),
-            Pair([], { "invoke" })
+            Pair([TokenType.leftRound], { "invoke" })
         ])
         result = pc.lookahead("method call", [
             Pair([TokenType.leftRound], {
