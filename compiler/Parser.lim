@@ -51,7 +51,7 @@ parseTypeConstructor(pc : Pc) : Type {
 }
 
 parseType(pc : Pc) : Type {
-    pc.lookahead("type", [
+    left := pc.lookahead("type", [
         Pair([TokenType.leftRound], {
             pc.consume(TokenType.leftRound)
             typeArguments := parseCommaList(pc, { parseType(pc) }, TokenType.rightRound)
@@ -67,6 +67,15 @@ parseType(pc : Pc) : Type {
             Type.parameter(position, name)
         }),
         Pair([], { parseTypeConstructor(pc) })
+    ])
+    pc.lookahead("function type", [
+        Pair([TokenType.rightThickArrow], {
+            position := pc.position
+            pc.consume(TokenType.rightThickArrow)
+            returnType := parseType(pc)
+            Type.constructor(position, "_.F1", [left, returnType])
+        }),
+        Pair([], { left })
     ])
 }
 
