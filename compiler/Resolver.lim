@@ -172,8 +172,17 @@ newResolver(modules : Array[Module]) : Resolver {
     allTypeConstructors := flatten(map(modules, m => map(m.typeDefinitions, d => Pair(d.symbol, "\(m.package).\(d.symbol)"))))
     allVariables := flatten(map(modules, m => map(m.functionDefinitions, d => Pair(d.signature.symbol, "\(m.package).\(d.signature.symbol)"))))
 
-    typeConstructors := newStringMapBuilder(allTypeConstructors)
-    variables := newStringMapBuilder(allVariables)
+    typeConstructors := newStringMapBuilder([])
+    variables := newStringMapBuilder([])
+    each(allTypeConstructors, p => {
+        when(typeConstructors.has(p.second), { panic("Duplicate type definition: \(p.first)") })
+        typeConstructors.set(p.first, p.second)
+    })
+    each(allVariables, p => {
+        when(variables.has(p.second), { panic("Duplicate function definition: \(p.first)") })
+        variables.set(p.first, p.second)
+    })
+
     moduleAliases := newStringMapBuilder(map(modules, m => Pair(m.alias, "\(m.package)")))
     moduleTypeConstructors := newStringMapBuilder(flatten(map(modules, m => map(m.typeDefinitions, d => Pair("\(m.alias).\(d.symbol)", "\(m.package).\(d.symbol)")))))
 
