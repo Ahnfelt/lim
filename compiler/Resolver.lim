@@ -169,20 +169,22 @@ newResolver(modules : Array[Module]) : Resolver {
     canonicalPreludeTypes := map(preludeTypes, t => "_.\(t)")
     preludeTypeConstructors := newStringMapBuilder(zip(preludeTypes.concat(canonicalPreludeTypes), canonicalPreludeTypes.concat(canonicalPreludeTypes)))
 
-    allTypeConstructors := flatten(map(modules, m => map(m.typeDefinitions, d => Pair(d.symbol, "\(m.package).\(d.symbol)"))))
-    allVariables := flatten(map(modules, m => map(m.functionDefinitions, d => Pair(d.signature.symbol, "\(m.package).\(d.signature.symbol)"))))
+    allTypes := flatten(map(modules, m => map(m.typeDefinitions, d => Pair(d.symbol, "\(m.package).\(d.symbol)"))))
+    allFunctions := flatten(map(modules, m => map(m.functionDefinitions, d => Pair(d.signature.symbol, "\(m.package).\(d.signature.symbol)"))))
 
-    typeConstructors := newStringMapBuilder([])
-    variables := newStringMapBuilder([])
-    each(allTypeConstructors, p => {
-        when(typeConstructors.has(p.second), { panic("Duplicate type definition: \(p.first)") })
-        typeConstructors.set(p.first, p.second)
+    definedTypes := newStringMapBuilder([])
+    definedFunctions := newStringMapBuilder([])
+    each(allTypes, p => {
+        when(definedTypes.has(p.second), { panic("Duplicate type definition: \(p.first)") })
+        definedTypes.set(p.second, Bool.true)
     })
-    each(allVariables, p => {
-        when(variables.has(p.second), { panic("Duplicate function definition: \(p.first)") })
-        variables.set(p.first, p.second)
+    each(allFunctions, p => {
+        when(definedFunctions.has(p.second), { panic("Duplicate function definition: \(p.first)") })
+        definedFunctions.set(p.second, Bool.true)
     })
 
+    typeConstructors := newStringMapBuilder(allTypes)
+    variables := newStringMapBuilder(allFunctions)
     moduleAliases := newStringMapBuilder(map(modules, m => Pair(m.alias, "\(m.package)")))
     moduleTypeConstructors := newStringMapBuilder(flatten(map(modules, m => map(m.typeDefinitions, d => Pair("\(m.alias).\(d.symbol)", "\(m.package).\(d.symbol)")))))
 
