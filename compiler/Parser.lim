@@ -587,3 +587,21 @@ testParser(program : String) {
     resolved := resolveModule(resolver, parsed)
     js"console.dir(resolved);"
 }
+
+testAll(moduleSources : Array[Pair[String, String]]) {
+    parsedModules := map(moduleSources, p => {
+        moduleName := p.first
+        js"console.log('Parsing ' + moduleName);"
+        tokens := lexTokens(p.second)
+        pc := newPc(newTokenCursor(tokens, 0), p.second)
+        Pair(p.first, parseModule(pc, p.first, p.first, p.first))
+    })
+    js"console.dir(parsedModules);"
+    resolver := newResolver(map(parsedModules, p => p.second))
+    resolvedModules := map(parsedModules, p => {
+        moduleName := p.first
+        js"console.log('Resolving ' + moduleName);"
+        Pair(p.first, resolveModule(resolver, p.second))
+    })
+    js"console.dir(resolvedModules);"
+}

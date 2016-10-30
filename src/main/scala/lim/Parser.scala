@@ -1,6 +1,6 @@
 package lim
 
-import java.io.File
+import java.io._
 
 import lim.Lexer._
 import lim.Lexer.TokenType._
@@ -592,97 +592,8 @@ object Parser {
         }
         val output = test(builder.toString())
         println(output)
+        new FileOutputStream("compiler.js").write(output.toString.getBytes("UTF-8"))
         Thread.sleep(100)
-    }
-
-    def main2(args : Array[String]) {
-        val p1 = test("""
-
-            Case[t] {
-                case(condition : () => Bool, body : () => t) : Case[t]
-                else(body : () => t) : t
-            }
-
-            case[t](condition : () => Bool, body : () => t) : Case[t] {
-                if(condition(), {
-                    result := body()
-                    Case { this =>
-                        case(a, b) { this }
-                        else(b) { result }
-                    }
-                }, {
-                    Case {
-                        case(condition, body) { case(condition, body) }
-                        else(body) { body() }
-                    }
-                })
-            }
-
-            ArrayBuilder[t] {
-                drain() : Array[t]
-                push(element : t)
-                pushAll(elements : Array[t])
-                invoke(index : Int) : t
-                size : Int
-            }
-
-            if[t](condition : Bool, then : () => t, else : () => t) : t {
-                condition ? {
-                    true { then() }
-                    false { else() }
-                }
-            }
-
-            when(condition : Bool, then : () => Void) {
-                condition ? {
-                    true { then() }
-                    false {}
-                }
-            }
-
-            while(condition : () => Bool, body : () => Void) {
-                condition() ? {
-                    true {
-                        body()
-                        while(condition, body)
-                    }
-                    false {}
-                }
-            }
-
-            each[t](array : Array[t], body : t => Void) {
-                i := 0
-                while({i < array.size}, {
-                    body(array(i))
-                    i += 1
-                })
-            }
-
-            newArrayBuilder[t]() : ArrayBuilder[t] {
-                array := []
-                ArrayBuilder { this =>
-                    drain() {
-                        result := array
-                        array = []
-                        result
-                    }
-                    push(element) {
-                        js"array.push(element);"
-                    }
-                    pushAll(elements) {
-                        each(elements, e => this.push(e))
-                    }
-                    invoke(index) {
-                        array(index)
-                    }
-                    size() {
-                        array.size()
-                    }
-                }
-            }
-        """)
-
-        println(p1)
     }
 
     def test(text : String) : Any = {
