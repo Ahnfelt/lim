@@ -168,11 +168,17 @@ newResolver(modules : Array[Module]) : Resolver {
     preludeTypes := ["Void", "Bool", "String", "Int", "Float", "Array", "Pair"]
     canonicalPreludeTypes := map(preludeTypes, t => "_.\(t)")
     preludeTypeConstructors := newStringMapBuilder(zip(preludeTypes.concat(canonicalPreludeTypes), canonicalPreludeTypes.concat(canonicalPreludeTypes)))
-    typeConstructors := newStringMapBuilder(flatten(map(modules, m => map(m.typeDefinitions, d => Pair(d.symbol, "\(m.package).\(d.symbol)")))))
-    variables := newStringMapBuilder(flatten(map(modules, m => map(m.functionDefinitions, d => Pair(d.signature.symbol, "\(m.package).\(d.signature.symbol)")))))
+
+    allTypeConstructors := flatten(map(modules, m => map(m.typeDefinitions, d => Pair(d.symbol, "\(m.package).\(d.symbol)"))))
+    allVariables := flatten(map(modules, m => map(m.functionDefinitions, d => Pair(d.signature.symbol, "\(m.package).\(d.signature.symbol)"))))
+
+    typeConstructors := newStringMapBuilder(allTypeConstructors)
+    variables := newStringMapBuilder(allVariables)
     moduleAliases := newStringMapBuilder(map(modules, m => Pair(m.alias, "\(m.package)")))
     moduleTypeConstructors := newStringMapBuilder(flatten(map(modules, m => map(m.typeDefinitions, d => Pair("\(m.alias).\(d.symbol)", "\(m.package).\(d.symbol)")))))
+
     typeParameters := newStringMapBuilder([])
+
     Resolver {
         typeConstructor(position, symbol) {
             typeConstructors.get(symbol) ? {
@@ -218,6 +224,10 @@ newResolver(modules : Array[Module]) : Resolver {
             name
         }
         addTypeParameter(position, name) {
+            typeParameters.get(name) ? {
+                some(n) { panic("Suspicious shadowing of type parameter: \(name)") }
+                none {}
+            }
             typeParameters.set(name, name)
             name
         }
