@@ -26,11 +26,10 @@ resolveFunctionDefinition(resolver : Resolver, d : FunctionDefinition) : Functio
 }
 
 resolveMethodSignatureInScope(resolver : Resolver, s : MethodSignature) : MethodSignature {
-    symbol := resolver.variable(s.position, s.symbol)
     typeParameters := map(s.typeParameters, p => resolver.addTypeParameter(s.position, p))
     parameters := map(s.parameters, p => { Parameter(p.position, resolver.addVariable(p.position, p.name), resolveType(resolver, p.type)) })
     returnType := resolveType(resolver, s.returnType)
-    MethodSignature(s.position, symbol, s.typeParameters, parameters, returnType)
+    MethodSignature(s.position, s.symbol, s.typeParameters, parameters, returnType)
 }
 
 resolveMethodImplementation(resolver : Resolver, i : MethodImplementation) : MethodImplementation {
@@ -134,6 +133,7 @@ resolveTerm(resolver : Resolver, term : Term) : Term {
             Term.methodCall(position, resolvedValue, methodName, Arguments(resolvedArguments, resolvedNamedArguments))
         }
         instance(position, symbol, thisName, methods) {
+            thisName ? { some(n) { resolver.addVariable(position, n) }; none { "" } }
             resolvedSymbol := resolver.typeConstructor(position, symbol)
             resolvedMethods := map(methods, i => resolveMethodImplementation(resolver, i))
             Term.instance(position, resolvedSymbol, thisName, resolvedMethods)
@@ -165,9 +165,9 @@ Resolver {
 }
 
 newResolver(modules : Array[Module]) : Resolver {
-    preludeTypes := ["Void", "Bool", "String", "Int", "Float", "Array", "Pair"]
+    preludeTypes := ["Void", "Bool", "String", "Int", "Float", "Array", "Option", "Pair", "F0", "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9"]
     canonicalPreludeTypes := map(preludeTypes, t => "_.\(t)")
-    preludeTypeConstructors := newStringMapBuilder(zip(preludeTypes.concat(canonicalPreludeTypes), canonicalPreludeTypes.concat(canonicalPreludeTypes)))
+    preludeTypeConstructors := zip(preludeTypes.concat(canonicalPreludeTypes), canonicalPreludeTypes.concat(canonicalPreludeTypes))
 
     allTypes := flatten(map(modules, m => map(m.typeDefinitions, d => Pair(d.symbol, "\(m.package).\(d.symbol)"))))
     allFunctions := flatten(map(modules, m => map(m.functionDefinitions, d => Pair(d.signature.symbol, "\(m.package).\(d.signature.symbol)"))))
@@ -183,7 +183,7 @@ newResolver(modules : Array[Module]) : Resolver {
         definedFunctions.set(p.second, Bool.true)
     })
 
-    typeConstructors := newStringMapBuilder(allTypes)
+    typeConstructors := newStringMapBuilder(preludeTypeConstructors.concat(allTypes))
     variables := newStringMapBuilder(allFunctions)
     moduleAliases := newStringMapBuilder(map(modules, m => Pair(m.alias, "\(m.package)")))
     moduleTypeConstructors := newStringMapBuilder(flatten(map(modules, m => map(m.typeDefinitions, d => Pair("\(m.alias).\(d.symbol)", "\(m.package).\(d.symbol)")))))
@@ -243,13 +243,13 @@ newResolver(modules : Array[Module]) : Resolver {
             name
         }
         scope(body) {
-            savedTypeConstructors := typeConstructors
-            savedVariables := variables
-            savedTypeParameters := typeParameters
+            savedTypeConstructors := typeConstructors.toArray
+            savedVariables := variables.toArray
+            savedTypeParameters := typeParameters.toArray
             result := body()
-            typeConstructors = savedTypeConstructors
-            variables = savedVariables
-            typeParameters = savedTypeParameters
+            typeConstructors = newStringMapBuilder(savedTypeConstructors)
+            variables = newStringMapBuilder(savedVariables)
+            typeParameters = newStringMapBuilder(savedTypeParameters)
             result
         }
     }

@@ -33,7 +33,7 @@ newStringMapBuilder[v](array : Array[Pair[String, v]]) : StringMapBuilder[v] {
         remove(key, value) { js"delete map[key];" }
         toArray() {
             result := []
-            js"for(var key in map) if(this_.has(key)) result.push(map[key]);"
+            js"for(var key in map) if(this_.has(key)) result.push(Pair.pair(key, map[key]));"
             result
         }
         toStringMap() { newStringMap(this.toArray) }
