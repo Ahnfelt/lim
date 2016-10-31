@@ -187,10 +187,11 @@ newResolver(modules : Array[Module]) : Resolver {
     })
 
     typeConstructors := newStringMapBuilder(preludeTypeConstructors.concat(allTypes))
-    variables := newStringMapBuilder(allFunctions)
+    functions := newStringMapBuilder(allFunctions)
     moduleAliases := newStringMapBuilder(map(modules, m => Pair(m.alias, "\(m.package)")))
     moduleTypeConstructors := newStringMapBuilder(flatten(map(modules, m => map(m.typeDefinitions, d => Pair("\(m.alias).\(d.symbol)", "\(d.symbol)@\(m.package)")))))
 
+    variables := newStringMapBuilder([])
     typeParameters := newStringMapBuilder([])
 
     Resolver {
@@ -229,8 +230,13 @@ newResolver(modules : Array[Module]) : Resolver {
         }
         variable(position, symbol) {
             variables.get(symbol) ? {
-                none { panic("No such variable: \(symbol)") }
                 some(x) { x }
+                none {
+                    functions.get(symbol) ? {
+                        none { panic("No such variable or function: \(symbol)") }
+                        some(x) { x }
+                    }
+                }
             }
         }
         assertNoVariable(position, name) {

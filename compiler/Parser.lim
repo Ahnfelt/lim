@@ -559,7 +559,7 @@ parseTypeDefinition(pc : Pc) : TypeDefinition {
     TypeDefinition(position, name, typeParameters, isSum || isRecord, methodSignatures)
 }
 
-parseModule(pc : Pc, package : String, file : String, alias : String) : Module {
+parseModule(pc : Pc, package : String, alias : String, file : String) : Module {
     typeDefinitions := newArrayBuilder()
     functionDefinitions := newArrayBuilder()
     while({ pc.lookahead("definition or end of file", [
@@ -586,24 +586,13 @@ parseModule(pc : Pc, package : String, file : String, alias : String) : Module {
     )
 }
 
-testParser(program : String) {
-    tokens := lexTokens(program)
-    js"for(var i = 0; i < tokens.length && i < 50; i++) console.log(tokens[i].token._);"
-    pc := newPc(newTokenCursor(tokens, 0), program)
-    parsed := parseModule(pc, "testPackage", "testFile", "testAlias")
-    js"console.dir(parsed);"
-    resolver := newResolver([parsed])
-    resolved := resolveModule(resolver, parsed)
-    js"console.dir(resolved);"
-}
-
 testAll(moduleSources : Array[Pair[String, String]]) {
     parsedModules := map(moduleSources, p => {
         moduleName := p.first
         js"console.log('Parsing ' + moduleName);"
         tokens := lexTokens(p.second)
         pc := newPc(newTokenCursor(tokens, 0), p.second)
-        Pair(p.first, parseModule(pc, p.first, p.first, p.first))
+        Pair(p.first, parseModule(pc, "_current", "_Current", p.first))
     })
     js"console.dir(parsedModules);"
     resolver := newResolver(map(parsedModules, p => p.second))
