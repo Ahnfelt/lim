@@ -6,7 +6,7 @@ resolveModule(resolver : Resolver, module : Module) : Module {
         alias = module.alias,
         source = module.source,
         typeDefinitions = map(module.typeDefinitions, d => resolveTypeDefinition(resolver, d)),
-        functionDefinitions = map(module.functionDefinitions, d => resolveFunctionDefinition(resolver, d))
+        functionDefinitions = map(module.functionDefinitions, d => resolveFunctionDefinition(resolver, d, Bool.true))
     )
 }
 
@@ -14,24 +14,25 @@ resolveTypeDefinition(resolver : Resolver, d : TypeDefinition) : TypeDefinition 
     resolver.scope({
         symbol := resolver.typeConstructor(d.position, d.symbol)
         typeParameters := map(d.typeParameters, p => resolver.addTypeParameter(d.position, p))
-        methodSignatures := map(d.methodSignatures, s => resolver.scope({ resolveMethodSignatureInScope(resolver, s) }))
+        methodSignatures := map(d.methodSignatures, s => resolver.scope({ resolveMethodSignatureInScope(resolver, s, Bool.false) }))
         TypeDefinition(d.position, symbol, typeParameters, d.isSum, methodSignatures)
     })
 }
 
-resolveFunctionDefinition(resolver : Resolver, d : FunctionDefinition) : FunctionDefinition {
+resolveFunctionDefinition(resolver : Resolver, d : FunctionDefinition, topLevel : Bool) : FunctionDefinition {
     resolver.scope({
-        signature := resolveMethodSignatureInScope(resolver, d.signature)
+        signature := resolveMethodSignatureInScope(resolver, d.signature, topLevel)
         body := resolveBody(resolver, d.body)
         FunctionDefinition(d.position, signature, body)
     })
 }
 
-resolveMethodSignatureInScope(resolver : Resolver, s : MethodSignature) : MethodSignature {
+resolveMethodSignatureInScope(resolver : Resolver, s : MethodSignature, topLevel : Bool) : MethodSignature {
+    symbol := if(topLevel, { resolver.variable(s.position, s.symbol) }, { s.symbol })
     typeParameters := map(s.typeParameters, p => resolver.addTypeParameter(s.position, p))
     parameters := map(s.parameters, p => { Parameter(p.position, resolver.addVariable(p.position, p.name), resolveType(resolver, p.type)) })
     returnType := resolveType(resolver, s.returnType)
-    MethodSignature(s.position, s.symbol, s.typeParameters, parameters, returnType)
+    MethodSignature(s.position, symbol, s.typeParameters, parameters, returnType)
 }
 
 resolveMethodImplementation(resolver : Resolver, i : MethodImplementation) : MethodImplementation {
@@ -68,7 +69,7 @@ resolveStatement(resolver : Resolver, statement : Statement) : Statement {
         }
         functions(definitions) {
             each(definitions, d => resolver.addVariable(d.position, d.signature.symbol))
-            Statement.functions(map(definitions, d => resolveFunctionDefinition(resolver, d)))
+            Statement.functions(map(definitions, d => resolveFunctionDefinition(resolver, d, Bool.false)))
         }
         assign(position, variable, value) {
             Statement.assign(position, resolver.variable(position, variable), resolveTerm(resolver, value))
