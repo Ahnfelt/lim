@@ -185,13 +185,21 @@ newResolver(modules : Array[Module]) : Resolver {
 
     definedTypes := newStringMapBuilder([])
     definedFunctions := newStringMapBuilder([])
-    each(allTypes, p => {
-        when(definedTypes.has(p.second), { panic("Duplicate type definition: \(p.first)") })
-        definedTypes.set(p.second, Bool.true)
+    each(modules, m => {
+        source = m.source
+        each(m.typeDefinitions, d => {
+            unique := "\(d.symbol)@\(m.package)"
+            when(definedTypes.has(unique), { error("Duplicate type definition: \(d.symbol)", d.position) })
+            definedTypes.set(unique, Bool.true)
+        })
     })
-    each(allFunctions, p => {
-        when(definedFunctions.has(p.second), { panic("Duplicate function definition: \(p.first)") })
-        definedFunctions.set(p.second, Bool.true)
+    each(modules, m => {
+        source = m.source
+        each(m.functionDefinitions, d => {
+            unique := "\(d.signature.symbol)@\(m.package)"
+            when(definedFunctions.has(unique), { error("Duplicate function definition: \(d.signature.symbol)", d.position) })
+            definedFunctions.set(unique, Bool.true)
+        })
     })
 
     typeConstructors := newStringMapBuilder(preludeTypeConstructors.concat(allTypes))
