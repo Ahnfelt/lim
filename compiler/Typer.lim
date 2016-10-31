@@ -69,7 +69,10 @@ Typer {
 
 newTyper(modules : Array[Module]) : Typer {
     types := newStringMapBuilder(flatten(map(modules, m => map(m.typeDefinitions, d => Pair(d.symbol, d)))))
-    functions := newStringMapBuilder([])
+    functions := newStringMapBuilder(flatten(map(modules, m => map(m.functionDefinitions, d => {
+        type := Type.constructor(d.position, "F\(d.signature.parameters.size.toString)@_", map(d.signature.parameters, p => p.type).concat([d.signature.returnType]))
+        Pair(d.signature.symbol, type)
+    }))))
     variables := newStringMapBuilder([])
     substitution := newStringMapBuilder([])
     nextId := 0
