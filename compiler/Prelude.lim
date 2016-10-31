@@ -102,7 +102,7 @@ flatten[a](array : Array[Array[a]]) : Array[a] {
 }
 
 panic[a](problem : String) : a {
-    js"debugger;"
+    js"'debugger';"
     js"throw problem;"
 }
 
