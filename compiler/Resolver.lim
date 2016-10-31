@@ -56,6 +56,7 @@ resolveStatement(resolver : Resolver, statement : Statement) : Statement {
             Statement.term(position, resolveTerm(resolver, term))
         }
         let(position, variable, type, value) {
+            resolver.assertNoVariable(position, variable)
             resolver.addVariable(position, variable)
             variableType := type ? {
                 some(t) { Option.some(resolveType(resolver, t)) }
@@ -159,6 +160,7 @@ Resolver {
     variable(position : Int, symbol : String) : String
     typeParameter(position : Int, symbol : String) : String
     staticName(position : Int, symbol : String) : String
+    assertNoVariable(position : Int, name : String) : Void
     addVariable(position : Int, name : String) : String
     addTypeParameter(position : Int, name : String) : String
     scope[t](body : () => t) : t
@@ -230,6 +232,9 @@ newResolver(modules : Array[Module]) : Resolver {
                 none { panic("No such variable: \(symbol)") }
                 some(x) { x }
             }
+        }
+        assertNoVariable(position, name) {
+            when(variables.has(name), { panic("Suspicious shadowing of variable: \(name)") })
         }
         addVariable(position, name) {
             variables.set(name, name)
