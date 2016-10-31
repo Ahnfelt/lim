@@ -402,6 +402,7 @@ parseStatement(pc : Pc) : Statement {
         Pair([TokenType.lower, TokenType.leftRound, TokenType.rightRound, TokenType.leftCurly], { Statement.functions(parseFunctionDefinitions(pc)) }),
         Pair([TokenType.lower, TokenType.leftRound, TokenType.rightRound, TokenType.colon], { Statement.functions(parseFunctionDefinitions(pc)) }),
         Pair([TokenType.lower, TokenType.leftRound, TokenType.lower, TokenType.colon], { Statement.functions(parseFunctionDefinitions(pc)) }),
+        Pair([TokenType.lower, TokenType.leftSquare], { Statement.functions(parseFunctionDefinitions(pc)) }),
         Pair([TokenType.lower, TokenType.colon], {
             name := pc.consume(TokenType.lower)
             pc.consume(TokenType.colon)
@@ -491,9 +492,11 @@ parseFunctionDefinitions(pc : Pc) : Array[FunctionDefinition] {
         Pair([TokenType.lower, TokenType.leftRound, TokenType.rightRound, TokenType.leftCurly], { Bool.true }),
         Pair([TokenType.lower, TokenType.leftRound, TokenType.rightRound, TokenType.colon], { Bool.true }),
         Pair([TokenType.lower, TokenType.leftRound, TokenType.lower, TokenType.colon], { Bool.true }),
+        Pair([TokenType.lower, TokenType.leftSquare], { Bool.true }),
         Pair([TokenType.separator, TokenType.lower, TokenType.leftRound, TokenType.rightRound, TokenType.leftCurly], { pc.consume(TokenType.separator); Bool.true }),
         Pair([TokenType.separator, TokenType.lower, TokenType.leftRound, TokenType.rightRound, TokenType.colon], { pc.consume(TokenType.separator); Bool.true }),
         Pair([TokenType.separator, TokenType.lower, TokenType.leftRound, TokenType.lower, TokenType.colon], { pc.consume(TokenType.separator); Bool.true }),
+        Pair([TokenType.separator, TokenType.lower, TokenType.leftSquare], { pc.consume(TokenType.separator); Bool.true }),
         Pair([], { Bool.false })
     ]) }, { result.push(parseFunctionDefinition(pc)) })
     result.drain

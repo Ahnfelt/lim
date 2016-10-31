@@ -14,7 +14,7 @@ resolveTypeDefinition(resolver : Resolver, d : TypeDefinition) : TypeDefinition 
     resolver.scope({
         symbol := resolver.typeConstructor(d.position, d.symbol)
         typeParameters := map(d.typeParameters, p => resolver.addTypeParameter(d.position, p))
-        methodSignatures := map(d.methodSignatures, s => resolveMethodSignatureInScope(resolver, s))
+        methodSignatures := map(d.methodSignatures, s => resolver.scope({ resolveMethodSignatureInScope(resolver, s) }))
         TypeDefinition(d.position, symbol, typeParameters, d.isSum, methodSignatures)
     })
 }
