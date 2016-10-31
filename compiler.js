@@ -917,6 +917,9 @@ return each(m.typeDefinitions, (function(d) {
 // String
 var unique = (d.symbol + "@" + m.package_);
 when(definedTypes.has(unique), (function() {
+// String
+var moduleName = m.file;
+console.log('Resolving ' + moduleName);
 return error(("Duplicate type definition: " + d.symbol), d.position);
 }));
 return definedTypes.set(unique, true);
@@ -928,6 +931,9 @@ return each(m.functionDefinitions, (function(d) {
 // String
 var unique = (d.signature.symbol + "@" + m.package_);
 when(definedFunctions.has(unique), (function() {
+// String
+var moduleName = m.file;
+console.log('Resolving ' + moduleName);
 return error(("Duplicate function definition: " + d.signature.symbol), d.position);
 }));
 return definedFunctions.set(unique, true);
@@ -947,9 +953,9 @@ return map(m.typeDefinitions, (function(d) {
 return Pair.pair((m.alias + "." + d.symbol), (d.symbol + "@" + m.package_));
 }));
 }))));
-// StringMapBuilder[_512]
+// StringMapBuilder[_520]
 var variables = newStringMapBuilder([]);
-// StringMapBuilder[_517]
+// StringMapBuilder[_525]
 var typeParameters = newStringMapBuilder([]);
 return {
 typeConstructor: function(position, symbol) {
@@ -1052,9 +1058,13 @@ source = text;
 };
 }
 
+// (Int) => Void
+function testAll(x) {
+}
+
 // (Pc, F0[t], TokenType) => Array[t]
 function parseCommaList(pc, parse, end) {
-// ArrayBuilder[_587]
+// ArrayBuilder[_595]
 var result = newArrayBuilder();
 while_((function() {
 return pc.lookahead("comma separated list", [Pair.pair([end], (function() {
@@ -1239,7 +1249,7 @@ return Option.some(name);
 return Option.none();
 }))]);
 }));
-// ArrayBuilder[_979]
+// ArrayBuilder[_987]
 var result = newArrayBuilder();
 while_((function() {
 return pc.lookahead("method implementation", [Pair.pair([TokenType.separator(), TokenType.rightCurly()], (function() {
@@ -1365,7 +1375,7 @@ return Term.floatingValue(position, value);
 function parseText(pc) {
 // Int
 var position = pc.position();
-// ArrayBuilder[_1271]
+// ArrayBuilder[_1279]
 var parts = newArrayBuilder();
 // String
 var firstText = pc.consume(TokenType.textStart());
@@ -1595,7 +1605,7 @@ return Statement.ffi(position, language, code);
 // (Pc) => Array[Statement]
 function parseBody(pc) {
 pc.consume(TokenType.leftCurly());
-// ArrayBuilder[_1727]
+// ArrayBuilder[_1735]
 var result = newArrayBuilder();
 while_((function() {
 return pc.lookahead("statement or }", [Pair.pair([TokenType.rightCurly()], (function() {
@@ -1735,7 +1745,7 @@ return MethodSignature.methodSignature(position, name, typeParameters, parameter
 function parseFunctionDefinitions(pc) {
 // Int
 var position = pc.position();
-// ArrayBuilder[_2059]
+// ArrayBuilder[_2067]
 var result = newArrayBuilder();
 while_((function() {
 return pc.lookahead("function", [Pair.pair([TokenType.lower(), TokenType.leftRound(), TokenType.rightRound(), TokenType.leftCurly()], (function() {
@@ -1776,7 +1786,7 @@ return FunctionDefinition.functionDefinition(position, signature, body);
 // (Pc) => Array[MethodSignature]
 function parseMethodSignatures(pc) {
 pc.consume(TokenType.leftCurly());
-// ArrayBuilder[_2165]
+// ArrayBuilder[_2173]
 var result = newArrayBuilder();
 while_((function() {
 return pc.lookahead("method signature or }", [Pair.pair([TokenType.rightCurly()], (function() {
@@ -1850,9 +1860,9 @@ return TypeDefinition.typeDefinition(position, name, typeParameters, (isSum || i
 
 // (Pc, String, String, String, String) => Module
 function parseModule(pc, package_, alias, file, source) {
-// ArrayBuilder[_2342]
+// ArrayBuilder[_2350]
 var typeDefinitions = newArrayBuilder();
-// ArrayBuilder[_2346]
+// ArrayBuilder[_2354]
 var functionDefinitions = newArrayBuilder();
 while_((function() {
 return pc.lookahead("definition or end of file", [Pair.pair([TokenType.outsideFile()], (function() {
@@ -1909,7 +1919,7 @@ console.dir(resolvedModules);
 
 // (String) => CharCursor
 function newCharCursor(buffer) {
-// ArrayBuilder[_2485]
+// ArrayBuilder[_2493]
 var stack = newArrayBuilder();
 // Int
 var offset = 0;
@@ -2040,7 +2050,7 @@ return builder.has(key);
 // (Array[Pair[String, v]]) => StringMapBuilder[v]
 function newStringMapBuilder(array) {
 var map = {};
-// StringMapBuilder[_2639]?!
+// StringMapBuilder[_2647]?!
 var builder = {
 invoke: function(key) {
 var this_ = this;
@@ -2072,7 +2082,7 @@ delete map[key];
 },
 toArray: function() {
 var this_ = this;
-// Array[_2636]
+// Array[_2644]
 var result = [];
 for(var key in map) if(this_.has(key)) result.push(Pair.pair(key, map[key]));
 return result;
@@ -2147,7 +2157,7 @@ for(var i = 0; i < array.length; i++) body(array[i]);
 
 // (Array[a]) => Array[Pair[Int, a]]
 function indexed(array) {
-// Array[_2678]
+// Array[_2686]
 var result = [];
 for(var i = 0; i < array.length; i++) result.push(Pair.pair(i, array[i]));
 return result;
@@ -2155,7 +2165,7 @@ return result;
 
 // (Array[a], Array[b]) => Array[Pair[a, b]]
 function zip(left, right) {
-// Array[_2682]
+// Array[_2690]
 var result = [];
 for(var i = 0; i < left.length && i < right.length; i++) result.push(Pair.pair(left[i], right[i]));
 return result;
@@ -2163,7 +2173,7 @@ return result;
 
 // (Array[a], F1[a, b]) => Array[b]
 function map(array, body) {
-// Array[_2686]
+// Array[_2694]
 var result = [];
 for(var i = 0; i < array.length; i++) result.push(body(array[i]));
 return result;
@@ -2171,7 +2181,7 @@ return result;
 
 // (Array[a], F1[a, Bool]) => Array[a]
 function filter(array, condition) {
-// Array[_2690]
+// Array[_2698]
 var result = [];
 for(var i = 0; i < array.length; i++) if(condition(array[i])) result.push(array[i]);
 return result;
@@ -2215,7 +2225,7 @@ return true;
 
 // (Array[Array[a]]) => Array[a]
 function flatten(array) {
-// Array[_2724]
+// Array[_2732]
 var result = [];
 for(var i = 0; i < array.length; i++) for(var j = 0; j < array[i].length; j++) result.push(array[i][j]);
 return result;
@@ -2229,7 +2239,7 @@ throw problem;
 
 // (Array[F0[Option[a]]]) => Option[a]
 function orElse(options) {
-// Option[_2730]?
+// Option[_2738]?
 var result = Option.none();
 // Int
 var i = 0;
@@ -2266,11 +2276,11 @@ return value;
 
 // (TokenCursor, String) => Pc
 function newPc(cursor, buffer) {
-// F1[_2753, _2754]
+// F1[_2761, _2762]
 var tokenTypeText = (function(tokenType) {
 return tokenType._;
 });
-// F1[_2757, _2758]
+// F1[_2765, _2766]
 var tokenText = (function(token) {
 return buffer.substring(token.from, token.to);
 });
@@ -2300,7 +2310,7 @@ return text;
 lookahead: function(expected, cases) {
 // Int
 var i = 0;
-// Option[_2799]?
+// Option[_2807]?
 var result = Option.none();
 while_((function() {
 return ((i < cases.length) && (result == Option.none()));
@@ -2416,7 +2426,7 @@ return Option.none();
 var firstAcceptedToken = (function(bodies) {
 // Int
 var i = 0;
-// Option[_2968]?
+// Option[_2976]?
 var result = Option.none();
 // Array[F0[Option[Token]]]
 var array = bodies;
@@ -2628,7 +2638,7 @@ return Option.some(Token.token(TokenType.numeral(), from, to));
 
 // (String) => Array[Token]
 function lexTokens(buffer) {
-// ArrayBuilder[_3428]
+// ArrayBuilder[_3436]
 var builder = newArrayBuilder();
 // CharCursor
 var cursor = newCharCursor(buffer);
@@ -2682,12 +2692,12 @@ return result;
 
 // () => ArrayBuilder[t]
 function newArrayBuilder() {
-// Array[_3479]
+// Array[_3487]
 var array = [];
 return {
 drain: function() {
 var this_ = this;
-// Array[_3479]
+// Array[_3487]
 var result = array;
 array = [];
 return result;
@@ -2708,7 +2718,7 @@ return array.pop()
 },
 top: function() {
 var this_ = this;
-// Option[_3496]?
+// Option[_3504]?
 var result = Option.none();
 when((array.length > 0), (function() {
 result = Option.some(array[array.length - 1])
@@ -2721,14 +2731,14 @@ for(var i = 0; i < array.length; i++) body(array[i]);
 },
 map: function(body) {
 var this_ = this;
-// ArrayBuilder[_3506]
+// ArrayBuilder[_3514]
 var result = newArrayBuilder();
 for(var i = 0; i < array.length; i++) result.push(body(array[i]));
 return result;
 },
 filter: function(body) {
 var this_ = this;
-// ArrayBuilder[_3511]
+// ArrayBuilder[_3519]
 var result = newArrayBuilder();
 for(var i = 0; i < array.length; i++) if(body(array[i])) result.push(array[i]);
 return result;

@@ -189,7 +189,11 @@ newResolver(modules : Array[Module]) : Resolver {
         source = m.source
         each(m.typeDefinitions, d => {
             unique := "\(d.symbol)@\(m.package)"
-            when(definedTypes.has(unique), { error("Duplicate type definition: \(d.symbol)", d.position) })
+            when(definedTypes.has(unique), {
+                moduleName := m.file
+                js"console.log('Resolving ' + moduleName);"
+                error("Duplicate type definition: \(d.symbol)", d.position)
+            })
             definedTypes.set(unique, Bool.true)
         })
     })
@@ -197,7 +201,11 @@ newResolver(modules : Array[Module]) : Resolver {
         source = m.source
         each(m.functionDefinitions, d => {
             unique := "\(d.signature.symbol)@\(m.package)"
-            when(definedFunctions.has(unique), { error("Duplicate function definition: \(d.signature.symbol)", d.position) })
+            when(definedFunctions.has(unique), {
+                moduleName := m.file
+                js"console.log('Resolving ' + moduleName);"
+                error("Duplicate function definition: \(d.signature.symbol)", d.position)
+            })
             definedFunctions.set(unique, Bool.true)
         })
     })
