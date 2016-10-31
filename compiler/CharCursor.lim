@@ -93,7 +93,7 @@ codeUnit(c : Int) : String {
     js"return String.fromCharCode(c);"
 }
 
-positionText[a](cursor : CharCursor, offset : Int) : String {
+positionText(cursor : CharCursor, offset : Int) : String {
     position := cursor.position(offset)
     "at line \(position.line.toString) column \(position.column.toString)"
 }

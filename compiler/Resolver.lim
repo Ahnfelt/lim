@@ -1,8 +1,10 @@
 resolveModule(resolver : Resolver, module : Module) : Module {
+    resolver.setSource(module.source)
     Module(
         package = module.package,
         file = module.file,
         alias = module.alias,
+        source = module.source,
         typeDefinitions = map(module.typeDefinitions, d => resolveTypeDefinition(resolver, d)),
         functionDefinitions = map(module.functionDefinitions, d => resolveFunctionDefinition(resolver, d))
     )
@@ -164,9 +166,15 @@ Resolver {
     addVariable(position : Int, name : String) : String
     addTypeParameter(position : Int, name : String) : String
     scope[t](body : () => t) : t
+    setSource(text : String)
 }
 
 newResolver(modules : Array[Module]) : Resolver {
+    source := ""
+    error := (e, p) => {
+        panic("\(e) \(positionText(newCharCursor(source), p))")
+    }
+
     preludeTypes := ["Void", "Bool", "String", "Int", "Float", "Array", "Option", "Pair", "F0", "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9"]
     modulePreludeTypes := map(preludeTypes, t => "_.\(t)")
     canonicalPreludeTypes := map(preludeTypes, t => "\(t)@_")
@@ -201,7 +209,7 @@ newResolver(modules : Array[Module]) : Resolver {
                 none {
                     moduleTypeConstructors.get(symbol) ? {
                         some(x) { x }
-                        none { panic("No such type: \(symbol)") }
+                        none { error("No such type: \(symbol)", position) }
                     }
                 }
             }
@@ -209,7 +217,7 @@ newResolver(modules : Array[Module]) : Resolver {
         typeParameter(position, symbol) {
             typeParameters.get(symbol) ? {
                 some(x) { x }
-                none { panic("No such type parameter: \(symbol)") }
+                none { error("No such type parameter: \(symbol)", position) }
             }
         }
         staticName(position, symbol) {
@@ -221,7 +229,7 @@ newResolver(modules : Array[Module]) : Resolver {
                         none {
                             moduleTypeConstructors.get(symbol) ? {
                                 some(x) { x }
-                                none { panic("No such module or type: \(symbol)") }
+                                none { error("No such module or type: \(symbol)", position) }
                             }
                         }
                     }
@@ -233,14 +241,14 @@ newResolver(modules : Array[Module]) : Resolver {
                 some(x) { x }
                 none {
                     functions.get(symbol) ? {
-                        none { panic("No such variable or function: \(symbol)") }
+                        none { error("No such variable or function: \(symbol)", position) }
                         some(x) { x }
                     }
                 }
             }
         }
         assertNoVariable(position, name) {
-            when(variables.has(name), { panic("Suspicious shadowing of variable: \(name)") })
+            when(variables.has(name), { error("Suspicious shadowing of variable: \(name)", position) })
         }
         addVariable(position, name) {
             variables.set(name, name)
@@ -248,8 +256,8 @@ newResolver(modules : Array[Module]) : Resolver {
         }
         addTypeParameter(position, name) {
             typeParameters.get(name) ? {
-                some(n) { panic("Suspicious shadowing of type parameter: \(name)") }
-                none {}
+                some(n) { error("Suspicious shadowing of type parameter: \(name)", position) }
+                none { "" }
             }
             typeParameters.set(name, name)
             name
@@ -263,6 +271,9 @@ newResolver(modules : Array[Module]) : Resolver {
             variables = newStringMapBuilder(savedVariables)
             typeParameters = newStringMapBuilder(savedTypeParameters)
             result
+        }
+        setSource(text) {
+            source = text
         }
     }
 }

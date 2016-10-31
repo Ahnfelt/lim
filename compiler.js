@@ -7,49 +7,6 @@ value: value
 }}
 };
 
-var StringMap = {
-invoke: function(key) { return {
-_: "invoke",
-key: key
-}},
-get: function(key) { return {
-_: "get",
-key: key
-}},
-has: function(key) { return {
-_: "has",
-key: key
-}}
-};
-
-var StringMapBuilder = {
-invoke: function(key) { return {
-_: "invoke",
-key: key
-}},
-get: function(key) { return {
-_: "get",
-key: key
-}},
-has: function(key) { return {
-_: "has",
-key: key
-}},
-set: function(key, value) { return {
-_: "set",
-key: key,
-value: value
-}},
-remove: function(key) { return {
-_: "remove",
-key: key
-}},
-toArray: function() { return StringMapBuilder.toArray_k; },
-toArray_k: {_: "toArray"},
-toStringMap: function() { return StringMapBuilder.toStringMap_k; },
-toStringMap_k: {_: "toStringMap"}
-};
-
 var Resolver = {
 typeConstructor: function(position, symbol) { return {
 _: "typeConstructor",
@@ -89,6 +46,10 @@ name: name
 scope: function(body) { return {
 _: "scope",
 body: body
+}},
+setSource: function(text) { return {
+_: "setSource",
+text: text
 }}
 };
 
@@ -323,63 +284,14 @@ type: type
 };
 
 var Module = {
-module: function(package_, file, alias, typeDefinitions, functionDefinitions) { return {
+module: function(package_, file, alias, source, typeDefinitions, functionDefinitions) { return {
 _: "module",
 package_: package_,
 file: file,
 alias: alias,
+source: source,
 typeDefinitions: typeDefinitions,
 functionDefinitions: functionDefinitions
-}}
-};
-
-var Case = {
-case_: function(condition, body) { return {
-_: "case",
-condition: condition,
-body: body
-}},
-else_: function(body) { return {
-_: "else",
-body: body
-}}
-};
-
-var Pair = {
-pair: function(first, second) { return {
-_: "pair",
-first: first,
-second: second
-}}
-};
-
-var Pc = {
-position: function() { return Pc.position_k; },
-position_k: {_: "position"},
-consume: function(tokenType) { return {
-_: "consume",
-tokenType: tokenType
-}},
-lookahead: function(expected, cases) { return {
-_: "lookahead",
-expected: expected,
-cases: cases
-}}
-};
-
-var TokenCursor = {
-invoke: function(ahead) { return {
-_: "invoke",
-ahead: ahead
-}},
-skip: function(ahead) { return {
-_: "skip",
-ahead: ahead
-}},
-skipWith: function(result, ahead) { return {
-_: "skipWith",
-result: result,
-ahead: ahead
 }}
 };
 
@@ -429,6 +341,99 @@ skipWhitespace_k: {_: "skipWhitespace"},
 position: function(offset) { return {
 _: "position",
 offset: offset
+}}
+};
+
+var StringMap = {
+invoke: function(key) { return {
+_: "invoke",
+key: key
+}},
+get: function(key) { return {
+_: "get",
+key: key
+}},
+has: function(key) { return {
+_: "has",
+key: key
+}}
+};
+
+var StringMapBuilder = {
+invoke: function(key) { return {
+_: "invoke",
+key: key
+}},
+get: function(key) { return {
+_: "get",
+key: key
+}},
+has: function(key) { return {
+_: "has",
+key: key
+}},
+set: function(key, value) { return {
+_: "set",
+key: key,
+value: value
+}},
+remove: function(key) { return {
+_: "remove",
+key: key
+}},
+toArray: function() { return StringMapBuilder.toArray_k; },
+toArray_k: {_: "toArray"},
+toStringMap: function() { return StringMapBuilder.toStringMap_k; },
+toStringMap_k: {_: "toStringMap"}
+};
+
+var Case = {
+case_: function(condition, body) { return {
+_: "case",
+condition: condition,
+body: body
+}},
+else_: function(body) { return {
+_: "else",
+body: body
+}}
+};
+
+var Pair = {
+pair: function(first, second) { return {
+_: "pair",
+first: first,
+second: second
+}}
+};
+
+var Pc = {
+position: function() { return Pc.position_k; },
+position_k: {_: "position"},
+consume: function(tokenType) { return {
+_: "consume",
+tokenType: tokenType
+}},
+lookahead: function(expected, cases) { return {
+_: "lookahead",
+expected: expected,
+cases: cases
+}}
+};
+
+var TokenCursor = {
+invoke: function(ahead) { return {
+_: "invoke",
+ahead: ahead
+}},
+skip: function(ahead) { return {
+_: "skip",
+ahead: ahead
+}},
+skipWith: function(result, ahead) { return {
+_: "skipWith",
+result: result,
+ahead: ahead
 }}
 };
 
@@ -580,77 +585,865 @@ size: function() { return StringBuilder.size_k; },
 size_k: {_: "size"}
 };
 
-// (Array[Pair[String, v]]) => StringMap[v]
-function newStringMap(array) {
-// StringMapBuilder[v]
-var builder = newStringMapBuilder(array);
-return {
-invoke: function(key) {
-return builder.invoke(key);
-},
-get: function(key) {
-return builder.get(key);
-},
-has: function(key) {
-return builder.has(key);
-}
-};
+// (Pc, F0[t], TokenType) => Array[t]
+function parseCommaList(pc, parse, end) {
+// ArrayBuilder[_4]
+var result = newArrayBuilder();
+while_((function() {
+return pc.lookahead("comma separated list", [Pair.pair([end], (function() {
+return false;
+})), Pair.pair([], (function() {
+return true;
+}))]);
+}), (function() {
+result.push(parse());
+return pc.lookahead("comma", [Pair.pair([end], (function() {
+})), Pair.pair([], (function() {
+return pc.consume(TokenType.comma());
+}))]);
+}));
+return result.drain();
 }
 
-// (Array[Pair[String, v]]) => StringMapBuilder[v]
-function newStringMapBuilder(array) {
-var map = {};
-// StringMapBuilder[_34]?!
-var builder = {
-invoke: function(key) {
-var this_ = this;
-return if_(this_.has(key), (function() {
-return map[key];
-}), (function() {
-return panic(("No such key: " + key));
+// (Pc, F0[Term], Array[TokenType]) => Term
+function parseLeftAssociative(pc, next, operators) {
+// Term
+var result = next();
+// Array[Pair[Array[TokenType], F0[Bool?]]?]
+var cases = map(operators, (function(o) {
+return Pair.pair([o], (function() {
+// Int
+var position = pc.position();
+pc.consume(o);
+result = Term.binary(position, o, result, next());
+return true;
 }));
-},
-get: function(key) {
-var this_ = this;
-return if_(this_.has(key), (function() {
-return Option.some(map[key]);
+})).concat([Pair.pair([], (function() {
+return false;
+}))]);
+while_((function() {
+return pc.lookahead("operator", cases);
 }), (function() {
-return Option.none();
 }));
-},
-has: function(key) {
-var this_ = this;
-return Object.prototype.hasOwnProperty.call(map, key);
-},
-set: function(key, value) {
-var this_ = this;
-map[key] = value;
-},
-remove: function(key, value) {
-var this_ = this;
-delete map[key];
-},
-toArray: function() {
-var this_ = this;
-// Array[_31]
-var result = [];
-for(var key in map) if(this_.has(key)) result.push(Pair.pair(key, map[key]));
 return result;
-},
-toStringMap: function() {
-var this_ = this;
-return newStringMap(this_.toArray());
 }
-};
-each(array, (function(p) {
-return builder.set(p.first, p.second);
+
+// (Pc) => Type
+function parseTypeConstructor(pc) {
+// Int
+var position = pc.position();
+// Option[String]?
+var moduleName = pc.lookahead("type constructor", [Pair.pair([TokenType.upper(), TokenType.dot()], (function() {
+// String
+var name = pc.consume(TokenType.upper());
+pc.consume(TokenType.dot());
+return Option.some(name);
+})), Pair.pair([], (function() {
+return Option.none();
+}))]);
+// String
+var name = pc.consume(TokenType.upper());
+// Array[Type]
+var typeArguments = pc.lookahead("type arguments", [Pair.pair([TokenType.leftSquare()], (function() {
+pc.consume(TokenType.leftSquare());
+// Array[Type]
+var result = parseCommaList(pc, (function() {
+return parseType(pc);
+}), TokenType.rightSquare());
+pc.consume(TokenType.rightSquare());
+return result;
+})), Pair.pair([], (function() {
+return [];
+}))]);
+return Type.constructor(position, (function(_match) { switch(_match._) {
+case "some":
+var m = _match.value;
+return (m + "." + name);
+case "none":
+return name;
+}})(moduleName), typeArguments);
+}
+
+// (Pc) => Type
+function parseType(pc) {
+// Type?
+var left = pc.lookahead("type", [Pair.pair([TokenType.leftRound()], (function() {
+pc.consume(TokenType.leftRound());
+// Array[Type]
+var typeArguments = parseCommaList(pc, (function() {
+return parseType(pc);
+}), TokenType.rightRound());
+pc.consume(TokenType.rightRound());
+// Int
+var position = pc.position();
+pc.consume(TokenType.rightThickArrow());
+// Type
+var returnType = parseType(pc);
+return Type.constructor(position, ("_.F" + ("" + typeArguments.length)), typeArguments.concat([returnType]));
+})), Pair.pair([TokenType.lower()], (function() {
+// Int
+var position = pc.position();
+// String
+var name = pc.consume(TokenType.lower());
+return Type.parameter(position, name);
+})), Pair.pair([], (function() {
+return parseTypeConstructor(pc);
+}))]);
+return pc.lookahead("function type", [Pair.pair([TokenType.rightThickArrow()], (function() {
+// Int
+var position = pc.position();
+pc.consume(TokenType.rightThickArrow());
+// Type
+var returnType = parseType(pc);
+return Type.constructor(position, "_.F1", [left, returnType]);
+})), Pair.pair([], (function() {
+return left;
+}))]);
+}
+
+// (Pc) => Term
+function parseLambda(pc) {
+// Int
+var position = pc.position();
+return pc.lookahead("lambda function", [Pair.pair([TokenType.leftCurly()], (function() {
+// Array[Statement]
+var body = parseBody(pc);
+return Term.lambda(position, [], body);
+})), Pair.pair([], (function() {
+// Array[String]
+var parameters = pc.lookahead("lambda function", [Pair.pair([TokenType.lower()], (function() {
+return [pc.consume(TokenType.lower())];
+})), Pair.pair([TokenType.leftRound()], (function() {
+pc.consume(TokenType.leftRound());
+// Array[String]
+var result = parseCommaList(pc, (function() {
+return pc.consume(TokenType.lower());
+}), TokenType.rightRound());
+pc.consume(TokenType.rightRound());
+return result;
+}))]);
+pc.consume(TokenType.rightThickArrow());
+// Array[Statement]
+var body = pc.lookahead("lambda body", [Pair.pair([TokenType.leftCurly()], (function() {
+return parseBody(pc);
+})), Pair.pair([], (function() {
+return [Statement.term(position, parseTerm(pc))];
+}))]);
+return Term.lambda(position, parameters, body);
+}))]);
+}
+
+// (Pc) => MethodImplementation
+function parseMethodImplementation(pc) {
+// Int
+var position = pc.position();
+// String
+var name = pc.consume(TokenType.lower());
+// Array[String]
+var parameters = pc.lookahead("method parameter", [Pair.pair([TokenType.leftRound()], (function() {
+pc.consume(TokenType.leftRound());
+// Array[String]
+var result = parseCommaList(pc, (function() {
+return pc.consume(TokenType.lower());
+}), TokenType.rightRound());
+pc.consume(TokenType.rightRound());
+return result;
+})), Pair.pair([], (function() {
+return [];
+}))]);
+// Array[Statement]
+var body = parseBody(pc);
+return MethodImplementation.methodImplementation(position, name, parameters, body);
+}
+
+// (Pc, Bool) => Pair[Option[String], Array[MethodImplementation]]
+function parseMethodImplementations(pc, allowThisName) {
+pc.consume(TokenType.leftCurly());
+// Option[String]?
+var thisName = if_((!allowThisName), (function() {
+return Option.none();
+}), (function() {
+return pc.lookahead("this =>", [Pair.pair([TokenType.lower(), TokenType.rightThickArrow()], (function() {
+// String
+var name = pc.consume(TokenType.lower());
+pc.consume(TokenType.rightThickArrow());
+return Option.some(name);
+})), Pair.pair([], (function() {
+return Option.none();
+}))]);
 }));
-return builder;
+// ArrayBuilder[_396]
+var result = newArrayBuilder();
+while_((function() {
+return pc.lookahead("method implementation", [Pair.pair([TokenType.separator(), TokenType.rightCurly()], (function() {
+pc.consume(TokenType.separator());
+pc.consume(TokenType.rightCurly());
+return false;
+})), Pair.pair([TokenType.rightCurly()], (function() {
+pc.consume(TokenType.rightCurly());
+return false;
+})), Pair.pair([TokenType.separator()], (function() {
+pc.consume(TokenType.separator());
+return true;
+})), Pair.pair([], (function() {
+return true;
+}))]);
+}), (function() {
+return result.push(parseMethodImplementation(pc));
+}));
+return Pair.pair(thisName, result.drain());
+}
+
+// (Pc) => Term
+function parseInstance(pc) {
+// Int
+var position = pc.position();
+// Option[String]?
+var moduleName = pc.lookahead("type constructor", [Pair.pair([TokenType.upper(), TokenType.dot()], (function() {
+// String
+var name = pc.consume(TokenType.upper());
+pc.consume(TokenType.dot());
+return Option.some(name);
+})), Pair.pair([], (function() {
+return Option.none();
+}))]);
+// String
+var name = pc.consume(TokenType.upper());
+// Pair[Option[String], Array[MethodImplementation]]
+var pair = parseMethodImplementations(pc, true);
+return Term.instance(position, (function(_match) { switch(_match._) {
+case "some":
+var m = _match.value;
+return (m + "." + name);
+case "none":
+return name;
+}})(moduleName), pair.first, pair.second);
+}
+
+// (Pc) => Term
+function parseArray(pc) {
+// Int
+var position = pc.position();
+pc.consume(TokenType.leftSquare());
+// Array[Term]
+var elements = parseCommaList(pc, (function() {
+return parseTerm(pc);
+}), TokenType.rightSquare());
+pc.consume(TokenType.rightSquare());
+return Term.arrayValue(position, elements);
+}
+
+// (Pc) => Term
+function parseAtom(pc) {
+return pc.lookahead("atom", [Pair.pair([TokenType.leftSquare()], (function() {
+return parseArray(pc);
+})), Pair.pair([TokenType.lower(), TokenType.rightThickArrow()], (function() {
+return parseLambda(pc);
+})), Pair.pair([TokenType.leftRound(), TokenType.lower(), TokenType.comma()], (function() {
+return parseLambda(pc);
+})), Pair.pair([TokenType.leftRound(), TokenType.lower(), TokenType.rightRound(), TokenType.rightThickArrow()], (function() {
+return parseLambda(pc);
+})), Pair.pair([TokenType.leftRound(), TokenType.rightRound(), TokenType.rightThickArrow()], (function() {
+return parseLambda(pc);
+})), Pair.pair([TokenType.leftCurly()], (function() {
+return parseLambda(pc);
+})), Pair.pair([TokenType.upper(), TokenType.leftCurly()], (function() {
+return parseInstance(pc);
+})), Pair.pair([TokenType.upper(), TokenType.dot(), TokenType.upper(), TokenType.leftCurly()], (function() {
+return parseInstance(pc);
+})), Pair.pair([TokenType.upper()], (function() {
+return parseStaticCall(pc);
+})), Pair.pair([TokenType.leftRound()], (function() {
+pc.consume(TokenType.leftRound());
+// Term
+var result = parseTerm(pc);
+pc.consume(TokenType.rightRound());
+return result;
+})), Pair.pair([TokenType.lower()], (function() {
+// Int
+var position = pc.position();
+// String
+var name = pc.consume(TokenType.lower());
+return Term.variable(position, name);
+})), Pair.pair([TokenType.codeUnit()], (function() {
+// Int
+var position = pc.position();
+// String
+var codeUnit = pc.consume(TokenType.codeUnit());
+return Term.codeUnitValue(position, codeUnit);
+})), Pair.pair([TokenType.text()], (function() {
+// Int
+var position = pc.position();
+// String
+var text = pc.consume(TokenType.text());
+return Term.textValue(position, text);
+})), Pair.pair([TokenType.textStart()], (function() {
+return parseText(pc);
+})), Pair.pair([TokenType.numeral()], (function() {
+// Int
+var position = pc.position();
+// String
+var value = pc.consume(TokenType.numeral());
+return Term.integerValue(position, value);
+})), Pair.pair([TokenType.floating()], (function() {
+// Int
+var position = pc.position();
+// String
+var value = pc.consume(TokenType.floating());
+return Term.floatingValue(position, value);
+}))]);
+}
+
+// (Pc) => Term
+function parseText(pc) {
+// Int
+var position = pc.position();
+// ArrayBuilder[_688]
+var parts = newArrayBuilder();
+// String
+var firstText = pc.consume(TokenType.textStart());
+when((firstText.length > 0), (function() {
+return parts.push(Term.textValue(position, firstText));
+}));
+// Bool?
+var done = false;
+while_((function() {
+return (!done);
+}), (function() {
+parts.push(parseTerm(pc));
+return pc.lookahead("end of string", [Pair.pair([TokenType.textEnd()], (function() {
+// String
+var text = pc.consume(TokenType.textEnd());
+when((text.length > 0), (function() {
+return parts.push(Term.textValue(position, text));
+}));
+done = true;
+})), Pair.pair([TokenType.textMiddle()], (function() {
+// String
+var text = pc.consume(TokenType.textMiddle());
+return when((text.length > 0), (function() {
+return parts.push(Term.textValue(position, text));
+}));
+}))]);
+}));
+return Term.textLiteral(position, parts.drain());
+}
+
+// (Pc) => Pair[String, Term]
+function parseNamedArgument(pc) {
+// String
+var name = pc.consume(TokenType.lower());
+pc.consume(TokenType.assign());
+// Term
+var term = parseTerm(pc);
+return Pair.pair(name, term);
+}
+
+// (Pc) => Arguments
+function parseArguments(pc) {
+// Bool?
+var named = false;
+pc.consume(TokenType.leftRound());
+// Array[Pair[String, Term]?]
+var arguments = parseCommaList(pc, (function() {
+return pc.lookahead("method argument", [Pair.pair([TokenType.lower(), TokenType.assign()], (function() {
+named = true;
+// String
+var name = pc.consume(TokenType.lower());
+pc.consume(TokenType.assign());
+return Pair.pair(name, parseTerm(pc));
+})), Pair.pair([], (function() {
+when(named, (function() {
+return panic("Unexpected unnamed argument after named argument");
+}));
+return Pair.pair("", parseTerm(pc));
+}))]);
+}), TokenType.rightRound());
+pc.consume(TokenType.rightRound());
+return Arguments.arguments(map(filter(arguments, (function(a) {
+return (a.first == "");
+})), (function(a) {
+return a.second;
+})), map(indexed(filter(arguments, (function(a) {
+return (a.first != "");
+}))), (function(i) {
+return NamedArgument.namedArgument(i.first, i.second.first, i.second.second);
+})));
+}
+
+// (Pc) => Term
+function parseStaticCall(pc) {
+// String
+var module = pc.consume(TokenType.upper());
+// Option[String]?
+var name = pc.lookahead("type name", [Pair.pair([TokenType.dot(), TokenType.upper()], (function() {
+pc.consume(TokenType.dot());
+return Option.some(pc.consume(TokenType.upper()));
+})), Pair.pair([], (function() {
+return Option.none();
+}))]);
+// String
+var lastName = or(name, module);
+// Int
+var position = pc.position();
+// String
+var methodName = pc.lookahead("call", [Pair.pair([TokenType.dot(), TokenType.lower()], (function() {
+pc.consume(TokenType.dot());
+return pc.consume(TokenType.lower());
+})), Pair.pair([TokenType.leftRound()], (function() {
+return (lastName.substr(0, 1).toLowerCase() + lastName.substr(1));
+}))]);
+// Arguments
+var arguments = pc.lookahead("arguments", [Pair.pair([TokenType.leftRound()], (function() {
+return parseArguments(pc);
+})), Pair.pair([], (function() {
+return Arguments.arguments([], []);
+}))]);
+// String
+var staticName = (function(_match) { switch(_match._) {
+case "some":
+var n = _match.value;
+return (module + "." + n);
+case "none":
+return module;
+}})(name);
+return Term.staticCall(position, staticName, methodName, arguments);
+}
+
+// (Pc) => Term
+function parseCall(pc) {
+// Term
+var result = parseAtom(pc);
+while_((function() {
+return pc.lookahead("method", [Pair.pair([TokenType.leftRound()], (function() {
+return true;
+})), Pair.pair([TokenType.dot()], (function() {
+return true;
+})), Pair.pair([], (function() {
+return false;
+}))]);
+}), (function() {
+// Bool?
+var named = false;
+// Int
+var position = pc.position();
+// String
+var methodName = pc.lookahead("method call", [Pair.pair([TokenType.dot()], (function() {
+pc.consume(TokenType.dot());
+return pc.consume(TokenType.lower());
+})), Pair.pair([TokenType.leftRound()], (function() {
+return "invoke";
+}))]);
+result = pc.lookahead("method call", [Pair.pair([TokenType.leftRound()], (function() {
+// Arguments
+var arguments = parseArguments(pc);
+return Term.methodCall(position, result, methodName, arguments);
+})), Pair.pair([], (function() {
+return Term.methodCall(position, result, methodName, Arguments.arguments([], []));
+}))]);
+}));
+return result;
+}
+
+// (Pc) => Term
+function parseMinusNot(pc) {
+// Int
+var position = pc.position();
+return pc.lookahead("unary operator", [Pair.pair([TokenType.minus()], (function() {
+pc.consume(TokenType.minus());
+return Term.unary(position, TokenType.minus(), parseCall(pc));
+})), Pair.pair([TokenType.exclamation()], (function() {
+pc.consume(TokenType.exclamation());
+return Term.unary(position, TokenType.exclamation(), parseCall(pc));
+})), Pair.pair([], (function() {
+return parseCall(pc);
+}))]);
+}
+
+// (Pc) => Term
+function parseTimesDivide(pc) {
+return parseLeftAssociative(pc, (function() {
+return parseMinusNot(pc);
+}), [TokenType.star(), TokenType.slash()]);
+}
+
+// (Pc) => Term
+function parsePlusMinus(pc) {
+return parseLeftAssociative(pc, (function() {
+return parseTimesDivide(pc);
+}), [TokenType.plus(), TokenType.minus()]);
+}
+
+// (Pc) => Term
+function parseInequality(pc) {
+return parseLeftAssociative(pc, (function() {
+return parsePlusMinus(pc);
+}), [TokenType.equal(), TokenType.notEqual(), TokenType.less(), TokenType.lessEqual(), TokenType.greater(), TokenType.greaterEqual()]);
+}
+
+// (Pc) => Term
+function parseAndOr(pc) {
+return parseLeftAssociative(pc, (function() {
+return parseInequality(pc);
+}), [TokenType.and(), TokenType.or()]);
+}
+
+// (Pc) => Term
+function parseMatch(pc) {
+// Term
+var value = parseAndOr(pc);
+return pc.lookahead("match", [Pair.pair([TokenType.question()], (function() {
+// Int
+var position = pc.position();
+pc.consume(TokenType.question());
+// Pair[Option[String], Array[MethodImplementation]]
+var cases = parseMethodImplementations(pc, false);
+return Term.match(position, value, map(cases.second, (function(m) {
+return MatchCase.matchCase(m, []);
+})));
+})), Pair.pair([], (function() {
+return value;
+}))]);
+}
+
+// (Pc) => Term
+function parseTerm(pc) {
+return parseMatch(pc);
+}
+
+// (Pc) => Statement
+function parseFfi(pc) {
+// Int
+var position = pc.position();
+// String
+var language = pc.consume(TokenType.lower());
+when((language != "js"), (function() {
+return panic(("Expected FFI js, got FFI " + language));
+}));
+// String
+var code = pc.consume(TokenType.text());
+return Statement.ffi(position, language, code);
+}
+
+// (Pc) => Array[Statement]
+function parseBody(pc) {
+pc.consume(TokenType.leftCurly());
+// ArrayBuilder[_1144]
+var result = newArrayBuilder();
+while_((function() {
+return pc.lookahead("statement or }", [Pair.pair([TokenType.rightCurly()], (function() {
+pc.consume(TokenType.rightCurly());
+return false;
+})), Pair.pair([TokenType.separator(), TokenType.rightCurly()], (function() {
+pc.consume(TokenType.separator());
+pc.consume(TokenType.rightCurly());
+return false;
+})), Pair.pair([TokenType.separator()], (function() {
+pc.consume(TokenType.separator());
+return true;
+})), Pair.pair([], (function() {
+return true;
+}))]);
+}), (function() {
+result.push(parseStatement(pc));
+return pc.lookahead("line break, ';' or '}'", [Pair.pair([TokenType.rightCurly()], (function() {
+})), Pair.pair([TokenType.separator()], (function() {
+}))]);
+}));
+return result.drain();
+}
+
+// (Pc) => Statement
+function parseStatement(pc) {
+// Int
+var position = pc.position();
+return pc.lookahead("statement", [Pair.pair([TokenType.lower(), TokenType.leftRound(), TokenType.rightRound(), TokenType.leftCurly()], (function() {
+return Statement.functions(parseFunctionDefinitions(pc));
+})), Pair.pair([TokenType.lower(), TokenType.leftRound(), TokenType.rightRound(), TokenType.colon()], (function() {
+return Statement.functions(parseFunctionDefinitions(pc));
+})), Pair.pair([TokenType.lower(), TokenType.leftRound(), TokenType.lower(), TokenType.colon()], (function() {
+return Statement.functions(parseFunctionDefinitions(pc));
+})), Pair.pair([TokenType.lower(), TokenType.colon()], (function() {
+// String
+var name = pc.consume(TokenType.lower());
+pc.consume(TokenType.colon());
+// Option[Type]?
+var type = pc.lookahead("type", [Pair.pair([TokenType.assign()], (function() {
+return Option.none();
+})), Pair.pair([], (function() {
+return Option.some(parseType(pc));
+}))]);
+pc.consume(TokenType.assign());
+// Term
+var value = parseTerm(pc);
+return Statement.let_(position, name, type, value);
+})), Pair.pair([TokenType.lower(), TokenType.assign()], (function() {
+// String
+var name = pc.consume(TokenType.lower());
+pc.consume(TokenType.assign());
+// Term
+var value = parseTerm(pc);
+return Statement.assign(position, name, value);
+})), Pair.pair([TokenType.lower(), TokenType.increment()], (function() {
+// String
+var name = pc.consume(TokenType.lower());
+pc.consume(TokenType.increment());
+// Term
+var value = parseTerm(pc);
+return Statement.increment(position, name, value);
+})), Pair.pair([TokenType.lower(), TokenType.decrement()], (function() {
+// String
+var name = pc.consume(TokenType.lower());
+pc.consume(TokenType.decrement());
+// Term
+var value = parseTerm(pc);
+return Statement.decrement(position, name, value);
+})), Pair.pair([TokenType.lower(), TokenType.text()], (function() {
+return parseFfi(pc);
+})), Pair.pair([], (function() {
+// Term
+var term = parseTerm(pc);
+return Statement.term(position, term);
+}))]);
+}
+
+// (Pc) => String
+function parseTypeParameter(pc) {
+return pc.consume(TokenType.lower());
+}
+
+// (Pc) => Parameter
+function parseParameter(pc) {
+// Int
+var position = pc.position();
+// String
+var name = pc.consume(TokenType.lower());
+pc.consume(TokenType.colon());
+// Type
+var type = parseType(pc);
+return Parameter.parameter(position, name, type);
+}
+
+// (Pc) => MethodSignature
+function parseMethodSignature(pc) {
+// Int
+var position = pc.position();
+// String
+var name = pc.consume(TokenType.lower());
+// Array[String]
+var typeParameters = pc.lookahead("type parameters", [Pair.pair([TokenType.leftSquare()], (function() {
+pc.consume(TokenType.leftSquare());
+// Array[String]
+var result = parseCommaList(pc, (function() {
+return parseTypeParameter(pc);
+}), TokenType.rightSquare());
+pc.consume(TokenType.rightSquare());
+return result;
+})), Pair.pair([], (function() {
+return [];
+}))]);
+// Array[Parameter]
+var parameters = pc.lookahead("parameters", [Pair.pair([TokenType.leftRound()], (function() {
+pc.consume(TokenType.leftRound());
+// Array[Parameter]
+var result = parseCommaList(pc, (function() {
+return parseParameter(pc);
+}), TokenType.rightRound());
+pc.consume(TokenType.rightRound());
+return result;
+})), Pair.pair([], (function() {
+return [];
+}))]);
+// Type
+var returnType = pc.lookahead("return type", [Pair.pair([TokenType.colon()], (function() {
+pc.consume(TokenType.colon());
+return parseType(pc);
+})), Pair.pair([], (function() {
+return Type.constructor(position, "_.Void", []);
+}))]);
+return MethodSignature.methodSignature(position, name, typeParameters, parameters, returnType);
+}
+
+// (Pc) => Array[FunctionDefinition]
+function parseFunctionDefinitions(pc) {
+// Int
+var position = pc.position();
+// ArrayBuilder[_1476]
+var result = newArrayBuilder();
+while_((function() {
+return pc.lookahead("function", [Pair.pair([TokenType.lower(), TokenType.leftRound(), TokenType.rightRound(), TokenType.leftCurly()], (function() {
+return true;
+})), Pair.pair([TokenType.lower(), TokenType.leftRound(), TokenType.rightRound(), TokenType.colon()], (function() {
+return true;
+})), Pair.pair([TokenType.lower(), TokenType.leftRound(), TokenType.lower(), TokenType.colon()], (function() {
+return true;
+})), Pair.pair([TokenType.separator(), TokenType.lower(), TokenType.leftRound(), TokenType.rightRound(), TokenType.leftCurly()], (function() {
+pc.consume(TokenType.separator());
+return true;
+})), Pair.pair([TokenType.separator(), TokenType.lower(), TokenType.leftRound(), TokenType.rightRound(), TokenType.colon()], (function() {
+pc.consume(TokenType.separator());
+return true;
+})), Pair.pair([TokenType.separator(), TokenType.lower(), TokenType.leftRound(), TokenType.lower(), TokenType.colon()], (function() {
+pc.consume(TokenType.separator());
+return true;
+})), Pair.pair([], (function() {
+return false;
+}))]);
+}), (function() {
+return result.push(parseFunctionDefinition(pc));
+}));
+return result.drain();
+}
+
+// (Pc) => FunctionDefinition
+function parseFunctionDefinition(pc) {
+// Int
+var position = pc.position();
+// MethodSignature
+var signature = parseMethodSignature(pc);
+// Array[Statement]
+var body = parseBody(pc);
+return FunctionDefinition.functionDefinition(position, signature, body);
+}
+
+// (Pc) => Array[MethodSignature]
+function parseMethodSignatures(pc) {
+pc.consume(TokenType.leftCurly());
+// ArrayBuilder[_1582]
+var result = newArrayBuilder();
+while_((function() {
+return pc.lookahead("method signature or }", [Pair.pair([TokenType.rightCurly()], (function() {
+pc.consume(TokenType.rightCurly());
+return false;
+})), Pair.pair([TokenType.separator(), TokenType.rightCurly()], (function() {
+pc.consume(TokenType.separator());
+pc.consume(TokenType.rightCurly());
+return false;
+})), Pair.pair([TokenType.separator()], (function() {
+pc.consume(TokenType.separator());
+return true;
+})), Pair.pair([], (function() {
+return true;
+}))]);
+}), (function() {
+result.push(parseMethodSignature(pc));
+return pc.lookahead("line break, ';' or '}'", [Pair.pair([TokenType.rightCurly()], (function() {
+})), Pair.pair([TokenType.separator()], (function() {
+}))]);
+}));
+return result.drain();
+}
+
+// (Pc) => TypeDefinition
+function parseTypeDefinition(pc) {
+// Int
+var position = pc.position();
+// String
+var name = pc.consume(TokenType.upper());
+// Array[String]
+var typeParameters = pc.lookahead("type parameters", [Pair.pair([TokenType.leftSquare()], (function() {
+pc.consume(TokenType.leftSquare());
+// Array[String]
+var result = parseCommaList(pc, (function() {
+return parseTypeParameter(pc);
+}), TokenType.rightSquare());
+pc.consume(TokenType.rightSquare());
+return result;
+})), Pair.pair([], (function() {
+return [];
+}))]);
+// Bool?
+var isSum = pc.lookahead("type parameters", [Pair.pair([TokenType.question()], (function() {
+pc.consume(TokenType.question());
+return true;
+})), Pair.pair([], (function() {
+return false;
+}))]);
+// Bool?
+var isRecord = false;
+// Array[MethodSignature?]
+var methodSignatures = pc.lookahead("method signatures", [Pair.pair([TokenType.leftRound()], (function() {
+// Int
+var methodPosition = position;
+pc.consume(TokenType.leftRound());
+// Array[Parameter]
+var parameters = parseCommaList(pc, (function() {
+return parseParameter(pc);
+}), TokenType.rightRound());
+pc.consume(TokenType.rightRound());
+// String
+var methodName = (name.substr(0, 1).toLowerCase() + name.substr(1));
+isRecord = true;
+return [MethodSignature.methodSignature(methodPosition, methodName, [], parameters, Type.constructor(methodPosition, "_.Void", []))];
+})), Pair.pair([], (function() {
+return parseMethodSignatures(pc);
+}))]);
+return TypeDefinition.typeDefinition(position, name, typeParameters, (isSum || isRecord), methodSignatures);
+}
+
+// (Pc, String, String, String, String) => Module
+function parseModule(pc, package_, alias, file, source) {
+// ArrayBuilder[_1759]
+var typeDefinitions = newArrayBuilder();
+// ArrayBuilder[_1763]
+var functionDefinitions = newArrayBuilder();
+while_((function() {
+return pc.lookahead("definition or end of file", [Pair.pair([TokenType.outsideFile()], (function() {
+return false;
+})), Pair.pair([TokenType.separator(), TokenType.outsideFile()], (function() {
+pc.consume(TokenType.separator());
+return false;
+})), Pair.pair([TokenType.separator()], (function() {
+pc.consume(TokenType.separator());
+return true;
+})), Pair.pair([], (function() {
+return true;
+}))]);
+}), (function() {
+pc.lookahead("definition", [Pair.pair([TokenType.lower()], (function() {
+return functionDefinitions.push(parseFunctionDefinition(pc));
+})), Pair.pair([], (function() {
+return typeDefinitions.push(parseTypeDefinition(pc));
+}))]);
+return pc.lookahead("line break", [Pair.pair([TokenType.outsideFile()], (function() {
+})), Pair.pair([TokenType.separator()], (function() {
+}))]);
+}));
+return Module.module(package_, file, alias, source, typeDefinitions.drain(), functionDefinitions.drain());
+}
+
+// (Array[Pair[String, String]]) => Void
+function testAll(moduleSources) {
+// Array[Pair[String, Module]?]
+var parsedModules = map(moduleSources, (function(p) {
+// String
+var moduleName = p.first;
+console.log('Parsing ' + moduleName);
+// Array[Token]
+var tokens = lexTokens(p.second);
+// Pc
+var pc = newPc(newTokenCursor(tokens, 0), p.second);
+return Pair.pair(p.first, parseModule(pc, "_current", "_Current", p.first, p.second));
+}));
+console.dir(parsedModules);
+// Resolver
+var resolver = newResolver(map(parsedModules, (function(p) {
+return p.second;
+})));
+// Array[Pair[String, Module]?]
+var resolvedModules = map(parsedModules, (function(p) {
+// String
+var moduleName = p.first;
+console.log('Resolving ' + moduleName);
+return Pair.pair(p.first, resolveModule(resolver, p.second));
+}));
+console.dir(resolvedModules);
 }
 
 // (Resolver, Module) => Module
 function resolveModule(resolver, module) {
-return Module.module(module.package_, module.file, module.alias, map(module.typeDefinitions, (function(d) {
+resolver.setSource(module.source);
+return Module.module(module.package_, module.file, module.alias, module.source, map(module.typeDefinitions, (function(d) {
 return resolveTypeDefinition(resolver, d);
 })), map(module.functionDefinitions, (function(d) {
 return resolveFunctionDefinition(resolver, d);
@@ -939,6 +1732,12 @@ return term;
 
 // (Array[Module]) => Resolver
 function newResolver(modules) {
+// String
+var source = "";
+// F2[String, Int, _2221]
+var error = (function(e, p) {
+return panic((e + " " + positionText(newCharCursor(source), p)));
+});
 // Array[String]
 var preludeTypes = ["Void", "Bool", "String", "Int", "Float", "Array", "Option", "Pair", "F0", "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9"];
 // Array[String]
@@ -963,9 +1762,9 @@ return map(m.functionDefinitions, (function(d) {
 return Pair.pair(d.signature.symbol, (d.signature.symbol + "@" + m.package_));
 }));
 })));
-// StringMapBuilder[_426]
+// StringMapBuilder[_2295]
 var definedTypes = newStringMapBuilder([]);
-// StringMapBuilder[_431]
+// StringMapBuilder[_2300]
 var definedFunctions = newStringMapBuilder([]);
 each(allTypes, (function(p) {
 when(definedTypes.has(p.second), (function() {
@@ -993,9 +1792,9 @@ return map(m.typeDefinitions, (function(d) {
 return Pair.pair((m.alias + "." + d.symbol), (d.symbol + "@" + m.package_));
 }));
 }))));
-// StringMapBuilder[_519]
+// StringMapBuilder[_2388]
 var variables = newStringMapBuilder([]);
-// StringMapBuilder[_524]
+// StringMapBuilder[_2393]
 var typeParameters = newStringMapBuilder([]);
 return {
 typeConstructor: function(position, symbol) {
@@ -1009,7 +1808,7 @@ case "some":
 var x = _match.value;
 return x;
 case "none":
-return panic(("No such type: " + symbol));
+return error(("No such type: " + symbol), position);
 }})(moduleTypeConstructors.get(symbol));
 }})(typeConstructors.get(symbol));
 },
@@ -1019,7 +1818,7 @@ case "some":
 var x = _match.value;
 return x;
 case "none":
-return panic(("No such type parameter: " + symbol));
+return error(("No such type parameter: " + symbol), position);
 }})(typeParameters.get(symbol));
 },
 staticName: function(position, symbol) {
@@ -1038,7 +1837,7 @@ case "some":
 var x = _match.value;
 return x;
 case "none":
-return panic(("No such module or type: " + symbol));
+return error(("No such module or type: " + symbol), position);
 }})(moduleTypeConstructors.get(symbol));
 }})(moduleAliases.get(symbol));
 }})(typeConstructors.get(symbol));
@@ -1051,7 +1850,7 @@ return x;
 case "none":
 return (function(_match) { switch(_match._) {
 case "none":
-return panic(("No such variable or function: " + symbol));
+return error(("No such variable or function: " + symbol), position);
 case "some":
 var x = _match.value;
 return x;
@@ -1060,7 +1859,7 @@ return x;
 },
 assertNoVariable: function(position, name) {
 return when(variables.has(name), (function() {
-return panic(("Suspicious shadowing of variable: " + name));
+return error(("Suspicious shadowing of variable: " + name), position);
 }));
 },
 addVariable: function(position, name) {
@@ -1071,9 +1870,9 @@ addTypeParameter: function(position, name) {
 (function(_match) { switch(_match._) {
 case "some":
 var n = _match.value;
-return panic(("Suspicious shadowing of type parameter: " + name));
+return error(("Suspicious shadowing of type parameter: " + name), position);
 case "none":
-break;
+return "";
 }})(typeParameters.get(name));
 typeParameters.set(name, name);
 return name;
@@ -1091,863 +1890,192 @@ typeConstructors = newStringMapBuilder(savedTypeConstructors);
 variables = newStringMapBuilder(savedVariables);
 typeParameters = newStringMapBuilder(savedTypeParameters);
 return result;
+},
+setSource: function(text) {
+source = text;
 }
 };
 }
 
-// (Pc, F0[t], TokenType) => Array[t]
-function parseCommaList(pc, parse, end) {
-// ArrayBuilder[_599]
-var result = newArrayBuilder();
-while_((function() {
-return pc.lookahead("comma separated list", [Pair.pair([end], (function() {
-return false;
-})), Pair.pair([], (function() {
-return true;
-}))]);
+// (String) => CharCursor
+function newCharCursor(buffer) {
+// ArrayBuilder[_2463]
+var stack = newArrayBuilder();
+// Int
+var offset = 0;
+return {
+offset: function() {
+var this_ = this;
+return offset;
+},
+buffer: function() {
+var this_ = this;
+return buffer;
+},
+invoke: function(ahead) {
+var this_ = this;
+// Int
+var i = (offset + ahead);
+return if_(((i < 0) || (i >= buffer.length)), (function() {
+return 0;
 }), (function() {
-result.push(parse());
-return pc.lookahead("comma", [Pair.pair([end], (function() {
-})), Pair.pair([], (function() {
-return pc.consume(TokenType.comma());
-}))]);
+return buffer.charCodeAt(i);
 }));
-return result.drain();
-}
-
-// (Pc, F0[Term], Array[TokenType]) => Term
-function parseLeftAssociative(pc, next, operators) {
-// Term
-var result = next();
-// Array[Pair[Array[TokenType], F0[Bool?]]?]
-var cases = map(operators, (function(o) {
-return Pair.pair([o], (function() {
-// Int
-var position = pc.position();
-pc.consume(o);
-result = Term.binary(position, o, result, next());
-return true;
-}));
-})).concat([Pair.pair([], (function() {
-return false;
-}))]);
-while_((function() {
-return pc.lookahead("operator", cases);
-}), (function() {
-}));
-return result;
-}
-
-// (Pc) => Type
-function parseTypeConstructor(pc) {
-// Int
-var position = pc.position();
-// Option[String]?
-var moduleName = pc.lookahead("type constructor", [Pair.pair([TokenType.upper(), TokenType.dot()], (function() {
-// String
-var name = pc.consume(TokenType.upper());
-pc.consume(TokenType.dot());
-return Option.some(name);
-})), Pair.pair([], (function() {
-return Option.none();
-}))]);
-// String
-var name = pc.consume(TokenType.upper());
-// Array[Type]
-var typeArguments = pc.lookahead("type arguments", [Pair.pair([TokenType.leftSquare()], (function() {
-pc.consume(TokenType.leftSquare());
-// Array[Type]
-var result = parseCommaList(pc, (function() {
-return parseType(pc);
-}), TokenType.rightSquare());
-pc.consume(TokenType.rightSquare());
-return result;
-})), Pair.pair([], (function() {
-return [];
-}))]);
-return Type.constructor(position, (function(_match) { switch(_match._) {
-case "some":
-var m = _match.value;
-return (m + "." + name);
-case "none":
-return name;
-}})(moduleName), typeArguments);
-}
-
-// (Pc) => Type
-function parseType(pc) {
-// Type?
-var left = pc.lookahead("type", [Pair.pair([TokenType.leftRound()], (function() {
-pc.consume(TokenType.leftRound());
-// Array[Type]
-var typeArguments = parseCommaList(pc, (function() {
-return parseType(pc);
-}), TokenType.rightRound());
-pc.consume(TokenType.rightRound());
-// Int
-var position = pc.position();
-pc.consume(TokenType.rightThickArrow());
-// Type
-var returnType = parseType(pc);
-return Type.constructor(position, ("_.F" + ("" + typeArguments.length)), typeArguments.concat([returnType]));
-})), Pair.pair([TokenType.lower()], (function() {
-// Int
-var position = pc.position();
-// String
-var name = pc.consume(TokenType.lower());
-return Type.parameter(position, name);
-})), Pair.pair([], (function() {
-return parseTypeConstructor(pc);
-}))]);
-return pc.lookahead("function type", [Pair.pair([TokenType.rightThickArrow()], (function() {
-// Int
-var position = pc.position();
-pc.consume(TokenType.rightThickArrow());
-// Type
-var returnType = parseType(pc);
-return Type.constructor(position, "_.F1", [left, returnType]);
-})), Pair.pair([], (function() {
-return left;
-}))]);
-}
-
-// (Pc) => Term
-function parseLambda(pc) {
-// Int
-var position = pc.position();
-return pc.lookahead("lambda function", [Pair.pair([TokenType.leftCurly()], (function() {
-// Array[Statement]
-var body = parseBody(pc);
-return Term.lambda(position, [], body);
-})), Pair.pair([], (function() {
-// Array[String]
-var parameters = pc.lookahead("lambda function", [Pair.pair([TokenType.lower()], (function() {
-return [pc.consume(TokenType.lower())];
-})), Pair.pair([TokenType.leftRound()], (function() {
-pc.consume(TokenType.leftRound());
-// Array[String]
-var result = parseCommaList(pc, (function() {
-return pc.consume(TokenType.lower());
-}), TokenType.rightRound());
-pc.consume(TokenType.rightRound());
-return result;
-}))]);
-pc.consume(TokenType.rightThickArrow());
-// Array[Statement]
-var body = pc.lookahead("lambda body", [Pair.pair([TokenType.leftCurly()], (function() {
-return parseBody(pc);
-})), Pair.pair([], (function() {
-return [Statement.term(position, parseTerm(pc))];
-}))]);
-return Term.lambda(position, parameters, body);
-}))]);
-}
-
-// (Pc) => MethodImplementation
-function parseMethodImplementation(pc) {
-// Int
-var position = pc.position();
-// String
-var name = pc.consume(TokenType.lower());
-// Array[String]
-var parameters = pc.lookahead("method parameter", [Pair.pair([TokenType.leftRound()], (function() {
-pc.consume(TokenType.leftRound());
-// Array[String]
-var result = parseCommaList(pc, (function() {
-return pc.consume(TokenType.lower());
-}), TokenType.rightRound());
-pc.consume(TokenType.rightRound());
-return result;
-})), Pair.pair([], (function() {
-return [];
-}))]);
-// Array[Statement]
-var body = parseBody(pc);
-return MethodImplementation.methodImplementation(position, name, parameters, body);
-}
-
-// (Pc, Bool) => Pair[Option[String], Array[MethodImplementation]]
-function parseMethodImplementations(pc, allowThisName) {
-pc.consume(TokenType.leftCurly());
-// Option[String]?
-var thisName = if_((!allowThisName), (function() {
-return Option.none();
-}), (function() {
-return pc.lookahead("this =>", [Pair.pair([TokenType.lower(), TokenType.rightThickArrow()], (function() {
-// String
-var name = pc.consume(TokenType.lower());
-pc.consume(TokenType.rightThickArrow());
-return Option.some(name);
-})), Pair.pair([], (function() {
-return Option.none();
-}))]);
-}));
-// ArrayBuilder[_991]
-var result = newArrayBuilder();
-while_((function() {
-return pc.lookahead("method implementation", [Pair.pair([TokenType.separator(), TokenType.rightCurly()], (function() {
-pc.consume(TokenType.separator());
-pc.consume(TokenType.rightCurly());
-return false;
-})), Pair.pair([TokenType.rightCurly()], (function() {
-pc.consume(TokenType.rightCurly());
-return false;
-})), Pair.pair([TokenType.separator()], (function() {
-pc.consume(TokenType.separator());
-return true;
-})), Pair.pair([], (function() {
-return true;
-}))]);
-}), (function() {
-return result.push(parseMethodImplementation(pc));
-}));
-return Pair.pair(thisName, result.drain());
-}
-
-// (Pc) => Term
-function parseInstance(pc) {
-// Int
-var position = pc.position();
-// Option[String]?
-var moduleName = pc.lookahead("type constructor", [Pair.pair([TokenType.upper(), TokenType.dot()], (function() {
-// String
-var name = pc.consume(TokenType.upper());
-pc.consume(TokenType.dot());
-return Option.some(name);
-})), Pair.pair([], (function() {
-return Option.none();
-}))]);
-// String
-var name = pc.consume(TokenType.upper());
-// Pair[Option[String], Array[MethodImplementation]]
-var pair = parseMethodImplementations(pc, true);
-return Term.instance(position, (function(_match) { switch(_match._) {
-case "some":
-var m = _match.value;
-return (m + "." + name);
-case "none":
-return name;
-}})(moduleName), pair.first, pair.second);
-}
-
-// (Pc) => Term
-function parseArray(pc) {
-// Int
-var position = pc.position();
-pc.consume(TokenType.leftSquare());
-// Array[Term]
-var elements = parseCommaList(pc, (function() {
-return parseTerm(pc);
-}), TokenType.rightSquare());
-pc.consume(TokenType.rightSquare());
-return Term.arrayValue(position, elements);
-}
-
-// (Pc) => Term
-function parseAtom(pc) {
-return pc.lookahead("atom", [Pair.pair([TokenType.leftSquare()], (function() {
-return parseArray(pc);
-})), Pair.pair([TokenType.lower(), TokenType.rightThickArrow()], (function() {
-return parseLambda(pc);
-})), Pair.pair([TokenType.leftRound(), TokenType.lower(), TokenType.comma()], (function() {
-return parseLambda(pc);
-})), Pair.pair([TokenType.leftRound(), TokenType.lower(), TokenType.rightRound(), TokenType.rightThickArrow()], (function() {
-return parseLambda(pc);
-})), Pair.pair([TokenType.leftRound(), TokenType.rightRound(), TokenType.rightThickArrow()], (function() {
-return parseLambda(pc);
-})), Pair.pair([TokenType.leftCurly()], (function() {
-return parseLambda(pc);
-})), Pair.pair([TokenType.upper(), TokenType.leftCurly()], (function() {
-return parseInstance(pc);
-})), Pair.pair([TokenType.upper(), TokenType.dot(), TokenType.upper(), TokenType.leftCurly()], (function() {
-return parseInstance(pc);
-})), Pair.pair([TokenType.upper()], (function() {
-return parseStaticCall(pc);
-})), Pair.pair([TokenType.leftRound()], (function() {
-pc.consume(TokenType.leftRound());
-// Term
-var result = parseTerm(pc);
-pc.consume(TokenType.rightRound());
-return result;
-})), Pair.pair([TokenType.lower()], (function() {
-// Int
-var position = pc.position();
-// String
-var name = pc.consume(TokenType.lower());
-return Term.variable(position, name);
-})), Pair.pair([TokenType.codeUnit()], (function() {
-// Int
-var position = pc.position();
-// String
-var codeUnit = pc.consume(TokenType.codeUnit());
-return Term.codeUnitValue(position, codeUnit);
-})), Pair.pair([TokenType.text()], (function() {
-// Int
-var position = pc.position();
-// String
-var text = pc.consume(TokenType.text());
-return Term.textValue(position, text);
-})), Pair.pair([TokenType.textStart()], (function() {
-return parseText(pc);
-})), Pair.pair([TokenType.numeral()], (function() {
-// Int
-var position = pc.position();
-// String
-var value = pc.consume(TokenType.numeral());
-return Term.integerValue(position, value);
-})), Pair.pair([TokenType.floating()], (function() {
-// Int
-var position = pc.position();
-// String
-var value = pc.consume(TokenType.floating());
-return Term.floatingValue(position, value);
-}))]);
-}
-
-// (Pc) => Term
-function parseText(pc) {
-// Int
-var position = pc.position();
-// ArrayBuilder[_1283]
-var parts = newArrayBuilder();
-// String
-var firstText = pc.consume(TokenType.textStart());
-when((firstText.length > 0), (function() {
-return parts.push(Term.textValue(position, firstText));
-}));
+},
+skip: function(ahead) {
+var this_ = this;
+offset += ahead;
+},
+pastEnd: function() {
+var this_ = this;
+return (offset >= buffer.length);
+},
+lookAhead: function(ahead) {
+var this_ = this;
 // Bool?
-var done = false;
+var result = true;
+// Int
+var i = 0;
 while_((function() {
-return (!done);
+return (i < ahead.length);
 }), (function() {
-parts.push(parseTerm(pc));
-return pc.lookahead("end of string", [Pair.pair([TokenType.textEnd()], (function() {
-// String
-var text = pc.consume(TokenType.textEnd());
-when((text.length > 0), (function() {
-return parts.push(Term.textValue(position, text));
+when((ahead[i] != this_.invoke(i)), (function() {
+result = false;
 }));
-done = true;
-})), Pair.pair([TokenType.textMiddle()], (function() {
-// String
-var text = pc.consume(TokenType.textMiddle());
-return when((text.length > 0), (function() {
-return parts.push(Term.textValue(position, text));
+i += 1;
 }));
-}))]);
+return result;
+},
+top: function(closeSymbol) {
+var this_ = this;
+return ((stack.size() != 0) && (stack.invoke((stack.size() - 1)) == closeSymbol));
+},
+push: function(closeSymbol) {
+var this_ = this;
+return stack.push(closeSymbol);
+},
+pop: function(closeSymbol) {
+var this_ = this;
+when((stack.size() == 0), (function() {
+return panic(("Unexpected '" + codeUnit(closeSymbol) + "' " + positionText(this_, offset)));
 }));
-return Term.textLiteral(position, parts.drain());
+when((stack.invoke((stack.size() - 1)) != closeSymbol), (function() {
+return panic(("Expected '" + codeUnit(stack.invoke((stack.size() - 1))) + "', got '" + codeUnit(closeSymbol) + "' " + positionText(this_, offset)));
+}));
+return stack.pop();
+},
+skipWhitespace: function() {
+var this_ = this;
+// Bool
+var ignoreNewLine = ((stack.size() > 0) && (((stack.invoke((stack.size() - 1)) == 41) || (stack.invoke((stack.size() - 1)) == 93)) || (stack.invoke((stack.size() - 1)) == 34)));
+return while_((function() {
+return ((offset < buffer.length) && ((((this_.invoke(0) == 32) || (this_.invoke(0) == 9)) || (this_.invoke(0) == 13)) || (ignoreNewLine && (this_.invoke(0) == 10))));
+}), (function() {
+return this_.skip(1);
+}));
+},
+position: function(offset) {
+var this_ = this;
+// Int
+var at = 0;
+// Int
+var line = 1;
+// Int
+var column = 1;
+while_((function() {
+return (at < offset);
+}), (function() {
+if_(((at < buffer.length) && (buffer.charCodeAt(at) == 10)), (function() {
+line += 1;
+column = 1;
+}), (function() {
+column += 1;
+}));
+at += 1;
+}));
+return Position.position(line, column, buffer, offset);
+}
+};
 }
 
-// (Pc) => Pair[String, Term]
-function parseNamedArgument(pc) {
-// String
-var name = pc.consume(TokenType.lower());
-pc.consume(TokenType.assign());
-// Term
-var term = parseTerm(pc);
-return Pair.pair(name, term);
+// (Int) => String
+function codeUnit(c) {
+return String.fromCharCode(c);
 }
 
-// (Pc) => Arguments
-function parseArguments(pc) {
-// Bool?
-var named = false;
-pc.consume(TokenType.leftRound());
-// Array[Pair[String, Term]?]
-var arguments = parseCommaList(pc, (function() {
-return pc.lookahead("method argument", [Pair.pair([TokenType.lower(), TokenType.assign()], (function() {
-named = true;
-// String
-var name = pc.consume(TokenType.lower());
-pc.consume(TokenType.assign());
-return Pair.pair(name, parseTerm(pc));
-})), Pair.pair([], (function() {
-when(named, (function() {
-return panic("Unexpected unnamed argument after named argument");
+// (CharCursor, Int) => String
+function positionText(cursor, offset) {
+// Position
+var position = cursor.position(offset);
+return ("at line " + ("" + position.line) + " column " + ("" + position.column));
+}
+
+// (Array[Pair[String, v]]) => StringMap[v]
+function newStringMap(array) {
+// StringMapBuilder[v]
+var builder = newStringMapBuilder(array);
+return {
+invoke: function(key) {
+return builder.invoke(key);
+},
+get: function(key) {
+return builder.get(key);
+},
+has: function(key) {
+return builder.has(key);
+}
+};
+}
+
+// (Array[Pair[String, v]]) => StringMapBuilder[v]
+function newStringMapBuilder(array) {
+var map = {};
+// StringMapBuilder[_2617]?!
+var builder = {
+invoke: function(key) {
+var this_ = this;
+return if_(this_.has(key), (function() {
+return map[key];
+}), (function() {
+return panic(("No such key: " + key));
 }));
-return Pair.pair("", parseTerm(pc));
-}))]);
-}), TokenType.rightRound());
-pc.consume(TokenType.rightRound());
-return Arguments.arguments(map(filter(arguments, (function(a) {
-return (a.first == "");
-})), (function(a) {
-return a.second;
-})), map(indexed(filter(arguments, (function(a) {
-return (a.first != "");
-}))), (function(i) {
-return NamedArgument.namedArgument(i.first, i.second.first, i.second.second);
-})));
-}
-
-// (Pc) => Term
-function parseStaticCall(pc) {
-// String
-var module = pc.consume(TokenType.upper());
-// Option[String]?
-var name = pc.lookahead("type name", [Pair.pair([TokenType.dot(), TokenType.upper()], (function() {
-pc.consume(TokenType.dot());
-return Option.some(pc.consume(TokenType.upper()));
-})), Pair.pair([], (function() {
+},
+get: function(key) {
+var this_ = this;
+return if_(this_.has(key), (function() {
+return Option.some(map[key]);
+}), (function() {
 return Option.none();
-}))]);
-// String
-var lastName = or(name, module);
-// Int
-var position = pc.position();
-// String
-var methodName = pc.lookahead("call", [Pair.pair([TokenType.dot(), TokenType.lower()], (function() {
-pc.consume(TokenType.dot());
-return pc.consume(TokenType.lower());
-})), Pair.pair([TokenType.leftRound()], (function() {
-return (lastName.substr(0, 1).toLowerCase() + lastName.substr(1));
-}))]);
-// Arguments
-var arguments = pc.lookahead("arguments", [Pair.pair([TokenType.leftRound()], (function() {
-return parseArguments(pc);
-})), Pair.pair([], (function() {
-return Arguments.arguments([], []);
-}))]);
-// String
-var staticName = (function(_match) { switch(_match._) {
-case "some":
-var n = _match.value;
-return (module + "." + n);
-case "none":
-return module;
-}})(name);
-return Term.staticCall(position, staticName, methodName, arguments);
-}
-
-// (Pc) => Term
-function parseCall(pc) {
-// Term
-var result = parseAtom(pc);
-while_((function() {
-return pc.lookahead("method", [Pair.pair([TokenType.leftRound()], (function() {
-return true;
-})), Pair.pair([TokenType.dot()], (function() {
-return true;
-})), Pair.pair([], (function() {
-return false;
-}))]);
-}), (function() {
-// Bool?
-var named = false;
-// Int
-var position = pc.position();
-// String
-var methodName = pc.lookahead("method call", [Pair.pair([TokenType.dot()], (function() {
-pc.consume(TokenType.dot());
-return pc.consume(TokenType.lower());
-})), Pair.pair([TokenType.leftRound()], (function() {
-return "invoke";
-}))]);
-result = pc.lookahead("method call", [Pair.pair([TokenType.leftRound()], (function() {
-// Arguments
-var arguments = parseArguments(pc);
-return Term.methodCall(position, result, methodName, arguments);
-})), Pair.pair([], (function() {
-return Term.methodCall(position, result, methodName, Arguments.arguments([], []));
-}))]);
 }));
+},
+has: function(key) {
+var this_ = this;
+return Object.prototype.hasOwnProperty.call(map, key);
+},
+set: function(key, value) {
+var this_ = this;
+map[key] = value;
+},
+remove: function(key, value) {
+var this_ = this;
+delete map[key];
+},
+toArray: function() {
+var this_ = this;
+// Array[_2614]
+var result = [];
+for(var key in map) if(this_.has(key)) result.push(Pair.pair(key, map[key]));
 return result;
+},
+toStringMap: function() {
+var this_ = this;
+return newStringMap(this_.toArray());
 }
-
-// (Pc) => Term
-function parseMinusNot(pc) {
-// Int
-var position = pc.position();
-return pc.lookahead("unary operator", [Pair.pair([TokenType.minus()], (function() {
-pc.consume(TokenType.minus());
-return Term.unary(position, TokenType.minus(), parseCall(pc));
-})), Pair.pair([TokenType.exclamation()], (function() {
-pc.consume(TokenType.exclamation());
-return Term.unary(position, TokenType.exclamation(), parseCall(pc));
-})), Pair.pair([], (function() {
-return parseCall(pc);
-}))]);
-}
-
-// (Pc) => Term
-function parseTimesDivide(pc) {
-return parseLeftAssociative(pc, (function() {
-return parseMinusNot(pc);
-}), [TokenType.star(), TokenType.slash()]);
-}
-
-// (Pc) => Term
-function parsePlusMinus(pc) {
-return parseLeftAssociative(pc, (function() {
-return parseTimesDivide(pc);
-}), [TokenType.plus(), TokenType.minus()]);
-}
-
-// (Pc) => Term
-function parseInequality(pc) {
-return parseLeftAssociative(pc, (function() {
-return parsePlusMinus(pc);
-}), [TokenType.equal(), TokenType.notEqual(), TokenType.less(), TokenType.lessEqual(), TokenType.greater(), TokenType.greaterEqual()]);
-}
-
-// (Pc) => Term
-function parseAndOr(pc) {
-return parseLeftAssociative(pc, (function() {
-return parseInequality(pc);
-}), [TokenType.and(), TokenType.or()]);
-}
-
-// (Pc) => Term
-function parseMatch(pc) {
-// Term
-var value = parseAndOr(pc);
-return pc.lookahead("match", [Pair.pair([TokenType.question()], (function() {
-// Int
-var position = pc.position();
-pc.consume(TokenType.question());
-// Pair[Option[String], Array[MethodImplementation]]
-var cases = parseMethodImplementations(pc, false);
-return Term.match(position, value, map(cases.second, (function(m) {
-return MatchCase.matchCase(m, []);
-})));
-})), Pair.pair([], (function() {
-return value;
-}))]);
-}
-
-// (Pc) => Term
-function parseTerm(pc) {
-return parseMatch(pc);
-}
-
-// (Pc) => Statement
-function parseFfi(pc) {
-// Int
-var position = pc.position();
-// String
-var language = pc.consume(TokenType.lower());
-when((language != "js"), (function() {
-return panic(("Expected FFI js, got FFI " + language));
+};
+each(array, (function(p) {
+return builder.set(p.first, p.second);
 }));
-// String
-var code = pc.consume(TokenType.text());
-return Statement.ffi(position, language, code);
-}
-
-// (Pc) => Array[Statement]
-function parseBody(pc) {
-pc.consume(TokenType.leftCurly());
-// ArrayBuilder[_1739]
-var result = newArrayBuilder();
-while_((function() {
-return pc.lookahead("statement or }", [Pair.pair([TokenType.rightCurly()], (function() {
-pc.consume(TokenType.rightCurly());
-return false;
-})), Pair.pair([TokenType.separator(), TokenType.rightCurly()], (function() {
-pc.consume(TokenType.separator());
-pc.consume(TokenType.rightCurly());
-return false;
-})), Pair.pair([TokenType.separator()], (function() {
-pc.consume(TokenType.separator());
-return true;
-})), Pair.pair([], (function() {
-return true;
-}))]);
-}), (function() {
-result.push(parseStatement(pc));
-return pc.lookahead("line break, ';' or '}'", [Pair.pair([TokenType.rightCurly()], (function() {
-})), Pair.pair([TokenType.separator()], (function() {
-}))]);
-}));
-return result.drain();
-}
-
-// (Pc) => Statement
-function parseStatement(pc) {
-// Int
-var position = pc.position();
-return pc.lookahead("statement", [Pair.pair([TokenType.lower(), TokenType.leftRound(), TokenType.rightRound(), TokenType.leftCurly()], (function() {
-return Statement.functions(parseFunctionDefinitions(pc));
-})), Pair.pair([TokenType.lower(), TokenType.leftRound(), TokenType.rightRound(), TokenType.colon()], (function() {
-return Statement.functions(parseFunctionDefinitions(pc));
-})), Pair.pair([TokenType.lower(), TokenType.leftRound(), TokenType.lower(), TokenType.colon()], (function() {
-return Statement.functions(parseFunctionDefinitions(pc));
-})), Pair.pair([TokenType.lower(), TokenType.colon()], (function() {
-// String
-var name = pc.consume(TokenType.lower());
-pc.consume(TokenType.colon());
-// Option[Type]?
-var type = pc.lookahead("type", [Pair.pair([TokenType.assign()], (function() {
-return Option.none();
-})), Pair.pair([], (function() {
-return Option.some(parseType(pc));
-}))]);
-pc.consume(TokenType.assign());
-// Term
-var value = parseTerm(pc);
-return Statement.let_(position, name, type, value);
-})), Pair.pair([TokenType.lower(), TokenType.assign()], (function() {
-// String
-var name = pc.consume(TokenType.lower());
-pc.consume(TokenType.assign());
-// Term
-var value = parseTerm(pc);
-return Statement.assign(position, name, value);
-})), Pair.pair([TokenType.lower(), TokenType.increment()], (function() {
-// String
-var name = pc.consume(TokenType.lower());
-pc.consume(TokenType.increment());
-// Term
-var value = parseTerm(pc);
-return Statement.increment(position, name, value);
-})), Pair.pair([TokenType.lower(), TokenType.decrement()], (function() {
-// String
-var name = pc.consume(TokenType.lower());
-pc.consume(TokenType.decrement());
-// Term
-var value = parseTerm(pc);
-return Statement.decrement(position, name, value);
-})), Pair.pair([TokenType.lower(), TokenType.text()], (function() {
-return parseFfi(pc);
-})), Pair.pair([], (function() {
-// Term
-var term = parseTerm(pc);
-return Statement.term(position, term);
-}))]);
-}
-
-// (Pc) => String
-function parseTypeParameter(pc) {
-return pc.consume(TokenType.lower());
-}
-
-// (Pc) => Parameter
-function parseParameter(pc) {
-// Int
-var position = pc.position();
-// String
-var name = pc.consume(TokenType.lower());
-pc.consume(TokenType.colon());
-// Type
-var type = parseType(pc);
-return Parameter.parameter(position, name, type);
-}
-
-// (Pc) => MethodSignature
-function parseMethodSignature(pc) {
-// Int
-var position = pc.position();
-// String
-var name = pc.consume(TokenType.lower());
-// Array[String]
-var typeParameters = pc.lookahead("type parameters", [Pair.pair([TokenType.leftSquare()], (function() {
-pc.consume(TokenType.leftSquare());
-// Array[String]
-var result = parseCommaList(pc, (function() {
-return parseTypeParameter(pc);
-}), TokenType.rightSquare());
-pc.consume(TokenType.rightSquare());
-return result;
-})), Pair.pair([], (function() {
-return [];
-}))]);
-// Array[Parameter]
-var parameters = pc.lookahead("parameters", [Pair.pair([TokenType.leftRound()], (function() {
-pc.consume(TokenType.leftRound());
-// Array[Parameter]
-var result = parseCommaList(pc, (function() {
-return parseParameter(pc);
-}), TokenType.rightRound());
-pc.consume(TokenType.rightRound());
-return result;
-})), Pair.pair([], (function() {
-return [];
-}))]);
-// Type
-var returnType = pc.lookahead("return type", [Pair.pair([TokenType.colon()], (function() {
-pc.consume(TokenType.colon());
-return parseType(pc);
-})), Pair.pair([], (function() {
-return Type.constructor(position, "_.Void", []);
-}))]);
-return MethodSignature.methodSignature(position, name, typeParameters, parameters, returnType);
-}
-
-// (Pc) => Array[FunctionDefinition]
-function parseFunctionDefinitions(pc) {
-// Int
-var position = pc.position();
-// ArrayBuilder[_2071]
-var result = newArrayBuilder();
-while_((function() {
-return pc.lookahead("function", [Pair.pair([TokenType.lower(), TokenType.leftRound(), TokenType.rightRound(), TokenType.leftCurly()], (function() {
-return true;
-})), Pair.pair([TokenType.lower(), TokenType.leftRound(), TokenType.rightRound(), TokenType.colon()], (function() {
-return true;
-})), Pair.pair([TokenType.lower(), TokenType.leftRound(), TokenType.lower(), TokenType.colon()], (function() {
-return true;
-})), Pair.pair([TokenType.separator(), TokenType.lower(), TokenType.leftRound(), TokenType.rightRound(), TokenType.leftCurly()], (function() {
-pc.consume(TokenType.separator());
-return true;
-})), Pair.pair([TokenType.separator(), TokenType.lower(), TokenType.leftRound(), TokenType.rightRound(), TokenType.colon()], (function() {
-pc.consume(TokenType.separator());
-return true;
-})), Pair.pair([TokenType.separator(), TokenType.lower(), TokenType.leftRound(), TokenType.lower(), TokenType.colon()], (function() {
-pc.consume(TokenType.separator());
-return true;
-})), Pair.pair([], (function() {
-return false;
-}))]);
-}), (function() {
-return result.push(parseFunctionDefinition(pc));
-}));
-return result.drain();
-}
-
-// (Pc) => FunctionDefinition
-function parseFunctionDefinition(pc) {
-// Int
-var position = pc.position();
-// MethodSignature
-var signature = parseMethodSignature(pc);
-// Array[Statement]
-var body = parseBody(pc);
-return FunctionDefinition.functionDefinition(position, signature, body);
-}
-
-// (Pc) => Array[MethodSignature]
-function parseMethodSignatures(pc) {
-pc.consume(TokenType.leftCurly());
-// ArrayBuilder[_2177]
-var result = newArrayBuilder();
-while_((function() {
-return pc.lookahead("method signature or }", [Pair.pair([TokenType.rightCurly()], (function() {
-pc.consume(TokenType.rightCurly());
-return false;
-})), Pair.pair([TokenType.separator(), TokenType.rightCurly()], (function() {
-pc.consume(TokenType.separator());
-pc.consume(TokenType.rightCurly());
-return false;
-})), Pair.pair([TokenType.separator()], (function() {
-pc.consume(TokenType.separator());
-return true;
-})), Pair.pair([], (function() {
-return true;
-}))]);
-}), (function() {
-result.push(parseMethodSignature(pc));
-return pc.lookahead("line break, ';' or '}'", [Pair.pair([TokenType.rightCurly()], (function() {
-})), Pair.pair([TokenType.separator()], (function() {
-}))]);
-}));
-return result.drain();
-}
-
-// (Pc) => TypeDefinition
-function parseTypeDefinition(pc) {
-// Int
-var position = pc.position();
-// String
-var name = pc.consume(TokenType.upper());
-// Array[String]
-var typeParameters = pc.lookahead("type parameters", [Pair.pair([TokenType.leftSquare()], (function() {
-pc.consume(TokenType.leftSquare());
-// Array[String]
-var result = parseCommaList(pc, (function() {
-return parseTypeParameter(pc);
-}), TokenType.rightSquare());
-pc.consume(TokenType.rightSquare());
-return result;
-})), Pair.pair([], (function() {
-return [];
-}))]);
-// Bool?
-var isSum = pc.lookahead("type parameters", [Pair.pair([TokenType.question()], (function() {
-pc.consume(TokenType.question());
-return true;
-})), Pair.pair([], (function() {
-return false;
-}))]);
-// Bool?
-var isRecord = false;
-// Array[MethodSignature?]
-var methodSignatures = pc.lookahead("method signatures", [Pair.pair([TokenType.leftRound()], (function() {
-// Int
-var methodPosition = position;
-pc.consume(TokenType.leftRound());
-// Array[Parameter]
-var parameters = parseCommaList(pc, (function() {
-return parseParameter(pc);
-}), TokenType.rightRound());
-pc.consume(TokenType.rightRound());
-// String
-var methodName = (name.substr(0, 1).toLowerCase() + name.substr(1));
-isRecord = true;
-return [MethodSignature.methodSignature(methodPosition, methodName, [], parameters, Type.constructor(methodPosition, "_.Void", []))];
-})), Pair.pair([], (function() {
-return parseMethodSignatures(pc);
-}))]);
-return TypeDefinition.typeDefinition(position, name, typeParameters, (isSum || isRecord), methodSignatures);
-}
-
-// (Pc, String, String, String) => Module
-function parseModule(pc, package_, alias, file) {
-// ArrayBuilder[_2354]
-var typeDefinitions = newArrayBuilder();
-// ArrayBuilder[_2358]
-var functionDefinitions = newArrayBuilder();
-while_((function() {
-return pc.lookahead("definition or end of file", [Pair.pair([TokenType.outsideFile()], (function() {
-return false;
-})), Pair.pair([TokenType.separator(), TokenType.outsideFile()], (function() {
-pc.consume(TokenType.separator());
-return false;
-})), Pair.pair([TokenType.separator()], (function() {
-pc.consume(TokenType.separator());
-return true;
-})), Pair.pair([], (function() {
-return true;
-}))]);
-}), (function() {
-pc.lookahead("definition", [Pair.pair([TokenType.lower()], (function() {
-return functionDefinitions.push(parseFunctionDefinition(pc));
-})), Pair.pair([], (function() {
-return typeDefinitions.push(parseTypeDefinition(pc));
-}))]);
-return pc.lookahead("line break", [Pair.pair([TokenType.outsideFile()], (function() {
-})), Pair.pair([TokenType.separator()], (function() {
-}))]);
-}));
-return Module.module(package_, file, alias, typeDefinitions.drain(), functionDefinitions.drain());
-}
-
-// (Array[Pair[String, String]]) => Void
-function testAll(moduleSources) {
-// Array[Pair[String, Module]?]
-var parsedModules = map(moduleSources, (function(p) {
-// String
-var moduleName = p.first;
-console.log('Parsing ' + moduleName);
-// Array[Token]
-var tokens = lexTokens(p.second);
-// Pc
-var pc = newPc(newTokenCursor(tokens, 0), p.second);
-return Pair.pair(p.first, parseModule(pc, "_current", "_Current", p.first));
-}));
-console.dir(parsedModules);
-// Resolver
-var resolver = newResolver(map(parsedModules, (function(p) {
-return p.second;
-})));
-// Array[Pair[String, Module]?]
-var resolvedModules = map(parsedModules, (function(p) {
-// String
-var moduleName = p.first;
-console.log('Resolving ' + moduleName);
-return Pair.pair(p.first, resolveModule(resolver, p.second));
-}));
-console.dir(resolvedModules);
+return builder;
 }
 
 // (F0[Bool], F0[t]) => Case[t]
@@ -2009,7 +2137,7 @@ for(var i = 0; i < array.length; i++) body(array[i]);
 
 // (Array[a]) => Array[Pair[Int, a]]
 function indexed(array) {
-// Array[_2521]
+// Array[_2656]
 var result = [];
 for(var i = 0; i < array.length; i++) result.push(Pair.pair(i, array[i]));
 return result;
@@ -2017,7 +2145,7 @@ return result;
 
 // (Array[a], Array[b]) => Array[Pair[a, b]]
 function zip(left, right) {
-// Array[_2525]
+// Array[_2660]
 var result = [];
 for(var i = 0; i < left.length && i < right.length; i++) result.push(Pair.pair(left[i], right[i]));
 return result;
@@ -2025,7 +2153,7 @@ return result;
 
 // (Array[a], F1[a, b]) => Array[b]
 function map(array, body) {
-// Array[_2529]
+// Array[_2664]
 var result = [];
 for(var i = 0; i < array.length; i++) result.push(body(array[i]));
 return result;
@@ -2033,7 +2161,7 @@ return result;
 
 // (Array[a], F1[a, Bool]) => Array[a]
 function filter(array, condition) {
-// Array[_2533]
+// Array[_2668]
 var result = [];
 for(var i = 0; i < array.length; i++) if(condition(array[i])) result.push(array[i]);
 return result;
@@ -2077,7 +2205,7 @@ return true;
 
 // (Array[Array[a]]) => Array[a]
 function flatten(array) {
-// Array[_2567]
+// Array[_2702]
 var result = [];
 for(var i = 0; i < array.length; i++) for(var j = 0; j < array[i].length; j++) result.push(array[i][j]);
 return result;
@@ -2091,7 +2219,7 @@ throw problem;
 
 // (Array[F0[Option[a]]]) => Option[a]
 function orElse(options) {
-// Option[_2573]?
+// Option[_2708]?
 var result = Option.none();
 // Int
 var i = 0;
@@ -2128,11 +2256,11 @@ return value;
 
 // (TokenCursor, String) => Pc
 function newPc(cursor, buffer) {
-// F1[_2596, _2597]
+// F1[_2731, _2732]
 var tokenTypeText = (function(tokenType) {
 return tokenType._;
 });
-// F1[_2600, _2601]
+// F1[_2735, _2736]
 var tokenText = (function(token) {
 return buffer.substring(token.from, token.to);
 });
@@ -2162,7 +2290,7 @@ return text;
 lookahead: function(expected, cases) {
 // Int
 var i = 0;
-// Option[_2642]?
+// Option[_2777]?
 var result = Option.none();
 while_((function() {
 return ((i < cases.length) && (result == Option.none()));
@@ -2278,7 +2406,7 @@ return Option.none();
 var firstAcceptedToken = (function(bodies) {
 // Int
 var i = 0;
-// Option[_2811]?
+// Option[_2946]?
 var result = Option.none();
 // Array[F0[Option[Token]]]
 var array = bodies;
@@ -2490,7 +2618,7 @@ return Option.some(Token.token(TokenType.numeral(), from, to));
 
 // (String) => Array[Token]
 function lexTokens(buffer) {
-// ArrayBuilder[_3277]
+// ArrayBuilder[_3406]
 var builder = newArrayBuilder();
 // CharCursor
 var cursor = newCharCursor(buffer);
@@ -2542,127 +2670,14 @@ return result;
 };
 }
 
-// (String) => CharCursor
-function newCharCursor(buffer) {
-// ArrayBuilder[_3330]
-var stack = newArrayBuilder();
-// Int
-var offset = 0;
-return {
-offset: function() {
-var this_ = this;
-return offset;
-},
-buffer: function() {
-var this_ = this;
-return buffer;
-},
-invoke: function(ahead) {
-var this_ = this;
-// Int
-var i = (offset + ahead);
-return if_(((i < 0) || (i >= buffer.length)), (function() {
-return 0;
-}), (function() {
-return buffer.charCodeAt(i);
-}));
-},
-skip: function(ahead) {
-var this_ = this;
-offset += ahead;
-},
-pastEnd: function() {
-var this_ = this;
-return (offset >= buffer.length);
-},
-lookAhead: function(ahead) {
-var this_ = this;
-// Bool?
-var result = true;
-// Int
-var i = 0;
-while_((function() {
-return (i < ahead.length);
-}), (function() {
-when((ahead[i] != this_.invoke(i)), (function() {
-result = false;
-}));
-i += 1;
-}));
-return result;
-},
-top: function(closeSymbol) {
-var this_ = this;
-return ((stack.size() != 0) && (stack.invoke((stack.size() - 1)) == closeSymbol));
-},
-push: function(closeSymbol) {
-var this_ = this;
-return stack.push(closeSymbol);
-},
-pop: function(closeSymbol) {
-var this_ = this;
-when((stack.size() == 0), (function() {
-return panic(("Unexpected '" + codeUnit(closeSymbol) + "' " + positionText(this_, offset)));
-}));
-when((stack.invoke((stack.size() - 1)) != closeSymbol), (function() {
-return panic(("Expected '" + codeUnit(stack.invoke((stack.size() - 1))) + "', got '" + codeUnit(closeSymbol) + "' " + positionText(this_, offset)));
-}));
-return stack.pop();
-},
-skipWhitespace: function() {
-var this_ = this;
-// Bool
-var ignoreNewLine = ((stack.size() > 0) && (((stack.invoke((stack.size() - 1)) == 41) || (stack.invoke((stack.size() - 1)) == 93)) || (stack.invoke((stack.size() - 1)) == 34)));
-return while_((function() {
-return ((offset < buffer.length) && ((((this_.invoke(0) == 32) || (this_.invoke(0) == 9)) || (this_.invoke(0) == 13)) || (ignoreNewLine && (this_.invoke(0) == 10))));
-}), (function() {
-return this_.skip(1);
-}));
-},
-position: function(offset) {
-var this_ = this;
-// Int
-var at = 0;
-// Int
-var line = 1;
-// Int
-var column = 1;
-while_((function() {
-return (at < offset);
-}), (function() {
-if_(((at < buffer.length) && (buffer.charCodeAt(at) == 10)), (function() {
-line += 1;
-column = 1;
-}), (function() {
-column += 1;
-}));
-at += 1;
-}));
-return Position.position(line, column, buffer, offset);
-}
-};
-}
-
-// (Int) => String
-function codeUnit(c) {
-return String.fromCharCode(c);
-}
-
-// (CharCursor, Int) => String
-function positionText(cursor, offset) {
-// Position
-var position = cursor.position(offset);
-return ("at line " + ("" + position.line) + " column " + ("" + position.column));
-}
-
 // () => ArrayBuilder[t]
 function newArrayBuilder() {
-// Array[_3455]
+// Array[_3457]
 var array = [];
 return {
 drain: function() {
 var this_ = this;
-// Array[_3455]
+// Array[_3457]
 var result = array;
 array = [];
 return result;
@@ -2683,7 +2698,7 @@ return array.pop()
 },
 top: function() {
 var this_ = this;
-// Option[_3472]?
+// Option[_3474]?
 var result = Option.none();
 when((array.length > 0), (function() {
 result = Option.some(array[array.length - 1])
@@ -2696,14 +2711,14 @@ for(var i = 0; i < array.length; i++) body(array[i]);
 },
 map: function(body) {
 var this_ = this;
-// ArrayBuilder[_3482]
+// ArrayBuilder[_3484]
 var result = newArrayBuilder();
 for(var i = 0; i < array.length; i++) result.push(body(array[i]));
 return result;
 },
 filter: function(body) {
 var this_ = this;
-// ArrayBuilder[_3487]
+// ArrayBuilder[_3489]
 var result = newArrayBuilder();
 for(var i = 0; i < array.length; i++) if(body(array[i])) result.push(array[i]);
 return result;

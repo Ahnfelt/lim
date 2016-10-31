@@ -559,7 +559,7 @@ parseTypeDefinition(pc : Pc) : TypeDefinition {
     TypeDefinition(position, name, typeParameters, isSum || isRecord, methodSignatures)
 }
 
-parseModule(pc : Pc, package : String, alias : String, file : String) : Module {
+parseModule(pc : Pc, package : String, alias : String, file : String, source : String) : Module {
     typeDefinitions := newArrayBuilder()
     functionDefinitions := newArrayBuilder()
     while({ pc.lookahead("definition or end of file", [
@@ -581,6 +581,7 @@ parseModule(pc : Pc, package : String, alias : String, file : String) : Module {
         package = package,
         file = file,
         alias = alias,
+        source = source,
         typeDefinitions = typeDefinitions.drain,
         functionDefinitions = functionDefinitions.drain
     )
@@ -592,7 +593,7 @@ testAll(moduleSources : Array[Pair[String, String]]) {
         js"console.log('Parsing ' + moduleName);"
         tokens := lexTokens(p.second)
         pc := newPc(newTokenCursor(tokens, 0), p.second)
-        Pair(p.first, parseModule(pc, "_current", "_Current", p.first))
+        Pair(p.first, parseModule(pc, "_current", "_Current", p.first, p.second))
     })
     js"console.dir(parsedModules);"
     resolver := newResolver(map(parsedModules, p => p.second))

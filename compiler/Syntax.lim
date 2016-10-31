@@ -54,6 +54,7 @@ Module(
     package : String,
     file : String,
     alias : String,
+    source : String,
     typeDefinitions : Array[TypeDefinition],
     functionDefinitions : Array[FunctionDefinition]
 )
