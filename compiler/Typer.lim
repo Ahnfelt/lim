@@ -56,7 +56,7 @@ typeToString(type : Type) : String {
 Typer {
     scope[a](body : () => a) : a
     topScope[a](body : () => a) : a
-    type(name : String) : Type
+    type(name : String) : TypeDefinition
     variable(name : String) : Type
     bindVariable(name : String, type : Type)
     bindTypeVariable(position : Int, id : Int, type : Type)
@@ -68,7 +68,7 @@ Typer {
 }
 
 newTyper(modules : Array[Module]) : Typer {
-    types := newStringMapBuilder([])
+    types := newStringMapBuilder(flatten(map(modules, m => map(m.typeDefinitions, d => Pair(d.symbol, d)))))
     functions := newStringMapBuilder([])
     variables := newStringMapBuilder([])
     substitution := newStringMapBuilder([])
