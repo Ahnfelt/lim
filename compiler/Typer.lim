@@ -79,12 +79,12 @@ newTyper(modules : Array[Module]) : Typer {
     Typer { typer =>
         scope(body) {
             oldVariables := variables.toArray
-            result = body()
+            result := body()
             variables = newStringMap(oldVariables)
             result
         }
         topScope(body) {
-            result = body()
+            result := body()
             variables = newStringMap([])
             substitution = newStringMap([])
             nextId = 0

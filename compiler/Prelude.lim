@@ -101,6 +101,10 @@ flatten[a](array : Array[Array[a]]) : Array[a] {
     result
 }
 
+join(array : Array[String], separator : String) : String {
+    js"return array.join(separator);"
+}
+
 panic[a](problem : String) : a {
     js"'debugger';"
     js"throw problem;"
