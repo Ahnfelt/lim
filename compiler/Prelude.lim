@@ -36,7 +36,7 @@ while(condition : () => Bool, body : () => Void) {
     js"while(condition()) body();"
 }
 
-do[t](body : () => t) {
+do[t](body : () => t) : t {
     body()
 }
 
