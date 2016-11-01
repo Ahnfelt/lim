@@ -7,6 +7,52 @@ value: value
 }}
 };
 
+var Resolver = {
+typeConstructor: function(position, symbol) { return {
+_: "typeConstructor",
+position: position,
+symbol: symbol
+}},
+variable: function(position, symbol) { return {
+_: "variable",
+position: position,
+symbol: symbol
+}},
+typeParameter: function(position, symbol) { return {
+_: "typeParameter",
+position: position,
+symbol: symbol
+}},
+staticName: function(position, symbol) { return {
+_: "staticName",
+position: position,
+symbol: symbol
+}},
+assertNoVariable: function(position, name) { return {
+_: "assertNoVariable",
+position: position,
+name: name
+}},
+addVariable: function(position, name) { return {
+_: "addVariable",
+position: position,
+name: name
+}},
+addTypeParameter: function(position, name) { return {
+_: "addTypeParameter",
+position: position,
+name: name
+}},
+scope: function(body) { return {
+_: "scope",
+body: body
+}},
+setSource: function(text) { return {
+_: "setSource",
+text: text
+}}
+};
+
 var Case = {
 case_: function(condition, body) { return {
 _: "case",
@@ -124,52 +170,6 @@ error: function(position, problem) { return {
 _: "error",
 position: position,
 problem: problem
-}}
-};
-
-var Resolver = {
-typeConstructor: function(position, symbol) { return {
-_: "typeConstructor",
-position: position,
-symbol: symbol
-}},
-variable: function(position, symbol) { return {
-_: "variable",
-position: position,
-symbol: symbol
-}},
-typeParameter: function(position, symbol) { return {
-_: "typeParameter",
-position: position,
-symbol: symbol
-}},
-staticName: function(position, symbol) { return {
-_: "staticName",
-position: position,
-symbol: symbol
-}},
-assertNoVariable: function(position, name) { return {
-_: "assertNoVariable",
-position: position,
-name: name
-}},
-addVariable: function(position, name) { return {
-_: "addVariable",
-position: position,
-name: name
-}},
-addTypeParameter: function(position, name) { return {
-_: "addTypeParameter",
-position: position,
-name: name
-}},
-scope: function(body) { return {
-_: "scope",
-body: body
-}},
-setSource: function(text) { return {
-_: "setSource",
-text: text
 }}
 };
 
@@ -668,6 +668,7 @@ return if_((body.length == 0), (function() {
 equalityConstraint(typer, position, expectedType, Type.constructor(position, "Void@_", []));
 return [];
 }), (function() {
+return typer.scope((function() {
 // Array[Statement]
 var initial = map(firsts(body), (function(s) {
 return typeStatement(typer, Type.variable(position, typer.fresh()), s);
@@ -696,550 +697,73 @@ return typeStatement(typer, expectedType, return_);
 }})(typer.expand(expectedType));
 return initial.concat([typedReturn]);
 }));
+}));
 }
 
 // (Typer, Type, Statement) => Statement
 function typeStatement(typer, expectedType, statement) {
-return panic("TODO");
-}
-
-// (F0[Bool], F0[t]) => Case[t]
-function case_(condition, body) {
-return if_(condition(), (function() {
-// t
-var result = body();
-return {
-case_: function(a, b) {
-var this_ = this;
-return this_;
-},
-else_: function(b) {
-var this_ = this;
-return result;
-}
-};
-}), (function() {
-return {
-case_: function(condition, body) {
-return case_(condition, body);
-},
-else_: function(body) {
-return body();
-}
-};
-}));
-}
-
-// (Bool, F0[t], F0[t]) => t
-function if_(condition, then, else_) {
-return (condition ? then() : else_());
-}
-
-// (Bool, F0[Void]) => Void
-function when(condition, then) {
-return (condition ? then() : void(0));
-}
-
-// (F0[Bool], F0[Void]) => Void
-function while_(condition, body) {
-while(condition()) body();
-}
-
-// (F0[t]) => t
-function do_(body) {
-return body();
-}
-
-// (Int, F0[Void]) => Void
-function repeat(times, body) {
-for(var i = 0; i < times; i++) body();
-}
-
-// (Array[a], F1[a, Void]) => Void
-function each(array, body) {
-for(var i = 0; i < array.length; i++) body(array[i]);
-}
-
-// (Array[a]) => Array[Pair[Int, a]]
-function indexed(array) {
-// Array[_116]
-var result = [];
-for(var i = 0; i < array.length; i++) result.push(Pair.pair(i, array[i]));
-return result;
-}
-
-// (Array[a], Array[b]) => Array[Pair[a, b]]
-function zip(left, right) {
-// Array[_120]
-var result = [];
-for(var i = 0; i < left.length && i < right.length; i++) result.push(Pair.pair(left[i], right[i]));
-return result;
-}
-
-// (Array[a], F1[a, b]) => Array[b]
-function map(array, body) {
-// Array[_124]
-var result = [];
-for(var i = 0; i < array.length; i++) result.push(body(array[i]));
-return result;
-}
-
-// (Array[a], F1[a, Bool]) => Array[a]
-function filter(array, condition) {
-// Array[_128]
-var result = [];
-for(var i = 0; i < array.length; i++) if(condition(array[i])) result.push(array[i]);
-return result;
-}
-
-// (Array[a], F1[a, Bool]) => Option[a]
-function find(array, condition) {
-for(var i = 0; i < array.length; i++) if(condition(array[i])) return Option.some(array[i]);
-return Option.none();
-}
-
-// (Array[a]) => Option[a]
-function first(array) {
-return if_((array.length != 0), (function() {
-return Option.some(array[0]);
-}), (function() {
-return Option.none();
-}));
-}
-
-// (Array[a]) => Array[a]
-function firsts(array) {
-// Array[_146]
-var result = [];
-for(var i = 0; i < array.length - 1; i++) result.push(array[i]);
-return result;
-}
-
-// (Array[a]) => Option[a]
-function last(array) {
-return if_((array.length != 0), (function() {
-return Option.some(array[(array.length - 1)]);
-}), (function() {
-return Option.none();
-}));
-}
-
-// (Array[a]) => Array[a]
-function lasts(array) {
-// Array[_162]
-var result = [];
-for(var i = 1; i < array.length; i++) result.push(array[i]);
-return result;
-}
-
-// (Array[a], F1[a, Bool]) => Bool
-function any(array, condition) {
-for(var i = 0; i < array.length; i++) if(condition(array[i])) return true;
-return false;
-}
-
-// (Array[a], F1[a, Bool]) => Bool
-function all(array, condition) {
-for(var i = 0; i < array.length; i++) if(!condition(array[i])) return false;
-return true;
-}
-
-// (Array[Array[a]]) => Array[a]
-function flatten(array) {
-// Array[_170]
-var result = [];
-for(var i = 0; i < array.length; i++) for(var j = 0; j < array[i].length; j++) result.push(array[i][j]);
-return result;
-}
-
-// (Array[String], String) => String
-function join(array, separator) {
-return array.join(separator);
-}
-
-// (String) => a
-function panic(problem) {
-'debugger';
-throw problem;
-}
-
-// (Array[F0[Option[a]]]) => Option[a]
-function orElse(options) {
-// Option[_176]?
-var result = Option.none();
-// Int
-var i = 0;
-while_((function() {
-return ((result == Option.none()) && (i < options.length));
-}), (function() {
-result = options[i]();
-i += 1;
-}));
-return result;
-}
-
-// (Option[a]) => a
-function orPanic(option) {
 return (function(_match) { switch(_match._) {
-case "none":
-return panic("orPanic(Option.none)");
-case "some":
+case "term":
+var position = _match.position;
+var term = _match.term;
+// Term
+var term2 = typeTerm(typer, expectedType, term);
+return Statement.term(position, term2);
+case "let":
+var position = _match.position;
+var variable = _match.variable;
+var type = _match.type;
 var value = _match.value;
-return value;
-}})(option);
-}
-
-// (Option[a], a) => a
-function or(option, default_) {
-return (function(_match) { switch(_match._) {
-case "none":
-return default_;
-case "some":
-var value = _match.value;
-return value;
-}})(option);
-}
-
-// (Array[Pair[String, v]]) => StringMap[v]
-function newStringMap(array) {
-// StringMapBuilder[v]
-var builder = newStringMapBuilder(array);
-return {
-invoke: function(key) {
-return builder.invoke(key);
-},
-get: function(key) {
-return builder.get(key);
-},
-has: function(key) {
-return builder.has(key);
-}
-};
-}
-
-// (Array[Pair[String, v]]) => StringMapBuilder[v]
-function newStringMapBuilder(array) {
-var map = {};
-// StringMapBuilder[_230]?!
-var builder = {
-invoke: function(key) {
-var this_ = this;
-return if_(this_.has(key), (function() {
-return map['~' + key];
-}), (function() {
-return panic(("No such key: " + key));
-}));
-},
-get: function(key) {
-var this_ = this;
-return if_(this_.has(key), (function() {
-return Option.some(map['~' + key]);
-}), (function() {
-return Option.none();
-}));
-},
-has: function(key) {
-var this_ = this;
-return map.hasOwnProperty('~' + key);
-},
-set: function(key, value) {
-var this_ = this;
-map['~' + key] = value;
-},
-remove: function(key, value) {
-var this_ = this;
-delete map['~' + key];
-},
-toArray: function() {
-var this_ = this;
-// Array[_227]
-var result = [];
-for(var key in map) if(this_.has(key.substr(1))) result.push(Pair.pair(key.substr(1), map[key]));
-return result;
-},
-toStringMap: function() {
-var this_ = this;
-return newStringMap(this_.toArray());
-}
-};
-each(array, (function(p) {
-return builder.set(p.first, p.second);
-}));
-return builder;
-}
-
-// (Typer, Int, Type, Type) => Void
-function equalityConstraint(typer, position, expectedType, actualType) {
-// F0[_245]
-var error = (function() {
-return typer.error(position, ("Expected " + typeToString(typer.expand(expectedType)) + ", got " + typeToString(typer.expand(actualType))));
-});
-return (function(_match) { switch(_match._) {
-case "variable":
-var p1 = _match.position;
-var id1 = _match.id;
-return (function(_match) { switch(_match._) {
-case "variable":
-var p2 = _match.position;
-var id2 = _match.id;
-return when((id1 != id2), (function() {
-return typer.bindTypeVariable(position, id1, actualType);
-}));
-case "constructor":
-var p2 = _match.position;
-var symbol2 = _match.symbol;
-var typeArguments2 = _match.typeArguments;
-return typer.bindTypeVariable(position, id1, actualType);
-case "parameter":
-var p2 = _match.position;
-var name2 = _match.name;
-return typer.bindTypeVariable(position, id1, actualType);
-}})(typer.expand(expectedType));
-case "constructor":
-var p1 = _match.position;
-var symbol1 = _match.symbol;
-var typeArguments1 = _match.typeArguments;
-return (function(_match) { switch(_match._) {
-case "variable":
-var p2 = _match.position;
-var id2 = _match.id;
-return typer.bindTypeVariable(position, id2, actualType);
-case "constructor":
-var p2 = _match.position;
-var symbol2 = _match.symbol;
-var typeArguments2 = _match.typeArguments;
-when((symbol1 != symbol2), (function() {
-return error();
-}));
-when((typeArguments1.length != typeArguments2.length), (function() {
-return error();
-}));
-return each(zip(typeArguments1, typeArguments2), (function(p) {
-return equalityConstraint(typer, position, p.first, p.second);
-}));
-case "parameter":
-var p2 = _match.position;
-var name2 = _match.name;
-return error();
-}})(typer.expand(expectedType));
-case "parameter":
-var p1 = _match.position;
-var name1 = _match.name;
-return (function(_match) { switch(_match._) {
-case "variable":
-var p2 = _match.position;
-var id2 = _match.id;
-return typer.bindTypeVariable(position, id2, actualType);
-case "constructor":
-var p2 = _match.position;
-var symbol2 = _match.symbol;
-var typeArguments2 = _match.typeArguments;
-return error();
-case "parameter":
-var p2 = _match.position;
-var name2 = _match.name;
-return when((name1 != name2), (function() {
-return error();
-}));
-}})(typer.expand(expectedType));
-}})(typer.expand(expectedType));
-}
-
-// (Type) => String
-function typeToString(type) {
-return (function(_match) { switch(_match._) {
-case "variable":
-var p2 = _match.position;
-var id2 = _match.id;
-return ("_" + ("" + id2));
-case "constructor":
-var p2 = _match.position;
-var symbol2 = _match.symbol;
-var typeArguments2 = _match.typeArguments;
-// Array[String]
-var as = map(typeArguments2, (function(a) {
-return typeToString(a);
-}));
-// String
-var joined = join(map(typeArguments2, (function(t) {
-return typeToString(t);
-})), ", ");
-return if_((typeArguments2.length == 0), (function() {
-return (symbol2);
-}), (function() {
-return (symbol2 + "[" + joined + "]");
-}));
-case "parameter":
-var p2 = _match.position;
-var name2 = _match.name;
-return (name2);
-}})(type);
-}
-
-// (Array[Module]) => Typer
-function newTyper(modules) {
-// StringMapBuilder[TypeDefinition]
-var types = newStringMapBuilder(flatten(map(modules, (function(m) {
-return map(m.typeDefinitions, (function(d) {
-return Pair.pair(d.symbol, d);
-}));
-}))));
-// StringMapBuilder[FunctionDefinition]
-var functions = newStringMapBuilder(flatten(map(modules, (function(m) {
-return map(m.functionDefinitions, (function(d) {
-return Pair.pair(d.signature.symbol, d);
-}));
-}))));
-// StringMapBuilder[_384]
-var variables = newStringMapBuilder([]);
-// StringMapBuilder[_389]
-var substitution = newStringMapBuilder([]);
-// Int
-var nextId = 0;
-// Module
-var module = modules[0];
-return {
-scope: function(body) {
-var typer = this;
-// Array[Pair[String, _384]]
-var oldVariables = variables.toArray();
-// a
-var result = body();
-variables = newStringMapBuilder(oldVariables);
-return result;
-},
-topScope: function(body) {
-var typer = this;
-// a
-var result = body();
-variables = newStringMapBuilder([]);
-substitution = newStringMapBuilder([]);
-nextId = 0;
-return result;
-},
-type: function(name) {
-var typer = this;
-return types.invoke(name);
-},
-variable: function(name) {
-var typer = this;
-return (function(_match) { switch(_match._) {
-case "some":
-var t = _match.value;
-return t;
-case "none":
-// FunctionDefinition
-var d = functions.invoke(name);
-// StringMap[Type?]
-var instantiation = newStringMap(map(d.signature.typeParameters, (function(p) {
-return Pair.pair(p, Type.variable(d.position, typer.fresh()));
-})));
-// Array[Type]
-var parameterTypes = map(d.signature.parameters, (function(p) {
-return typer.instantiate(instantiation, p.type);
-}));
+equalityConstraint(typer, position, expectedType, Type.constructor(position, "Void@_", []));
 // Type
-var returnType = typer.instantiate(instantiation, d.signature.returnType);
-return Type.constructor(d.position, ("F" + ("" + d.signature.parameters.length) + "@_"), parameterTypes.concat([returnType]));
-}})(variables.get(name));
-},
-bindVariable: function(name, type) {
-var typer = this;
-return variables.set(name, type);
-},
-bindTypeVariable: function(position, id, type) {
-var typer = this;
-typer.occursCheck(position, id, type, type);
-when(substitution.has(("" + id)), (function() {
-return typer.error(position, ("Type variable already bound: _" + ("" + id)));
-}));
-return substitution.set(("" + id), type);
-},
-occursCheck: function(position, id, outerType, type) {
-var typer = this;
-return (function(_match) { switch(_match._) {
-case "variable":
-var p2 = _match.position;
-var id2 = _match.id;
-return when((id == id2), (function() {
-return typer.error(position, ("Circular type: _" + ("" + id) + " = " + typeToString(typer.expand(outerType))));
-}));
-case "constructor":
-var p2 = _match.position;
-var symbol2 = _match.symbol;
-var typeArguments2 = _match.typeArguments;
-return each(typeArguments2, (function(a) {
-return typer.occursCheck(position, id, outerType, a);
-}));
-case "parameter":
-var p2 = _match.position;
-var name2 = _match.name;
-break;
-}})(typer.expand(type));
-},
-fresh: function() {
-var typer = this;
-nextId += 1;
-return nextId;
-},
-expand: function(type) {
-var typer = this;
-return (function(_match) { switch(_match._) {
-case "variable":
-var p2 = _match.position;
-var id2 = _match.id;
-return (function(_match) { switch(_match._) {
-case "some":
-var t = _match.value;
-return typer.expand(t);
-case "none":
-return type;
-}})(substitution.get(("" + id2)));
-case "constructor":
-var p2 = _match.position;
-var symbol2 = _match.symbol;
-var typeArguments2 = _match.typeArguments;
-return Type.constructor(p2, symbol2, map(typeArguments2, (function(a) {
-return typer.expand(a);
-})));
-case "parameter":
-var p2 = _match.position;
-var name2 = _match.name;
-return type;
-}})(type);
-},
-instantiate: function(instantiation, type) {
-var typer = this;
-return (function(_match) { switch(_match._) {
-case "variable":
+var type2 = or(type, Type.variable(position, typer.fresh()));
+// Term
+var value2 = typeTerm(typer, type2, value);
+typer.bindVariable(variable, typer.expand(type2));
+return Statement.let_(position, variable, Option.some(type2), value2);
+case "functions":
+var definitions = _match.definitions;
+// Int
+var position = orPanic(first(definitions)).position;
+equalityConstraint(typer, position, expectedType, Type.constructor(position, "Void@_", []));
+panic("TODO: It should be possible to bind functions too, since they need a forall scheme");
+panic("each(definitions, d => resolver.addVariable(d.position, d.signature.symbol))");
+return panic("Statement.functions(map(definitions, d => resolveFunctionDefinition(resolver, d, Bool.false)))");
+case "assign":
 var position = _match.position;
-var id = _match.id;
-return type;
-case "parameter":
+var variable = _match.variable;
+var value = _match.value;
+equalityConstraint(typer, position, expectedType, Type.constructor(position, "Void@_", []));
+// Term
+var value2 = typeTerm(typer, typer.variable(variable), value);
+return Statement.assign(position, variable, value2);
+case "increment":
 var position = _match.position;
-var name = _match.name;
-return type;
-case "constructor":
+var variable = _match.variable;
+var value = _match.value;
+equalityConstraint(typer, position, expectedType, Type.constructor(position, "Void@_", []));
+// Term
+var value2 = typeTerm(typer, typer.variable(variable), value);
+return Statement.increment(position, variable, value2);
+case "decrement":
 var position = _match.position;
-var symbol = _match.symbol;
-var typeArguments = _match.typeArguments;
-return Type.constructor(position, symbol, map(typeArguments, (function(t) {
-return typer.instantiate(instantiation, t);
-})));
-}})(type);
-},
-setModule: function(newModule) {
-var typer = this;
-module = newModule;
-},
-error: function(position, problem) {
-var typer = this;
-// String
-var moduleName = module.file;
-console.log('Type error in ' + moduleName + ':')
-return panic((problem + " " + positionText(newCharCursor(module.source), position)));
+var variable = _match.variable;
+var value = _match.value;
+equalityConstraint(typer, position, expectedType, Type.constructor(position, "Void@_", []));
+// Term
+var value2 = typeTerm(typer, typer.variable(variable), value);
+return Statement.decrement(position, variable, value2);
+case "ffi":
+var position = _match.position;
+var language = _match.language;
+var code = _match.code;
+return Statement.ffi(position, language, code);
+}})(statement);
 }
-};
+
+// (Typer, Type, Term) => Term
+function typeTerm(typer, expectedType, term) {
+return panic("TODO");
 }
 
 // (Resolver, Module) => Module
@@ -1342,6 +866,8 @@ var position = _match.position;
 var variable = _match.variable;
 var type = _match.type;
 var value = _match.value;
+// Term
+var value2 = resolveTerm(resolver, value);
 resolver.assertNoVariable(position, variable);
 resolver.addVariable(position, variable);
 // Option[Type]?
@@ -1352,7 +878,7 @@ return Option.some(resolveType(resolver, t));
 case "none":
 return Option.none();
 }})(type);
-return Statement.let_(position, resolver.variable(position, variable), variableType, resolveTerm(resolver, value));
+return Statement.let_(position, resolver.variable(position, variable), variableType, value2);
 case "functions":
 var definitions = _match.definitions;
 each(definitions, (function(d) {
@@ -1544,7 +1070,7 @@ return term;
 function newResolver(modules) {
 // String
 var source = "";
-// F2[String, Int, _872]
+// F2[String, Int, _503]
 var error = (function(e, p) {
 return panic((e + " " + positionText(newCharCursor(source), p)));
 });
@@ -1572,9 +1098,9 @@ return map(m.functionDefinitions, (function(d) {
 return Pair.pair(d.signature.symbol, (d.signature.symbol + "@" + m.package_));
 }));
 })));
-// StringMapBuilder[_946]
+// StringMapBuilder[_577]
 var definedTypes = newStringMapBuilder([]);
-// StringMapBuilder[_951]
+// StringMapBuilder[_582]
 var definedFunctions = newStringMapBuilder([]);
 each(modules, (function(m) {
 source = m.source;
@@ -1618,9 +1144,9 @@ return map(m.typeDefinitions, (function(d) {
 return Pair.pair((m.alias + "." + d.symbol), (d.symbol + "@" + m.package_));
 }));
 }))));
-// StringMapBuilder[_1069]
+// StringMapBuilder[_700]
 var variables = newStringMapBuilder([]);
-// StringMapBuilder[_1074]
+// StringMapBuilder[_705]
 var typeParameters = newStringMapBuilder([]);
 return {
 typeConstructor: function(position, symbol) {
@@ -1723,9 +1249,548 @@ source = text;
 };
 }
 
+// (F0[Bool], F0[t]) => Case[t]
+function case_(condition, body) {
+return if_(condition(), (function() {
+// t
+var result = body();
+return {
+case_: function(a, b) {
+var this_ = this;
+return this_;
+},
+else_: function(b) {
+var this_ = this;
+return result;
+}
+};
+}), (function() {
+return {
+case_: function(condition, body) {
+return case_(condition, body);
+},
+else_: function(body) {
+return body();
+}
+};
+}));
+}
+
+// (Bool, F0[t], F0[t]) => t
+function if_(condition, then, else_) {
+return (condition ? then() : else_());
+}
+
+// (Bool, F0[Void]) => Void
+function when(condition, then) {
+return (condition ? then() : void(0));
+}
+
+// (F0[Bool], F0[Void]) => Void
+function while_(condition, body) {
+while(condition()) body();
+}
+
+// (F0[t]) => t
+function do_(body) {
+return body();
+}
+
+// (Int, F0[Void]) => Void
+function repeat(times, body) {
+for(var i = 0; i < times; i++) body();
+}
+
+// (Array[a], F1[a, Void]) => Void
+function each(array, body) {
+for(var i = 0; i < array.length; i++) body(array[i]);
+}
+
+// (Array[a]) => Array[Pair[Int, a]]
+function indexed(array) {
+// Array[_799]
+var result = [];
+for(var i = 0; i < array.length; i++) result.push(Pair.pair(i, array[i]));
+return result;
+}
+
+// (Array[a], Array[b]) => Array[Pair[a, b]]
+function zip(left, right) {
+// Array[_803]
+var result = [];
+for(var i = 0; i < left.length && i < right.length; i++) result.push(Pair.pair(left[i], right[i]));
+return result;
+}
+
+// (Array[a], F1[a, b]) => Array[b]
+function map(array, body) {
+// Array[_807]
+var result = [];
+for(var i = 0; i < array.length; i++) result.push(body(array[i]));
+return result;
+}
+
+// (Array[a], F1[a, Bool]) => Array[a]
+function filter(array, condition) {
+// Array[_811]
+var result = [];
+for(var i = 0; i < array.length; i++) if(condition(array[i])) result.push(array[i]);
+return result;
+}
+
+// (Array[a], F1[a, Bool]) => Option[a]
+function find(array, condition) {
+for(var i = 0; i < array.length; i++) if(condition(array[i])) return Option.some(array[i]);
+return Option.none();
+}
+
+// (Array[a]) => Option[a]
+function first(array) {
+return if_((array.length != 0), (function() {
+return Option.some(array[0]);
+}), (function() {
+return Option.none();
+}));
+}
+
+// (Array[a]) => Array[a]
+function firsts(array) {
+// Array[_829]
+var result = [];
+for(var i = 0; i < array.length - 1; i++) result.push(array[i]);
+return result;
+}
+
+// (Array[a]) => Option[a]
+function last(array) {
+return if_((array.length != 0), (function() {
+return Option.some(array[(array.length - 1)]);
+}), (function() {
+return Option.none();
+}));
+}
+
+// (Array[a]) => Array[a]
+function lasts(array) {
+// Array[_845]
+var result = [];
+for(var i = 1; i < array.length; i++) result.push(array[i]);
+return result;
+}
+
+// (Array[a], F1[a, Bool]) => Bool
+function any(array, condition) {
+for(var i = 0; i < array.length; i++) if(condition(array[i])) return true;
+return false;
+}
+
+// (Array[a], F1[a, Bool]) => Bool
+function all(array, condition) {
+for(var i = 0; i < array.length; i++) if(!condition(array[i])) return false;
+return true;
+}
+
+// (Array[Array[a]]) => Array[a]
+function flatten(array) {
+// Array[_853]
+var result = [];
+for(var i = 0; i < array.length; i++) for(var j = 0; j < array[i].length; j++) result.push(array[i][j]);
+return result;
+}
+
+// (Array[String], String) => String
+function join(array, separator) {
+return array.join(separator);
+}
+
+// (String) => a
+function panic(problem) {
+'debugger';
+throw problem;
+}
+
+// (Array[F0[Option[a]]]) => Option[a]
+function orElse(options) {
+// Option[_859]?
+var result = Option.none();
+// Int
+var i = 0;
+while_((function() {
+return ((result == Option.none()) && (i < options.length));
+}), (function() {
+result = options[i]();
+i += 1;
+}));
+return result;
+}
+
+// (Option[a]) => a
+function orPanic(option) {
+return (function(_match) { switch(_match._) {
+case "none":
+return panic("orPanic(Option.none)");
+case "some":
+var value = _match.value;
+return value;
+}})(option);
+}
+
+// (Option[a], a) => a
+function or(option, default_) {
+return (function(_match) { switch(_match._) {
+case "none":
+return default_;
+case "some":
+var value = _match.value;
+return value;
+}})(option);
+}
+
+// (Array[Pair[String, v]]) => StringMap[v]
+function newStringMap(array) {
+// StringMapBuilder[v]
+var builder = newStringMapBuilder(array);
+return {
+invoke: function(key) {
+return builder.invoke(key);
+},
+get: function(key) {
+return builder.get(key);
+},
+has: function(key) {
+return builder.has(key);
+}
+};
+}
+
+// (Array[Pair[String, v]]) => StringMapBuilder[v]
+function newStringMapBuilder(array) {
+var map = {};
+// StringMapBuilder[_913]?!
+var builder = {
+invoke: function(key) {
+var this_ = this;
+return if_(this_.has(key), (function() {
+return map['~' + key];
+}), (function() {
+return panic(("No such key: " + key));
+}));
+},
+get: function(key) {
+var this_ = this;
+return if_(this_.has(key), (function() {
+return Option.some(map['~' + key]);
+}), (function() {
+return Option.none();
+}));
+},
+has: function(key) {
+var this_ = this;
+return map.hasOwnProperty('~' + key);
+},
+set: function(key, value) {
+var this_ = this;
+map['~' + key] = value;
+},
+remove: function(key, value) {
+var this_ = this;
+delete map['~' + key];
+},
+toArray: function() {
+var this_ = this;
+// Array[_910]
+var result = [];
+for(var key in map) if(this_.has(key.substr(1))) result.push(Pair.pair(key.substr(1), map[key]));
+return result;
+},
+toStringMap: function() {
+var this_ = this;
+return newStringMap(this_.toArray());
+}
+};
+each(array, (function(p) {
+return builder.set(p.first, p.second);
+}));
+return builder;
+}
+
+// (Typer, Int, Type, Type) => Void
+function equalityConstraint(typer, position, expectedType, actualType) {
+// F0[_928]
+var error = (function() {
+return typer.error(position, ("Expected " + typeToString(typer.expand(expectedType)) + ", got " + typeToString(typer.expand(actualType))));
+});
+return (function(_match) { switch(_match._) {
+case "variable":
+var p1 = _match.position;
+var id1 = _match.id;
+return (function(_match) { switch(_match._) {
+case "variable":
+var p2 = _match.position;
+var id2 = _match.id;
+return when((id1 != id2), (function() {
+return typer.bindTypeVariable(position, id1, actualType);
+}));
+case "constructor":
+var p2 = _match.position;
+var symbol2 = _match.symbol;
+var typeArguments2 = _match.typeArguments;
+return typer.bindTypeVariable(position, id1, actualType);
+case "parameter":
+var p2 = _match.position;
+var name2 = _match.name;
+return typer.bindTypeVariable(position, id1, actualType);
+}})(typer.expand(expectedType));
+case "constructor":
+var p1 = _match.position;
+var symbol1 = _match.symbol;
+var typeArguments1 = _match.typeArguments;
+return (function(_match) { switch(_match._) {
+case "variable":
+var p2 = _match.position;
+var id2 = _match.id;
+return typer.bindTypeVariable(position, id2, actualType);
+case "constructor":
+var p2 = _match.position;
+var symbol2 = _match.symbol;
+var typeArguments2 = _match.typeArguments;
+when((symbol1 != symbol2), (function() {
+return error();
+}));
+when((typeArguments1.length != typeArguments2.length), (function() {
+return error();
+}));
+return each(zip(typeArguments1, typeArguments2), (function(p) {
+return equalityConstraint(typer, position, p.first, p.second);
+}));
+case "parameter":
+var p2 = _match.position;
+var name2 = _match.name;
+return error();
+}})(typer.expand(expectedType));
+case "parameter":
+var p1 = _match.position;
+var name1 = _match.name;
+return (function(_match) { switch(_match._) {
+case "variable":
+var p2 = _match.position;
+var id2 = _match.id;
+return typer.bindTypeVariable(position, id2, actualType);
+case "constructor":
+var p2 = _match.position;
+var symbol2 = _match.symbol;
+var typeArguments2 = _match.typeArguments;
+return error();
+case "parameter":
+var p2 = _match.position;
+var name2 = _match.name;
+return when((name1 != name2), (function() {
+return error();
+}));
+}})(typer.expand(expectedType));
+}})(typer.expand(expectedType));
+}
+
+// (Type) => String
+function typeToString(type) {
+return (function(_match) { switch(_match._) {
+case "variable":
+var p2 = _match.position;
+var id2 = _match.id;
+return ("_" + ("" + id2));
+case "constructor":
+var p2 = _match.position;
+var symbol2 = _match.symbol;
+var typeArguments2 = _match.typeArguments;
+// Array[String]
+var as = map(typeArguments2, (function(a) {
+return typeToString(a);
+}));
+// String
+var joined = join(map(typeArguments2, (function(t) {
+return typeToString(t);
+})), ", ");
+return if_((typeArguments2.length == 0), (function() {
+return (symbol2);
+}), (function() {
+return (symbol2 + "[" + joined + "]");
+}));
+case "parameter":
+var p2 = _match.position;
+var name2 = _match.name;
+return (name2);
+}})(type);
+}
+
+// (Array[Module]) => Typer
+function newTyper(modules) {
+// StringMapBuilder[TypeDefinition]
+var types = newStringMapBuilder(flatten(map(modules, (function(m) {
+return map(m.typeDefinitions, (function(d) {
+return Pair.pair(d.symbol, d);
+}));
+}))));
+// StringMapBuilder[FunctionDefinition]
+var functions = newStringMapBuilder(flatten(map(modules, (function(m) {
+return map(m.functionDefinitions, (function(d) {
+return Pair.pair(d.signature.symbol, d);
+}));
+}))));
+// StringMapBuilder[_1067]
+var variables = newStringMapBuilder([]);
+// StringMapBuilder[_1072]
+var substitution = newStringMapBuilder([]);
+// Int
+var nextId = 0;
+// Module
+var module = modules[0];
+return {
+scope: function(body) {
+var typer = this;
+// Array[Pair[String, _1067]]
+var oldVariables = variables.toArray();
+// a
+var result = body();
+variables = newStringMapBuilder(oldVariables);
+return result;
+},
+topScope: function(body) {
+var typer = this;
+// a
+var result = body();
+variables = newStringMapBuilder([]);
+substitution = newStringMapBuilder([]);
+nextId = 0;
+return result;
+},
+type: function(name) {
+var typer = this;
+return types.invoke(name);
+},
+variable: function(name) {
+var typer = this;
+return (function(_match) { switch(_match._) {
+case "some":
+var t = _match.value;
+return t;
+case "none":
+// FunctionDefinition
+var d = functions.invoke(name);
+// StringMap[Type?]
+var instantiation = newStringMap(map(d.signature.typeParameters, (function(p) {
+return Pair.pair(p, Type.variable(d.position, typer.fresh()));
+})));
+// Array[Type]
+var parameterTypes = map(d.signature.parameters, (function(p) {
+return typer.instantiate(instantiation, p.type);
+}));
+// Type
+var returnType = typer.instantiate(instantiation, d.signature.returnType);
+return Type.constructor(d.position, ("F" + ("" + d.signature.parameters.length) + "@_"), parameterTypes.concat([returnType]));
+}})(variables.get(name));
+},
+bindVariable: function(name, type) {
+var typer = this;
+return variables.set(name, type);
+},
+bindTypeVariable: function(position, id, type) {
+var typer = this;
+typer.occursCheck(position, id, type, type);
+when(substitution.has(("" + id)), (function() {
+return typer.error(position, ("Type variable already bound: _" + ("" + id)));
+}));
+return substitution.set(("" + id), type);
+},
+occursCheck: function(position, id, outerType, type) {
+var typer = this;
+return (function(_match) { switch(_match._) {
+case "variable":
+var p2 = _match.position;
+var id2 = _match.id;
+return when((id == id2), (function() {
+return typer.error(position, ("Circular type: _" + ("" + id) + " = " + typeToString(typer.expand(outerType))));
+}));
+case "constructor":
+var p2 = _match.position;
+var symbol2 = _match.symbol;
+var typeArguments2 = _match.typeArguments;
+return each(typeArguments2, (function(a) {
+return typer.occursCheck(position, id, outerType, a);
+}));
+case "parameter":
+var p2 = _match.position;
+var name2 = _match.name;
+break;
+}})(typer.expand(type));
+},
+fresh: function() {
+var typer = this;
+nextId += 1;
+return nextId;
+},
+expand: function(type) {
+var typer = this;
+return (function(_match) { switch(_match._) {
+case "variable":
+var p2 = _match.position;
+var id2 = _match.id;
+return (function(_match) { switch(_match._) {
+case "some":
+var t = _match.value;
+return typer.expand(t);
+case "none":
+return type;
+}})(substitution.get(("" + id2)));
+case "constructor":
+var p2 = _match.position;
+var symbol2 = _match.symbol;
+var typeArguments2 = _match.typeArguments;
+return Type.constructor(p2, symbol2, map(typeArguments2, (function(a) {
+return typer.expand(a);
+})));
+case "parameter":
+var p2 = _match.position;
+var name2 = _match.name;
+return type;
+}})(type);
+},
+instantiate: function(instantiation, type) {
+var typer = this;
+return (function(_match) { switch(_match._) {
+case "variable":
+var position = _match.position;
+var id = _match.id;
+return type;
+case "parameter":
+var position = _match.position;
+var name = _match.name;
+return type;
+case "constructor":
+var position = _match.position;
+var symbol = _match.symbol;
+var typeArguments = _match.typeArguments;
+return Type.constructor(position, symbol, map(typeArguments, (function(t) {
+return typer.instantiate(instantiation, t);
+})));
+}})(type);
+},
+setModule: function(newModule) {
+var typer = this;
+module = newModule;
+},
+error: function(position, problem) {
+var typer = this;
+// String
+var moduleName = module.file;
+console.log('Type error in ' + moduleName + ':')
+return panic((problem + " " + positionText(newCharCursor(module.source), position)));
+}
+};
+}
+
 // (Pc, F0[t], TokenType) => Array[t]
 function parseCommaList(pc, parse, end) {
-// ArrayBuilder[_1144]
+// ArrayBuilder[_1221]
 var result = newArrayBuilder();
 while_((function() {
 return pc.lookahead("comma separated list", [Pair.pair([end], (function() {
@@ -1910,7 +1975,7 @@ return Option.some(name);
 return Option.none();
 }))]);
 }));
-// ArrayBuilder[_1536]
+// ArrayBuilder[_1613]
 var result = newArrayBuilder();
 while_((function() {
 return pc.lookahead("method implementation", [Pair.pair([TokenType.separator(), TokenType.rightCurly()], (function() {
@@ -2036,7 +2101,7 @@ return Term.floatingValue(position, value);
 function parseText(pc) {
 // Int
 var position = pc.position();
-// ArrayBuilder[_1828]
+// ArrayBuilder[_1905]
 var parts = newArrayBuilder();
 // String
 var firstText = pc.consume(TokenType.textStart());
@@ -2266,7 +2331,7 @@ return Statement.ffi(position, language, code);
 // (Pc) => Array[Statement]
 function parseBody(pc) {
 pc.consume(TokenType.leftCurly());
-// ArrayBuilder[_2284]
+// ArrayBuilder[_2361]
 var result = newArrayBuilder();
 while_((function() {
 return pc.lookahead("statement or }", [Pair.pair([TokenType.rightCurly()], (function() {
@@ -2408,7 +2473,7 @@ return MethodSignature.methodSignature(position, name, typeParameters, parameter
 function parseFunctionDefinitions(pc) {
 // Int
 var position = pc.position();
-// ArrayBuilder[_2625]
+// ArrayBuilder[_2702]
 var result = newArrayBuilder();
 while_((function() {
 return pc.lookahead("function", [Pair.pair([TokenType.lower(), TokenType.leftRound(), TokenType.rightRound(), TokenType.leftCurly()], (function() {
@@ -2454,7 +2519,7 @@ return FunctionDefinition.functionDefinition(position, signature, body);
 // (Pc) => Array[MethodSignature]
 function parseMethodSignatures(pc) {
 pc.consume(TokenType.leftCurly());
-// ArrayBuilder[_2751]
+// ArrayBuilder[_2828]
 var result = newArrayBuilder();
 while_((function() {
 return pc.lookahead("method signature or }", [Pair.pair([TokenType.rightCurly()], (function() {
@@ -2528,9 +2593,9 @@ return TypeDefinition.typeDefinition(position, name, typeParameters, (isSum || i
 
 // (Pc, String, String, String, String) => Module
 function parseModule(pc, package_, alias, file, source) {
-// ArrayBuilder[_2928]
+// ArrayBuilder[_3005]
 var typeDefinitions = newArrayBuilder();
-// ArrayBuilder[_2932]
+// ArrayBuilder[_3009]
 var functionDefinitions = newArrayBuilder();
 while_((function() {
 return pc.lookahead("definition or end of file", [Pair.pair([TokenType.outsideFile()], (function() {
@@ -2587,7 +2652,7 @@ console.dir(resolvedModules);
 
 // (String) => CharCursor
 function newCharCursor(buffer) {
-// ArrayBuilder[_3071]
+// ArrayBuilder[_3148]
 var stack = newArrayBuilder();
 // Int
 var offset = 0;
@@ -2700,11 +2765,11 @@ return ("at line " + ("" + position.line) + " column " + ("" + position.column))
 
 // (TokenCursor, String) => Pc
 function newPc(cursor, buffer) {
-// F1[_3194, _3195]
+// F1[_3271, _3272]
 var tokenTypeText = (function(tokenType) {
 return tokenType._;
 });
-// F1[_3198, _3199]
+// F1[_3275, _3276]
 var tokenText = (function(token) {
 return buffer.substring(token.from, token.to);
 });
@@ -2734,7 +2799,7 @@ return text;
 lookahead: function(expected, cases) {
 // Int
 var i = 0;
-// Option[_3240]?
+// Option[_3317]?
 var result = Option.none();
 while_((function() {
 return ((i < cases.length) && (result == Option.none()));
@@ -2850,7 +2915,7 @@ return Option.none();
 var firstAcceptedToken = (function(bodies) {
 // Int
 var i = 0;
-// Option[_3409]?
+// Option[_3486]?
 var result = Option.none();
 // Array[F0[Option[Token]]]
 var array = bodies;
@@ -3062,7 +3127,7 @@ return Option.some(Token.token(TokenType.numeral(), from, to));
 
 // (String) => Array[Token]
 function lexTokens(buffer) {
-// ArrayBuilder[_3869]
+// ArrayBuilder[_3946]
 var builder = newArrayBuilder();
 // CharCursor
 var cursor = newCharCursor(buffer);
@@ -3116,12 +3181,12 @@ return result;
 
 // () => ArrayBuilder[t]
 function newArrayBuilder() {
-// Array[_3920]
+// Array[_3997]
 var array = [];
 return {
 drain: function() {
 var this_ = this;
-// Array[_3920]
+// Array[_3997]
 var result = array;
 array = [];
 return result;
@@ -3142,7 +3207,7 @@ return array.pop()
 },
 top: function() {
 var this_ = this;
-// Option[_3937]?
+// Option[_4014]?
 var result = Option.none();
 when((array.length > 0), (function() {
 result = Option.some(array[array.length - 1])
@@ -3155,14 +3220,14 @@ for(var i = 0; i < array.length; i++) body(array[i]);
 },
 map: function(body) {
 var this_ = this;
-// ArrayBuilder[_3947]
+// ArrayBuilder[_4024]
 var result = newArrayBuilder();
 for(var i = 0; i < array.length; i++) result.push(body(array[i]));
 return result;
 },
 filter: function(body) {
 var this_ = this;
-// ArrayBuilder[_3952]
+// ArrayBuilder[_4029]
 var result = newArrayBuilder();
 for(var i = 0; i < array.length; i++) if(body(array[i])) result.push(array[i]);
 return result;

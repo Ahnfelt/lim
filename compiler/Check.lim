@@ -25,28 +25,70 @@ checkBody(typer : Typer, expectedType : Type, position : Int, body : Array[State
         equalityConstraint(typer, position, expectedType, Type.constructor(position, "Void@_", []))
         []
     }, {
-        initial := map(firsts(body), s => typeStatement(typer, Type.variable(position, typer.fresh), s))
-        return := orPanic(last(body))
-        typedReturn := typer.expand(expectedType) ? {
-            constructor(position2, symbol2, typeArguments2) {
-                if(symbol2 == "Void@_", {
-                    typeStatement(typer, Type.variable(position, typer.fresh), return)
-                }, {
+        typer.scope({
+            initial := map(firsts(body), s => typeStatement(typer, Type.variable(position, typer.fresh), s))
+            return := orPanic(last(body))
+            typedReturn := typer.expand(expectedType) ? {
+                constructor(position2, symbol2, typeArguments2) {
+                    if(symbol2 == "Void@_", {
+                        typeStatement(typer, Type.variable(position, typer.fresh), return)
+                    }, {
+                        typeStatement(typer, expectedType, return)
+                    })
+                }
+                parameter(position2, name2) {
                     typeStatement(typer, expectedType, return)
-                })
+                }
+                variable(position2, id2) {
+                    typeStatement(typer, expectedType, return)
+                }
             }
-            parameter(position2, name2) {
-                typeStatement(typer, expectedType, return)
-            }
-            variable(position2, id2) {
-                typeStatement(typer, expectedType, return)
-            }
-        }
-        initial.concat([typedReturn])
+            initial.concat([typedReturn])
+        })
     })
 }
 
 typeStatement(typer : Typer, expectedType : Type, statement : Statement) : Statement {
-    panic("TODO")
+    statement ? {
+        term(position, term) {
+            term2 := typeTerm(typer, expectedType, term)
+            Statement.term(position, term2)
+        }
+        let(position, variable, type, value) {
+            equalityConstraint(typer, position, expectedType, Type.constructor(position, "Void@_", []))
+            type2 := or(type, Type.variable(position, typer.fresh))
+            value2 := typeTerm(typer, type2, value)
+            typer.bindVariable(variable, typer.expand(type2))
+            Statement.let(position, variable, Option.some(type2), value2)
+        }
+        functions(definitions) {
+            position := orPanic(first(definitions)).position
+            equalityConstraint(typer, position, expectedType, Type.constructor(position, "Void@_", []))
+            panic("TODO: It should be possible to bind functions too, since they need a forall scheme")
+            panic("each(definitions, d => resolver.addVariable(d.position, d.signature.symbol))")
+            panic("Statement.functions(map(definitions, d => resolveFunctionDefinition(resolver, d, Bool.false)))")
+        }
+        assign(position, variable, value) {
+            equalityConstraint(typer, position, expectedType, Type.constructor(position, "Void@_", []))
+            value2 := typeTerm(typer, typer.variable(variable), value)
+            Statement.assign(position, variable, value2)
+        }
+        increment(position, variable, value) {
+            equalityConstraint(typer, position, expectedType, Type.constructor(position, "Void@_", []))
+            value2 := typeTerm(typer, typer.variable(variable), value)
+            Statement.increment(position, variable, value2)
+        }
+        decrement(position, variable, value) {
+            equalityConstraint(typer, position, expectedType, Type.constructor(position, "Void@_", []))
+            value2 := typeTerm(typer, typer.variable(variable), value)
+            Statement.decrement(position, variable, value2)
+        }
+        ffi(position, language, code) {
+            Statement.ffi(position, language, code)
+        }
+    }
 }
 
+typeTerm(typer : Typer, expectedType : Type, term : Term) : Term {
+    panic("TODO")
+}

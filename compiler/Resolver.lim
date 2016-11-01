@@ -59,13 +59,14 @@ resolveStatement(resolver : Resolver, statement : Statement) : Statement {
             Statement.term(position, resolveTerm(resolver, term))
         }
         let(position, variable, type, value) {
+            value2 := resolveTerm(resolver, value)
             resolver.assertNoVariable(position, variable)
             resolver.addVariable(position, variable)
             variableType := type ? {
                 some(t) { Option.some(resolveType(resolver, t)) }
                 none { Option.none }
             }
-            Statement.let(position, resolver.variable(position, variable), variableType, resolveTerm(resolver, value))
+            Statement.let(position, resolver.variable(position, variable), variableType, value2)
         }
         functions(definitions) {
             each(definitions, d => resolver.addVariable(d.position, d.signature.symbol))
