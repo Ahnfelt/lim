@@ -26,14 +26,14 @@ newStringMap[v](array : Array[Pair[String, v]]) : StringMap[v] {
 newStringMapBuilder[v](array : Array[Pair[String, v]]) : StringMapBuilder[v] {
     js"var map = {};"
     builder := StringMapBuilder { this =>
-        invoke(key) { if(this.has(key), { js"return map[key];" }, { panic("No such key: \(key)") }) }
-        get(key) { if(this.has(key), { js"return Option.some(map[key]);" }, { Option.none }) }
-        has(key) { js"return Object.prototype.hasOwnProperty.call(map, key);" }
-        set(key, value) { js"map[key] = value;" }
-        remove(key, value) { js"delete map[key];" }
+        invoke(key) { if(this.has(key), { js"return map['~' + key];" }, { panic("No such key: \(key)") }) }
+        get(key) { if(this.has(key), { js"return Option.some(map['~' + key]);" }, { Option.none }) }
+        has(key) { js"return Object.prototype.hasOwnProperty.call(map, '~' + key);" }
+        set(key, value) { js"map['~' + key] = value;" }
+        remove(key, value) { js"delete map['~' + key];" }
         toArray() {
             result := []
-            js"for(var key in map) if(this_.has(key)) result.push(Pair.pair(key, map[key]));"
+            js"for(var key in map) if(this_.has(key.substr(1))) result.push(Pair.pair(key.substr(1), map[key]));"
             result
         }
         toStringMap() { newStringMap(this.toArray) }
