@@ -81,8 +81,20 @@ first[a](array : Array[a]) : Option[a] {
     if(array.size != 0, {Option.some(array(0))}, {Option.none})
 }
 
+firsts[a](array : Array[a]) : Array[a] {
+    result := []
+    js"for(var i = 0; i < array.length - 1; i++) result.push(array[i]);"
+    result
+}
+
 last[a](array : Array[a]) : Option[a] {
     if(array.size != 0, {Option.some(array(array.size - 1))}, {Option.none})
+}
+
+lasts[a](array : Array[a]) : Array[a] {
+    result := []
+    js"for(var i = 1; i < array.length; i++) result.push(array[i]);"
+    result
 }
 
 any[a](array : Array[a], condition : a => Bool) : Bool {

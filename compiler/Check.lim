@@ -1,0 +1,52 @@
+checkModule(typer : Typer, module : Module) : Module {
+    typer.setModule(module)
+    Module(
+        package = module.package,
+        file = module.file,
+        alias = module.alias,
+        source = module.source,
+        typeDefinitions = module.typeDefinitions,
+        functionDefinitions = map(module.functionDefinitions, d => checkFunctionDefinition(typer, d))
+    )
+}
+
+checkFunctionDefinition(typer : Typer, definition : FunctionDefinition) : FunctionDefinition {
+    typer.topScope({
+        each(definition.signature.parameters, p => {
+            typer.bindVariable(p.name, p.type)
+        })
+        body := checkBody(typer, definition.signature.returnType, definition.position, definition.body)
+        FunctionDefinition(definition.position, definition.signature, body)
+    })
+}
+
+checkBody(typer : Typer, expectedType : Type, position : Int, body : Array[Statement]) : Array[Statement] {
+    if(body.size == 0, {
+        equalityConstraint(typer, position, expectedType, Type.constructor(position, "Void@_", []))
+        []
+    }, {
+        initial := map(firsts(body), s => typeStatement(typer, Type.variable(position, typer.fresh), s))
+        return := orPanic(last(body))
+        typedReturn := typer.expand(expectedType) ? {
+            constructor(position2, symbol2, typeArguments2) {
+                if(symbol2 == "Void@_", {
+                    typeStatement(typer, Type.variable(position, typer.fresh), return)
+                }, {
+                    typeStatement(typer, expectedType, return)
+                })
+            }
+            parameter(position2, name2) {
+                typeStatement(typer, expectedType, return)
+            }
+            variable(position2, id2) {
+                typeStatement(typer, expectedType, return)
+            }
+        }
+        initial.concat([typedReturn])
+    })
+}
+
+typeStatement(typer : Typer, expectedType : Type, statement : Statement) : Statement {
+    panic("TODO")
+}
+
