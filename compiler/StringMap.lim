@@ -28,7 +28,7 @@ newStringMapBuilder[v](array : Array[Pair[String, v]]) : StringMapBuilder[v] {
     builder := StringMapBuilder { this =>
         invoke(key) { if(this.has(key), { js"return map['~' + key];" }, { panic("No such key: \(key)") }) }
         get(key) { if(this.has(key), { js"return Option.some(map['~' + key]);" }, { Option.none }) }
-        has(key) { js"return Object.prototype.hasOwnProperty.call(map, '~' + key);" }
+        has(key) { js"return map.hasOwnProperty('~' + key);" }
         set(key, value) { js"map['~' + key] = value;" }
         remove(key, value) { js"delete map['~' + key];" }
         toArray() {

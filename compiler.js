@@ -682,7 +682,7 @@ return Option.none();
 },
 has: function(key) {
 var this_ = this;
-return Object.prototype.hasOwnProperty.call(map, '~' + key);
+return map.hasOwnProperty('~' + key);
 },
 set: function(key, value) {
 var this_ = this;
