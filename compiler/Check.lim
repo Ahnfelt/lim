@@ -84,7 +84,7 @@ typeStatement(typer : Typer, expectedType : Type, statement : Statement) : State
             Statement.decrement(position, variable, value2)
         }
         ffi(position, language, code) {
-            Statement.ffi(position, language, code)
+            statement
         }
     }
 }
