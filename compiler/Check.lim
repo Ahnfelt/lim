@@ -26,21 +26,21 @@ checkBody(typer : Typer, expectedType : Type, position : Int, body : Array[State
         []
     }, {
         typer.scope({
-            initial := map(firsts(body), s => typeStatement(typer, Type.variable(position, typer.fresh), s))
+            initial := map(firsts(body), s => checkStatement(typer, Type.variable(position, typer.fresh), s))
             return := orPanic(last(body))
             typedReturn := typer.expand(expectedType) ? {
                 constructor(position2, symbol2, typeArguments2) {
                     if(symbol2 == "Void@_", {
-                        typeStatement(typer, Type.variable(position, typer.fresh), return)
+                        checkStatement(typer, Type.variable(position, typer.fresh), return)
                     }, {
-                        typeStatement(typer, expectedType, return)
+                        checkStatement(typer, expectedType, return)
                     })
                 }
                 parameter(position2, name2) {
-                    typeStatement(typer, expectedType, return)
+                    checkStatement(typer, expectedType, return)
                 }
                 variable(position2, id2) {
-                    typeStatement(typer, expectedType, return)
+                    checkStatement(typer, expectedType, return)
                 }
             }
             initial.concat([typedReturn])
@@ -48,16 +48,16 @@ checkBody(typer : Typer, expectedType : Type, position : Int, body : Array[State
     })
 }
 
-typeStatement(typer : Typer, expectedType : Type, statement : Statement) : Statement {
+checkStatement(typer : Typer, expectedType : Type, statement : Statement) : Statement {
     statement ? {
         term(position, term) {
-            term2 := typeTerm(typer, expectedType, term)
+            term2 := checkTerm(typer, expectedType, term)
             Statement.term(position, term2)
         }
         let(position, variable, type, value) {
             equalityConstraint(typer, position, expectedType, Type.constructor(position, "Void@_", []))
             type2 := or(type, Type.variable(position, typer.fresh))
-            value2 := typeTerm(typer, type2, value)
+            value2 := checkTerm(typer, type2, value)
             typer.bindVariable(variable, typer.expand(type2))
             Statement.let(position, variable, Option.some(type2), value2)
         }
@@ -70,17 +70,17 @@ typeStatement(typer : Typer, expectedType : Type, statement : Statement) : State
         }
         assign(position, variable, value) {
             equalityConstraint(typer, position, expectedType, Type.constructor(position, "Void@_", []))
-            value2 := typeTerm(typer, typer.variable(variable), value)
+            value2 := checkTerm(typer, typer.variable(variable), value)
             Statement.assign(position, variable, value2)
         }
         increment(position, variable, value) {
             equalityConstraint(typer, position, expectedType, Type.constructor(position, "Void@_", []))
-            value2 := typeTerm(typer, typer.variable(variable), value)
+            value2 := checkTerm(typer, typer.variable(variable), value)
             Statement.increment(position, variable, value2)
         }
         decrement(position, variable, value) {
             equalityConstraint(typer, position, expectedType, Type.constructor(position, "Void@_", []))
-            value2 := typeTerm(typer, typer.variable(variable), value)
+            value2 := checkTerm(typer, typer.variable(variable), value)
             Statement.decrement(position, variable, value2)
         }
         ffi(position, language, code) {
@@ -89,6 +89,64 @@ typeStatement(typer : Typer, expectedType : Type, statement : Statement) : State
     }
 }
 
-typeTerm(typer : Typer, expectedType : Type, term : Term) : Term {
-    panic("TODO")
+checkArguments(typer : Typer, expectedType : Type, position : Int, signature : MethodSignature, arguments : Arguments) : Arguments {
+    instantiation := newStringMap(map(signature.typeParameters, p => Pair(p, Type.variable(position, typer.fresh))))
+    parameterTypes := map(signature.parameters, p => typer.instantiate(instantiation, p.type))
+    returnType := typer.instantiate(instantiation, signature.returnType)
+    namedParameters := map(signature.parameters.drop(arguments.unnamed.size()), p => p.name)
+    unnamed := map(zip(parameterTypes, arguments.unnamed), p => {
+        checkTerm(typer, p.first, p.second)
+    })
+    named := map(zip(parameterTypes.drop(arguments.unnamed.size), namedParameters), p => {
+        find(arguments.named, a => a.name == p.second) ? {
+            some(a) {
+                NamedArgument(a.order, p.second, checkTerm(typer, p.first, a.value))
+            }
+            none {
+                typer.error(position, "Missing argument: \(p.second)")
+            }
+        }
+    })
+    when(unnamed.size + named.size < parameterTypes.size, { typer.error(position, "Too few arguments") })
+    when(unnamed.size + named.size > parameterTypes.size, { typer.error(position, "Too many arguments") })
+    equalityConstraint(typer, position, expectedType, returnType)
+    Arguments(unnamed, named)
+}
+
+checkTerm(typer : Typer, expectedType : Type, term : Term) : Term {
+    term ? {
+        binary(position, operator, left, right) { panic("TODO") }
+        unary(position, operator, value) { panic("TODO") }
+        codeUnitValue(position, value) { panic("TODO") }
+        textValue(position, value) { panic("TODO") }
+        textLiteral(position, parts) { panic("TODO") }
+        integerValue(position, value) { panic("TODO") }
+        floatingValue(position, value) { panic("TODO") }
+        arrayValue(position, elements) { panic("TODO") }
+        thisModule(position) { panic("TODO") }
+        instance(position, symbol, thisName, methods) { panic("TODO") }
+        match(position, value, cases) { panic("TODO") }
+        lambda(position, parameters, body) { panic("TODO") }
+        ffiJs(position, code) { term }
+        functionCall(position, methodName, arguments) {
+            signature := typer.function(methodName).signature
+            typedArguments := checkArguments(typer, expectedType, position, signature, arguments)
+            Term.functionCall(position, methodName, typedArguments)
+        }
+        staticCall(position, symbol, methodName, arguments) {
+            signature := panic("TODO")
+            typedArguments := checkArguments(typer, expectedType, position, signature, arguments)
+            Term.staticCall(position, symbol, methodName, typedArguments)
+        }
+        methodCall(position, value, methodName, arguments) {
+            signature := panic("TODO")
+            typedArguments := checkArguments(typer, expectedType, position, signature, arguments)
+            Term.methodCall(position, value, methodName, typedArguments)
+        }
+        variable(position, symbol) {
+            type := typer.variable(symbol)
+            equalityConstraint(typer, position, expectedType, type)
+            term
+        }
+    }
 }

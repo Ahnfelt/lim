@@ -43,6 +43,8 @@ class Typer(buffer : Array[Char]) {
         (None, "Array") -> TypeDefinition(0, "Array", List("t"), RequestResponseModifier, List(
             MethodSignature(0, "invoke", List(), List(Parameter(0, "index", TypeConstructor(0, None, "Int", List(), None))), TypeParameter(0, "t"), Some((value, terms) => Native(0, NativeArrayAccess(value, terms.head)))),
             MethodSignature(0, "size", List(), List(), TypeConstructor(0, None, "Int", List(), None), Some((value, _) => Native(0, NativeFieldAccess(value, "length")))),
+            MethodSignature(0, "take", List(), List(Parameter(0, "amount", TypeConstructor(0, None, "Int", List(), None))), TypeConstructor(0, None, "Array", List(TypeParameter(0, "t")), None), Some((value, terms) => MethodCall(0, value, "slice", IntegerValue(0, 0) +: terms, List()))),
+            MethodSignature(0, "drop", List(), List(Parameter(0, "amount", TypeConstructor(0, None, "Int", List(), None))), TypeConstructor(0, None, "Array", List(TypeParameter(0, "t")), None), Some((value, terms) => MethodCall(0, value, "slice", terms, List()))),
             MethodSignature(0, "concat", List(), List(Parameter(0, "array", TypeConstructor(0, None, "Array", List(TypeParameter(0, "t")), None))), TypeConstructor(0, None, "Array", List(TypeParameter(0, "t")), None), None)
         )),
         (None, "F0") -> TypeDefinition(0, "F0", List("r"), RequestResponseModifier, List(

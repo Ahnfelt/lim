@@ -606,4 +606,11 @@ testAll(moduleSources : Array[Pair[String, String]]) {
         Pair(p.first, resolveModule(resolver, p.second))
     })
     js"console.dir(resolvedModules);"
+    typer := newTyper(map(resolvedModules, p => p.second))
+    typedModules := map(resolvedModules, p => {
+        moduleName := p.first
+        js"console.log('Typing ' + moduleName);"
+        Pair(p.first, checkModule(typer, p.second))
+    })
+    js"console.dir(typedModules);"
 }
