@@ -7,7 +7,6 @@ Term ? {
     integerValue(position : Int, value : String)
     floatingValue(position : Int, value : String)
     arrayValue(position : Int, elements : Array[Term])
-    thisModule(position : Int)
     variable(position : Int, symbol : String)
     staticCall(position : Int, symbol : String, name : String, arguments : Arguments)
     functionCall(position : Int, name : String, arguments : Arguments)

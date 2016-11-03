@@ -121,7 +121,6 @@ resolveTerm(resolver : Resolver, term : Term) : Term {
         arrayValue(position, elements) {
             Term.arrayValue(position, map(elements, e => resolveTerm(resolver, e)))
         }
-        thisModule(position) { term }
         instance(position, symbol, thisName, methods) {
             thisName ? { some(n) { resolver.addVariable(position, n) }; none { "" } }
             resolvedSymbol := resolver.typeConstructor(position, symbol)
@@ -163,7 +162,6 @@ resolveTerm(resolver : Resolver, term : Term) : Term {
                 integerValue(position, value) { Option.none }
                 floatingValue(position, value) { Option.none }
                 arrayValue(position, elements) { Option.none }
-                thisModule(position) { Option.none }
                 instance(position, symbol, thisName, methods) { Option.none }
                 match(position, value, cases) { Option.none }
                 lambda(position, parameters, body) { Option.none }

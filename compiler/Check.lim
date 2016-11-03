@@ -123,7 +123,6 @@ checkTerm(typer : Typer, expectedType : Type, term : Term) : Term {
         integerValue(position, value) { panic("TODO") }
         floatingValue(position, value) { panic("TODO") }
         arrayValue(position, elements) { panic("TODO") }
-        thisModule(position) { panic("TODO") }
         instance(position, symbol, thisName, methods) { panic("TODO") }
         match(position, value, cases) { panic("TODO") }
         lambda(position, parameters, body) { panic("TODO") }
