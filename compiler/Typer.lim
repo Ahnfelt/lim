@@ -61,6 +61,7 @@ newTyper(modules : Array[Module]) : Typer {
             typer.expand(type) ? {
                 variable(p2, id2) { when(id == id2, { typer.error(position, "Circular type: _\(id.toString) = \(typeToString(typer.expand(outerType)))") }) }
                 constructor(p2, symbol2, typeArguments2) { each(typeArguments2, a => typer.occursCheck(position, id, outerType, a)) }
+                record(p2, fields2) { each(fields2, f => typer.occursCheck(position, id, outerType, f.type)) }
                 parameter(p2, name2) {}
             }
         }
@@ -72,6 +73,7 @@ newTyper(modules : Array[Module]) : Typer {
             type ? {
                 variable(p2, id2) { substitution.get(id2.toString) ? { some(t) { typer.expand(t) }; none { type } } }
                 constructor(p2, symbol2, typeArguments2) { Type.constructor(p2, symbol2, map(typeArguments2, a => typer.expand(a))) }
+                record(p2, fields2) { Type.record(p2, map(fields2, f => FieldType(f.position, f.label, typer.expand(f.type)))) }
                 parameter(p2, name2) { type }
             }
         }
@@ -79,6 +81,9 @@ newTyper(modules : Array[Module]) : Typer {
             type ? {
                 variable(position, id) { type }
                 parameter(position, name) { type }
+                record(position, fields) {
+                    Type.record(position, map(fields, f => FieldType(f.position, f.label, typer.instantiate(instantiation, f.type))))
+                }
                 constructor(position, symbol, typeArguments) {
                     Type.constructor(position, symbol, map(typeArguments, t => typer.instantiate(instantiation, t)))
                 }
@@ -107,8 +112,23 @@ equalityConstraint(typer : Typer, position : Int, expectedType : Type, actualTyp
                         typer.bindTypeVariable(position, id1, actualType)
                     })
                 }
+                record(p2, fields2) { typer.bindTypeVariable(position, id1, actualType) }
                 constructor(p2, symbol2, typeArguments2) { typer.bindTypeVariable(position, id1, actualType) }
                 parameter(p2, name2) { typer.bindTypeVariable(position, id1, actualType) }
+            }
+        }
+        record(p1, fields1) {
+            typer.expand(expectedType) ? {
+                variable(p2, id2) { typer.bindTypeVariable(position, id2, actualType) }
+                constructor(p2, symbol2, typeArguments2) { error() }
+                record(p2, fields2) {
+                    when(fields1.size != fields2.size, { error() })
+                    each(zip(fields1, fields2), p => {
+                        when(p.first.label != p.second.label, { error() })
+                        equalityConstraint(typer, position, p.first.type, p.second.type)
+                    })
+                }
+                parameter(p2, name2) { error() }
             }
         }
         constructor(p1, symbol1, typeArguments1) {
@@ -119,6 +139,7 @@ equalityConstraint(typer : Typer, position : Int, expectedType : Type, actualTyp
                     when(typeArguments1.size != typeArguments2.size, { error() })
                     each(zip(typeArguments1, typeArguments2), p => equalityConstraint(typer, position, p.first, p.second))
                 }
+                record(p2, fields2) { error() }
                 parameter(p2, name2) { error() }
             }
         }
@@ -126,6 +147,7 @@ equalityConstraint(typer : Typer, position : Int, expectedType : Type, actualTyp
             typer.expand(expectedType) ? {
                 variable(p2, id2) { typer.bindTypeVariable(position, id2, actualType) }
                 constructor(p2, symbol2, typeArguments2) { error() }
+                record(p2, fields2) { error() }
                 parameter(p2, name2) {
                     when(name1 != name2, { error() })
                 }
@@ -143,6 +165,10 @@ typeToString(type : Type) : String {
             as := map(typeArguments2, a => typeToString(a))
             joined := join(map(typeArguments2, t => typeToString(t)), ", ")
             if(typeArguments2.size == 0, { "\(symbol2)" }, { "\(symbol2)[\(joined)]" })
+        }
+        record(p2, fields2) {
+            joined := join(map(fields2, f => "\(f.label) : \(typeToString(f.type))"), ", ")
+            "[\(joined)]"
         }
         parameter(p2, name2) {
             "\(name2)"

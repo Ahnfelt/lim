@@ -94,6 +94,9 @@ resolveType(resolver : Resolver, type : Type) : Type {
             resolvedTypeArguments := map(typeArguments, a => resolveType(resolver, a))
             Type.constructor(position, resolvedSymbol, resolvedTypeArguments)
         }
+        record(position, fields) {
+            Type.record(position, map(fields, f => FieldType(f.position, f.label, resolveType(resolver, f.type))))
+        }
         parameter(position, name) {
             Type.parameter(position, resolver.typeParameter(position, name))
         }
@@ -111,15 +114,20 @@ resolveTerm(resolver : Resolver, term : Term) : Term {
         unary(position, operator, value) {
             Term.unary(position, operator, resolveTerm(resolver, value))
         }
-        codeUnitValue(position, value) { term }
-        textValue(position, value) { term }
+        codeUnit(position, value) { term }
+        text(position, value) { term }
         textLiteral(position, parts) {
             Term.textLiteral(position, map(parts, p => resolveTerm(resolver, p)))
         }
-        integerValue(position, value) { term }
-        floatingValue(position, value) { term }
-        arrayValue(position, elements) {
-            Term.arrayValue(position, map(elements, e => resolveTerm(resolver, e)))
+        integer(position, value) { term }
+        floating(position, value) { term }
+        array(position, elements) {
+            Term.array(position, map(elements, e => resolveTerm(resolver, e)))
+        }
+        record(position, fields) {
+            Term.record(position, map(fields, f => {
+                Field(f.position, f.label, resolveTerm(resolver, f.value))
+            }))
         }
         instance(position, symbol, thisName, methods) {
             thisName ? { some(n) { resolver.addVariable(position, n) }; none { "" } }
@@ -156,12 +164,13 @@ resolveTerm(resolver : Resolver, term : Term) : Term {
             functionName := value ? {
                 binary(position, operator, left, right) { Option.none }
                 unary(position, operator, value) { Option.none }
-                codeUnitValue(position, value) { Option.none }
-                textValue(position, value) { Option.none }
+                codeUnit(position, value) { Option.none }
+                text(position, value) { Option.none }
                 textLiteral(position, parts) { Option.none }
-                integerValue(position, value) { Option.none }
-                floatingValue(position, value) { Option.none }
-                arrayValue(position, elements) { Option.none }
+                integer(position, value) { Option.none }
+                floating(position, value) { Option.none }
+                array(position, elements) { Option.none }
+                record(position, fields) { Option.none }
                 instance(position, symbol, thisName, methods) { Option.none }
                 match(position, value, cases) { Option.none }
                 lambda(position, parameters, body) { Option.none }

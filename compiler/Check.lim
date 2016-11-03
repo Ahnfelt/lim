@@ -36,6 +36,9 @@ checkBody(typer : Typer, expectedType : Type, position : Int, body : Array[State
                         checkStatement(typer, expectedType, return)
                     })
                 }
+                record(position2, fields2) {
+                    checkStatement(typer, expectedType, return)
+                }
                 parameter(position2, name2) {
                     checkStatement(typer, expectedType, return)
                 }
@@ -117,12 +120,13 @@ checkTerm(typer : Typer, expectedType : Type, term : Term) : Term {
     term ? {
         binary(position, operator, left, right) { panic("TODO") }
         unary(position, operator, value) { panic("TODO") }
-        codeUnitValue(position, value) { panic("TODO") }
-        textValue(position, value) { panic("TODO") }
+        codeUnit(position, value) { panic("TODO") }
+        text(position, value) { panic("TODO") }
         textLiteral(position, parts) { panic("TODO") }
-        integerValue(position, value) { panic("TODO") }
-        floatingValue(position, value) { panic("TODO") }
-        arrayValue(position, elements) { panic("TODO") }
+        integer(position, value) { panic("TODO") }
+        floating(position, value) { panic("TODO") }
+        array(position, elements) { panic("TODO") }
+        record(position, fields) { panic("TODO") }
         instance(position, symbol, thisName, methods) { panic("TODO") }
         match(position, value, cases) { panic("TODO") }
         lambda(position, parameters, body) { panic("TODO") }

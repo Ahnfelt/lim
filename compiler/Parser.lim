@@ -27,6 +27,22 @@ parseLeftAssociative(pc : Pc, next : () => Term, operators : Array[TokenType]) :
     result
 }
 
+parseRecordType(pc : Pc) : Type {
+    parseField := {
+        fieldPosition := pc.position
+        label := pc.consume(TokenType.lower)
+        pc.consume(TokenType.colon)
+        value := parseType(pc)
+        FieldType(fieldPosition, label, value)
+    }
+    position := pc.position
+    pc.consume(TokenType.leftSquare)
+    fields := parseCommaList(pc, parseField, TokenType.rightSquare)
+    pc.consume(TokenType.rightSquare)
+    sortedFields := sortLexicographicallyBy(fields, f => f.label)
+    Type.record(position, fields)
+}
+
 parseTypeConstructor(pc : Pc) : Type {
     position := pc.position
     moduleName := pc.lookahead("type constructor", [
@@ -66,6 +82,7 @@ parseType(pc : Pc) : Type {
             name := pc.consume(TokenType.lower)
             Type.parameter(position, name)
         }),
+        Pair([TokenType.leftSquare], { parseRecordType(pc) }),
         Pair([], { parseTypeConstructor(pc) })
     ])
     pc.lookahead("function type", [
@@ -184,11 +201,27 @@ parseArray(pc : Pc) : Term {
     pc.consume(TokenType.leftSquare)
     elements := parseCommaList(pc, { parseTerm(pc) }, TokenType.rightSquare)
     pc.consume(TokenType.rightSquare)
-    Term.arrayValue(position, elements)
+    Term.array(position, elements)
+}
+
+parseRecord(pc : Pc) : Term {
+    parseField := {
+        fieldPosition := pc.position
+        label := pc.consume(TokenType.lower)
+        pc.consume(TokenType.assign)
+        value := parseTerm(pc)
+        Field(fieldPosition, label, value)
+    }
+    position := pc.position
+    pc.consume(TokenType.leftSquare)
+    fields := parseCommaList(pc, parseField, TokenType.rightSquare)
+    pc.consume(TokenType.rightSquare)
+    Term.record(position, fields)
 }
 
 parseAtom(pc : Pc) : Term {
     pc.lookahead("atom", [
+        Pair([TokenType.leftSquare, TokenType.lower, TokenType.assign], { parseRecord(pc) }),
         Pair([TokenType.leftSquare], { parseArray(pc) }),
         Pair([TokenType.lower, TokenType.rightThickArrow], { parseLambda(pc) }),
         Pair([TokenType.leftRound, TokenType.lower, TokenType.comma], { parseLambda(pc) }),
@@ -212,12 +245,12 @@ parseAtom(pc : Pc) : Term {
         Pair([TokenType.codeUnit], {
             position := pc.position
             codeUnit := pc.consume(TokenType.codeUnit)
-            Term.codeUnitValue(position, codeUnit)
+            Term.codeUnit(position, codeUnit)
         }),
         Pair([TokenType.text], {
             position := pc.position
             text := pc.consume(TokenType.text)
-            Term.textValue(position, text)
+            Term.text(position, text)
         }),
         Pair([TokenType.textStart], {
             parseText(pc)
@@ -225,12 +258,12 @@ parseAtom(pc : Pc) : Term {
         Pair([TokenType.numeral], {
             position := pc.position
             value := pc.consume(TokenType.numeral)
-            Term.integerValue(position, value)
+            Term.integer(position, value)
         }),
         Pair([TokenType.floating], {
             position := pc.position
             value := pc.consume(TokenType.floating)
-            Term.floatingValue(position, value)
+            Term.floating(position, value)
         })
     ])
 }
@@ -239,19 +272,19 @@ parseText(pc : Pc) : Term {
     position := pc.position
     parts := newArrayBuilder()
     firstText := pc.consume(TokenType.textStart)
-    when(firstText.size > 0, { parts.push(Term.textValue(position, firstText)) })
+    when(firstText.size > 0, { parts.push(Term.text(position, firstText)) })
     done := Bool.false
     while({ !done }, {
         parts.push(parseTerm(pc))
         pc.lookahead("end of string", [
             Pair([TokenType.textEnd], {
                 text := pc.consume(TokenType.textEnd)
-                when(text.size > 0, { parts.push(Term.textValue(position, text)) })
+                when(text.size > 0, { parts.push(Term.text(position, text)) })
                 done = Bool.true
             }),
             Pair([TokenType.textMiddle], {
                 text := pc.consume(TokenType.textMiddle)
-                when(text.size > 0, { parts.push(Term.textValue(position, text)) })
+                when(text.size > 0, { parts.push(Term.text(position, text)) })
             })
         ])
     })

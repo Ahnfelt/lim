@@ -1,12 +1,13 @@
 Term ? {
     binary(position : Int, operator : TokenType, left : Term, right : Term)
     unary(position : Int, operator : TokenType, value : Term)
-    codeUnitValue(position : Int, value : String)
-    textValue(position : Int, value : String)
+    codeUnit(position : Int, value : String)
+    text(position : Int, value : String)
     textLiteral(position : Int, parts : Array[Term])
-    integerValue(position : Int, value : String)
-    floatingValue(position : Int, value : String)
-    arrayValue(position : Int, elements : Array[Term])
+    integer(position : Int, value : String)
+    floating(position : Int, value : String)
+    array(position : Int, elements : Array[Term])
+    record(position : Int, fields : Array[Field])
     variable(position : Int, symbol : String)
     staticCall(position : Int, symbol : String, name : String, arguments : Arguments)
     functionCall(position : Int, name : String, arguments : Arguments)
@@ -23,6 +24,9 @@ Arguments(unnamed : Array[Term], named : Array[NamedArgument])
 
 NamedArgument(order : Int, name : String, value : Term)
 
+Field(position : Int, label : String, value : Term)
+FieldType(position : Int, label : String, type : Type)
+
 Statement ? {
     term(position : Int, term : Term)
     let(position : Int, variable : String, type : Option[Type], value : Term)
@@ -36,6 +40,7 @@ Statement ? {
 
 Type ? {
     constructor(position : Int, symbol : String, typeArguments : Array[Type])
+    record(position : Int, fields : Array[FieldType])
     parameter(position : Int, name : String)
     variable(position : Int, id : Int)
 }
