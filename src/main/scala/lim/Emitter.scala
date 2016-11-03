@@ -164,10 +164,10 @@ class Emitter {
         case Match(offset, value, methods) =>
             builder ++= "(function(_match) { switch(_match._) {\n"
             for((m, f) <- methods) {
-                builder ++= "case " + escapeString(m.name) + ":\n"
+                builder ++= "case " + escapeString(m.name) + ": return (function(){\n"
                 for((p, i) <- m.parameters.zipWithIndex) builder ++= "var " + escapeVariable(p) + " = _match." + escapeMethod(f(i)) + ";\n"
                 emitStatements(builder, m.body)
-                if(!m.body.lastOption.exists(_.isInstanceOf[TermStatement])) builder ++= "break;\n"
+                builder ++= "})();\n"
             }
             builder ++= "}})("
             emitTerm(builder, value)

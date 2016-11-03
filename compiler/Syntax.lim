@@ -10,6 +10,7 @@ Term ? {
     thisModule(position : Int)
     variable(position : Int, symbol : String)
     staticCall(position : Int, symbol : String, name : String, arguments : Arguments)
+    functionCall(position : Int, name : String, arguments : Arguments)
     methodCall(position : Int, value : Term, name : String, arguments : Arguments)
     instance(position : Int, symbol : String, thisName : Option[String], methods : Array[MethodImplementation])
     match(position : Int, value : Term, cases : Array[MatchCase])

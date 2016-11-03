@@ -69,7 +69,7 @@ resolveStatement(resolver : Resolver, statement : Statement) : Statement {
             Statement.let(position, resolver.variable(position, variable), variableType, value2)
         }
         functions(definitions) {
-            each(definitions, d => resolver.addVariable(d.position, d.signature.symbol))
+            each(definitions, d => resolver.addFunction(d.position, d.signature.symbol))
             Statement.functions(map(definitions, d => resolveFunctionDefinition(resolver, d, Bool.false)))
         }
         assign(position, variable, value) {
@@ -122,21 +122,6 @@ resolveTerm(resolver : Resolver, term : Term) : Term {
             Term.arrayValue(position, map(elements, e => resolveTerm(resolver, e)))
         }
         thisModule(position) { term }
-        variable(position, symbol) {
-            Term.variable(position, resolver.variable(position, symbol))
-        }
-        staticCall(position, symbol, methodName, arguments) {
-            resolvedSymbol := resolver.staticName(position, symbol)
-            resolvedArguments := map(arguments.unnamed, a => resolveTerm(resolver, a))
-            resolvedNamedArguments := map(arguments.named, a => NamedArgument(a.order, a.name, resolveTerm(resolver, a.value)))
-            Term.staticCall(position, resolvedSymbol, methodName, Arguments(resolvedArguments, resolvedNamedArguments))
-        }
-        methodCall(position, value, methodName, arguments) {
-            resolvedValue := resolveTerm(resolver, value)
-            resolvedArguments := map(arguments.unnamed, a => resolveTerm(resolver, a))
-            resolvedNamedArguments := map(arguments.named, a => NamedArgument(a.order, a.name, resolveTerm(resolver, a.value)))
-            Term.methodCall(position, resolvedValue, methodName, Arguments(resolvedArguments, resolvedNamedArguments))
-        }
         instance(position, symbol, thisName, methods) {
             thisName ? { some(n) { resolver.addVariable(position, n) }; none { "" } }
             resolvedSymbol := resolver.typeConstructor(position, symbol)
@@ -156,16 +141,80 @@ resolveTerm(resolver : Resolver, term : Term) : Term {
             })
         }
         ffiJs(position, code) { term }
+        functionCall(position, name, arguments) {
+            resolvedName := orPanic(resolver.function(position, name))
+            resolvedArguments := map(arguments.unnamed, a => resolveTerm(resolver, a))
+            resolvedNamedArguments := map(arguments.named, a => NamedArgument(a.order, a.name, resolveTerm(resolver, a.value)))
+            Term.functionCall(position, resolvedName, Arguments(resolvedArguments, resolvedNamedArguments))
+        }
+        staticCall(position, symbol, methodName, arguments) {
+            resolvedSymbol := resolver.staticName(position, symbol)
+            resolvedArguments := map(arguments.unnamed, a => resolveTerm(resolver, a))
+            resolvedNamedArguments := map(arguments.named, a => NamedArgument(a.order, a.name, resolveTerm(resolver, a.value)))
+            Term.staticCall(position, resolvedSymbol, methodName, Arguments(resolvedArguments, resolvedNamedArguments))
+        }
+        methodCall(position, value, methodName, arguments) {
+            functionName := value ? {
+                binary(position, operator, left, right) { Option.none }
+                unary(position, operator, value) { Option.none }
+                codeUnitValue(position, value) { Option.none }
+                textValue(position, value) { Option.none }
+                textLiteral(position, parts) { Option.none }
+                integerValue(position, value) { Option.none }
+                floatingValue(position, value) { Option.none }
+                arrayValue(position, elements) { Option.none }
+                thisModule(position) { Option.none }
+                instance(position, symbol, thisName, methods) { Option.none }
+                match(position, value, cases) { Option.none }
+                lambda(position, parameters, body) { Option.none }
+                ffiJs(position, code) { Option.none }
+                functionCall(position, name, arguments) { Option.none }
+                staticCall(position, symbol, methodName, arguments) { Option.none }
+                methodCall(position, value, methodName, arguments) { Option.none }
+                variable(position, symbol) {
+                    if(methodName == "invoke", {
+                        resolver.function(position, symbol)
+                    }, {
+                        Option.none
+                    })
+                }
+            }
+            resolvedUnnamed := map(arguments.unnamed, a => resolveTerm(resolver, a))
+            resolvedNamed := map(arguments.named, a => NamedArgument(a.order, a.name, resolveTerm(resolver, a.value)))
+            resolvedArguments := Arguments(resolvedUnnamed, resolvedNamed)
+            functionName ? {
+                some(name) {
+                    Term.functionCall(position, name, resolvedArguments)
+                }
+                none {
+                    resolvedValue := resolveTerm(resolver, value)
+                    Term.methodCall(position, resolvedValue, methodName, resolvedArguments)
+                }
+            }
+        }
+        variable(position, symbol) {
+            functionName := resolver.function(position, symbol)
+            functionName ? {
+                some(name) {
+                    Term.functionCall(position, name, Arguments([], []))
+                }
+                none {
+                    Term.variable(position, resolver.variable(position, symbol))
+                }
+            }
+        }
     }
 }
 
 Resolver {
     typeConstructor(position : Int, symbol : String) : String
     variable(position : Int, symbol : String) : String
+    function(position : Int, symbol : String) : Option[String]
     typeParameter(position : Int, symbol : String) : String
     staticName(position : Int, symbol : String) : String
     assertNoVariable(position : Int, name : String) : Void
     addVariable(position : Int, name : String) : String
+    addFunction(position : Int, name : String) : String
     addTypeParameter(position : Int, name : String) : String
     scope[t](body : () => t) : t
     setSource(text : String)
@@ -259,17 +308,24 @@ newResolver(modules : Array[Module]) : Resolver {
                 some(x) { x }
                 none {
                     functions.get(symbol) ? {
-                        none { error("No such variable or function: \(symbol)", position) }
+                        none { error("No such variable: \(symbol) (but there is a method with that name)", position) }
                         some(x) { x }
                     }
                 }
             }
+        }
+        function(position, symbol) {
+            functions.get(symbol)
         }
         assertNoVariable(position, name) {
             when(variables.has(name), { error("Suspicious shadowing of variable: \(name)", position) })
         }
         addVariable(position, name) {
             variables.set(name, name)
+            name
+        }
+        addFunction(position, name) {
+            functions.set(name, name)
             name
         }
         addTypeParameter(position, name) {
@@ -283,10 +339,12 @@ newResolver(modules : Array[Module]) : Resolver {
         scope(body) {
             savedTypeConstructors := typeConstructors.toArray
             savedVariables := variables.toArray
+            savedFunctions := functions.toArray
             savedTypeParameters := typeParameters.toArray
             result := body()
             typeConstructors = newStringMapBuilder(savedTypeConstructors)
             variables = newStringMapBuilder(savedVariables)
+            functions = newStringMapBuilder(savedFunctions)
             typeParameters = newStringMapBuilder(savedTypeParameters)
             result
         }
