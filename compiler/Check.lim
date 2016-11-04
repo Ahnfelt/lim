@@ -6,18 +6,16 @@ checkModule(typer : Typer, module : Module) : Module {
         alias = module.alias,
         source = module.source,
         typeDefinitions = module.typeDefinitions,
-        functionDefinitions = map(module.functionDefinitions, d => checkFunctionDefinition(typer, d))
+        functionDefinitions = map(module.functionDefinitions, d => typer.topScope({ checkFunctionDefinitionInScope(typer, d) }))
     )
 }
 
-checkFunctionDefinition(typer : Typer, definition : FunctionDefinition) : FunctionDefinition {
-    typer.topScope({
-        each(definition.signature.parameters, p => {
-            typer.bindVariable(p.name, p.type)
-        })
-        body := checkBody(typer, definition.signature.returnType, definition.position, definition.body)
-        FunctionDefinition(definition.position, definition.signature, body)
+checkFunctionDefinitionInScope(typer : Typer, definition : FunctionDefinition) : FunctionDefinition {
+    each(definition.signature.parameters, p => {
+        typer.bindVariable(p.name, p.type)
     })
+    body := checkBody(typer, definition.signature.returnType, definition.position, definition.body)
+    FunctionDefinition(definition.position, definition.signature, body)
 }
 
 checkBody(typer : Typer, expectedType : Type, position : Int, body : Array[Statement]) : Array[Statement] {
@@ -66,10 +64,10 @@ checkStatement(typer : Typer, expectedType : Type, statement : Statement) : Stat
         }
         functions(definitions) {
             position := orPanic(first(definitions)).position
+            each(definitions, d => typer.bindFunction(d.signature.symbol, d))
+            typedDefinitions := map(definitions, d => typer.scope({ checkFunctionDefinitionInScope(typer, d) }))
             equalityConstraint(typer, position, expectedType, Type.constructor(position, "Void@_", []))
-            panic("TODO: It should be possible to bind functions too, since they need a forall scheme")
-            panic("each(definitions, d => resolver.addVariable(d.position, d.signature.symbol))")
-            panic("Statement.functions(map(definitions, d => resolveFunctionDefinition(resolver, d, Bool.false)))")
+            Statement.functions(typedDefinitions)
         }
         assign(position, variable, value) {
             equalityConstraint(typer, position, expectedType, Type.constructor(position, "Void@_", []))
