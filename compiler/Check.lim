@@ -188,7 +188,7 @@ checkTerm(typer : Typer, expectedType : Type, term : Term) : Term {
                 thisName ? { some(name) { typer.bindVariable(name, type) }; none {} }
                 methods
             })
-            js"console.log('TODO: finish instance typing')"
+            js"console.log('TODO: finish instance typing (check methods)')"
             Term.instance(position, symbol, thisName, typedMethods)
         }
         match(position, value, cases) {
