@@ -183,10 +183,62 @@ checkTerm(typer : Typer, expectedType : Type, term : Term) : Term {
             panic("TODO")
         }
         match(position, value, cases) {
-            panic("TODO")
+            type := Type.variable(position, typer.fresh)
+            typedValue := checkTerm(typer, type, value)
+            signatures := typer.expand(type) ? {
+                variable(position2, id2) {
+                    typer.error(position, "Match requires known object type")
+                }
+                parameter(position2, name2) {
+                    typer.error(position, "Can't match on type parameter: \(typeToString(typer.expand(type)))")
+                }
+                record(position2, fields2) {
+                    typer.error(position, "Can't match on record type: \(typeToString(typer.expand(type)))")
+                }
+                constructor(position2, symbol2, typeArguments2) {
+                    typeDefinition := typer.type(symbol2)
+                    when(!typeDefinition.isSum, { typer.error(position, "Can't match on non-sum type: \(typeToString(typer.expand(type)))") })
+                    map(typeDefinition.methodSignatures, s => {
+                        when(find(cases, c => c.body.name == s.symbol) == Option.none, {
+                            typer.error(position, "Missing case: \(s.symbol) on type \(typeToString(typer.expand(type)))")
+                        })
+                        instantiation := newStringMap(zip(typeDefinition.typeParameters, typeArguments2))
+                        parameters := map(s.parameters, p => Parameter(p.position, p.name, typer.instantiate(instantiation, p.type)))
+                        returnType := typer.instantiate(instantiation, s.returnType)
+                        MethodSignature(s.position, s.symbol, s.typeParameters, parameters, returnType)
+                    })
+                }
+            }
+            typedCases := map(cases, c => {
+                find(signatures, s => c.body.name == s.symbol) ? {
+                    none { typer.error(position, "No such case: \(c.body.name) in type \(typeToString(typer.expand(type)))") }
+                    some(s) {
+                        fieldNames := map(s.parameters, p => p.name)
+                        implementation := typer.scope({
+                            each(zip(s.parameters, c.body.parameters), p => {
+                                typer.bindVariable(p.second, p.first.type)
+                            })
+                            statements := checkBody(typer, expectedType, position, c.body.body)
+                            MethodImplementation(c.body.position, c.body.name, c.body.parameters, statements)
+                        })
+                        MatchCase(implementation, fieldNames)
+                    }
+                }
+            })
+            Term.match(position, typedValue, typedCases)
         }
         lambda(position, parameters, body) {
-            panic("TODO")
+            parameterTypes := map(parameters, p => Type.variable(position, typer.fresh))
+            returnType := Type.variable(position, typer.fresh)
+            functionType := Type.constructor(position, "F\(parameters.size.toString)@_", parameterTypes.concat([returnType]))
+            equalityConstraint(typer, position, expectedType, functionType)
+            typedBody := typer.scope({
+                each(zip(parameters, parameterTypes), p => {
+                    typer.bindVariable(p.first, p.second)
+                })
+                checkBody(typer, returnType, position, body)
+            })
+            Term.lambda(position, parameters, typedBody)
         }
         functionCall(position, methodName, arguments) {
             signature := typer.function(methodName).signature
