@@ -199,9 +199,34 @@ checkTerm(typer : Typer, expectedType : Type, term : Term) : Term {
             Term.staticCall(position, symbol, methodName, typedArguments)
         }
         methodCall(position, value, methodName, arguments) {
-            signature := panic("TODO")
+            type := Type.variable(position, typer.fresh)
+            typedValue := checkTerm(typer, type, value)
+            signature := typer.expand(type) ? {
+                variable(position2, id2) {
+                    typer.error(position, "Method call requires known object type: \(methodName)")
+                }
+                parameter(position2, name2) {
+                    typer.error(position, "No such method: \(methodName) on type parameter \(name2)")
+                }
+                record(position2, fields2) {
+                    panic("TODO: Record fields as methods")
+                }
+                constructor(position2, symbol2, typeArguments2) {
+                    typeDefinition := typer.type(symbol2)
+                    when(typeDefinition.isSum, { typer.error(position, "No such method: \(methodName) on sum type \(symbol2)") })
+                    find(typeDefinition.methodSignatures, s => s.symbol == methodName) ? {
+                        none { typer.error(position, "No such method: \(methodName) on type \(symbol2)") }
+                        some(s) {
+                            instantiation := newStringMap(zip(typeDefinition.typeParameters, typeArguments2))
+                            parameters := map(s.parameters, p => Parameter(p.position, p.name, typer.instantiate(instantiation, p.type)))
+                            returnType := typer.instantiate(instantiation, s.returnType)
+                            MethodSignature(s.position, s.symbol, s.typeParameters, parameters, returnType)
+                        }
+                    }
+                }
+            }
             typedArguments := checkArguments(typer, expectedType, position, signature, arguments)
-            Term.methodCall(position, value, methodName, typedArguments)
+            Term.methodCall(position, typedValue, methodName, typedArguments)
         }
         variable(position, symbol) {
             type := typer.variable(symbol)
