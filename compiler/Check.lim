@@ -194,7 +194,7 @@ checkTerm(typer : Typer, expectedType : Type, term : Term) : Term {
             Term.functionCall(position, methodName, typedArguments)
         }
         staticCall(position, symbol, methodName, arguments) {
-            signature := panic("TODO")
+            signature := typer.function(methodName).signature
             typedArguments := checkArguments(typer, expectedType, position, signature, arguments)
             Term.staticCall(position, symbol, methodName, typedArguments)
         }
