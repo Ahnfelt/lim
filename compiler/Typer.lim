@@ -159,7 +159,7 @@ equalityConstraint(typer : Typer, position : Int, expectedType : Type, actualTyp
 typeToString(type : Type) : String {
     type ? {
         variable(p2, id2) {
-            "_\(id2.toString)"
+            "_"
         }
         constructor(p2, symbol2, typeArguments2) {
             as := map(typeArguments2, a => typeToString(a))

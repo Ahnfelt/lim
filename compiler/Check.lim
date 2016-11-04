@@ -180,7 +180,16 @@ checkTerm(typer : Typer, expectedType : Type, term : Term) : Term {
             Term.record(position, map(typedFields, p => p.first))
         }
         instance(position, symbol, thisName, methods) {
-            panic("TODO")
+            typeDefinition := typer.type(symbol)
+            typeArguments := map(typeDefinition.typeParameters, p => Type.variable(position, typer.fresh))
+            type := Type.constructor(position, symbol, typeArguments)
+            equalityConstraint(typer, position, expectedType, type)
+            typedMethods := typer.scope({
+                thisName ? { some(name) { typer.bindVariable(name, type) }; none {} }
+                methods
+            })
+            js"console.log('TODO: finish instance typing')"
+            Term.instance(position, symbol, thisName, typedMethods)
         }
         match(position, value, cases) {
             type := Type.variable(position, typer.fresh)
