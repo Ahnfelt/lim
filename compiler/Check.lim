@@ -118,19 +118,78 @@ checkArguments(typer : Typer, expectedType : Type, position : Int, signature : M
 
 checkTerm(typer : Typer, expectedType : Type, term : Term) : Term {
     term ? {
-        binary(position, operator, left, right) { panic("TODO") }
-        unary(position, operator, value) { panic("TODO") }
-        codeUnit(position, value) { panic("TODO") }
-        text(position, value) { panic("TODO") }
-        textLiteral(position, parts) { panic("TODO") }
-        integer(position, value) { panic("TODO") }
-        floating(position, value) { panic("TODO") }
-        array(position, elements) { panic("TODO") }
-        record(position, fields) { panic("TODO") }
-        instance(position, symbol, thisName, methods) { panic("TODO") }
-        match(position, value, cases) { panic("TODO") }
-        lambda(position, parameters, body) { panic("TODO") }
-        ffiJs(position, code) { term }
+        binary(position, operator, left, right) {
+            types := if(
+                operator == TokenType.plus ||
+                operator == TokenType.minus ||
+                operator == TokenType.star ||
+                operator == TokenType.slash,
+            {
+                Pair(Type.constructor(position, "Int@_", []), Type.constructor(position, "Int@_", []))
+            }, {
+                Pair(Type.variable(position, typer.fresh), Type.constructor(position, "Bool@_", []))
+            })
+            typedLeft := checkTerm(typer, types.first, left)
+            typedRight := checkTerm(typer, types.first, right)
+            equalityConstraint(typer, position, expectedType, types.second)
+            Term.binary(position, operator, typedLeft, typedRight)
+        }
+        unary(position, operator, value) {
+            types := if(operator == TokenType.minus, {
+                Pair(Type.constructor(position, "Int@_", []), Type.constructor(position, "Int@_", []))
+            }, {
+                Pair(Type.constructor(position, "Bool@_", []), Type.constructor(position, "Bool@_", []))
+            })
+            typedValue := checkTerm(typer, types.first, value)
+            equalityConstraint(typer, position, expectedType, types.second)
+            Term.unary(position, operator, typedValue)
+        }
+        codeUnit(position, value) {
+            equalityConstraint(typer, position, expectedType, Type.constructor(position, "Int@_", []))
+            term
+        }
+        text(position, value) {
+            equalityConstraint(typer, position, expectedType, Type.constructor(position, "String@_", []))
+            term
+        }
+        textLiteral(position, parts) {
+            typedParts := map(parts, p => checkTerm(typer, Type.constructor(position, "String@_", []), p))
+            equalityConstraint(typer, position, expectedType, Type.constructor(position, "String@_", []))
+            Term.textLiteral(position, typedParts)
+        }
+        integer(position, value) {
+            equalityConstraint(typer, position, expectedType, Type.constructor(position, "Int@_", []))
+            term
+        }
+        floating(position, value) {
+            equalityConstraint(typer, position, expectedType, Type.constructor(position, "Float@_", []))
+            term
+        }
+        array(position, elements) {
+            elementType := Type.variable(position, typer.fresh)
+            typedElements := map(elements, e => checkTerm(typer, elementType, e))
+            equalityConstraint(typer, position, expectedType, Type.constructor(position, "Array@_", [elementType]))
+            Term.array(position, typedElements)
+        }
+        record(position, fields) {
+            fieldTypes := map(fields, f => Type.variable(position, typer.fresh))
+            typedFields := map(zip(fields, fieldTypes), p => {
+                typedValue := checkTerm(typer, p.second, p.first.value)
+                Pair(Field(p.first.position, p.first.label, typedValue), FieldType(p.first.position, p.first.label, p.second))
+            })
+            recordType := Type.record(position, sortLexicographicallyBy(map(typedFields, p => p.second), f => f.label))
+            equalityConstraint(typer, position, expectedType, recordType)
+            Term.record(position, map(typedFields, p => p.first))
+        }
+        instance(position, symbol, thisName, methods) {
+            panic("TODO")
+        }
+        match(position, value, cases) {
+            panic("TODO")
+        }
+        lambda(position, parameters, body) {
+            panic("TODO")
+        }
         functionCall(position, methodName, arguments) {
             signature := typer.function(methodName).signature
             typedArguments := checkArguments(typer, expectedType, position, signature, arguments)
@@ -149,6 +208,9 @@ checkTerm(typer : Typer, expectedType : Type, term : Term) : Term {
         variable(position, symbol) {
             type := typer.variable(symbol)
             equalityConstraint(typer, position, expectedType, type)
+            term
+        }
+        ffiJs(position, code) {
             term
         }
     }
