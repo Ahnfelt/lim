@@ -250,6 +250,7 @@ checkTerm(typer : Typer, expectedType : Type, term : Term) : Term {
             Term.lambda(position, parameters, typedBody)
         }
         functionCall(position, methodName, arguments) {
+            js"console.log(methodName);"
             signature := typer.function(methodName).signature
             typedArguments := checkArguments(typer, expectedType, position, signature, arguments)
             Term.functionCall(position, methodName, typedArguments)
@@ -274,7 +275,13 @@ checkTerm(typer : Typer, expectedType : Type, term : Term) : Term {
                 }
                 constructor(position2, symbol2, typeArguments2) {
                     typeDefinition := typer.type(symbol2)
-                    when(typeDefinition.isSum, { typer.error(position, "No such method: \(methodName) on sum type \(symbol2)") })
+                    when(typeDefinition.isSum, {
+                        if(typeDefinition.methodSignatures.size == 1, {
+                            typer.error(position, "TODO: Treat single-constructor sum types as records")
+                        }, {
+                            typer.error(position, "No such method: \(methodName) on sum type \(symbol2)")
+                        })
+                    })
                     find(typeDefinition.methodSignatures, s => s.symbol == methodName) ? {
                         none { typer.error(position, "No such method: \(methodName) on type \(symbol2)") }
                         some(s) {

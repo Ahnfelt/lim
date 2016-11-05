@@ -80,7 +80,12 @@ newTyper(modules : Array[Module]) : Typer {
         instantiate(instantiation, type) {
             type ? {
                 variable(position, id) { type }
-                parameter(position, name) { type }
+                parameter(position, name) {
+                    instantiation.get(name) ? {
+                        some(t) { t }
+                        none { type }
+                    }
+                }
                 record(position, fields) {
                     Type.record(position, map(fields, f => FieldType(f.position, f.label, typer.instantiate(instantiation, f.type))))
                 }
@@ -101,8 +106,12 @@ newTyper(modules : Array[Module]) : Typer {
 }
 
 equalityConstraint(typer : Typer, position : Int, expectedType : Type, actualType : Type) : Void {
+    solveEqualityConstraint(typer, position, expectedType, actualType, expectedType, actualType)
+}
+
+solveEqualityConstraint(typer : Typer, position : Int, originalExpectedType : Type, originalActualType : Type, expectedType : Type, actualType : Type) : Void {
     error := {
-        typer.error(position, "Expected \(typeToString(typer.expand(expectedType))), got \(typeToString(typer.expand(actualType)))")
+        typer.error(position, "Expected \(typeToString(typer.expand(originalExpectedType))), got \(typeToString(typer.expand(originalActualType)))")
     }
     typer.expand(expectedType) ? {
         variable(p1, id1) {
@@ -125,7 +134,7 @@ equalityConstraint(typer : Typer, position : Int, expectedType : Type, actualTyp
                     when(fields1.size != fields2.size, { error() })
                     each(zip(fields1, fields2), p => {
                         when(p.first.label != p.second.label, { error() })
-                        equalityConstraint(typer, position, p.first.type, p.second.type)
+                        solveEqualityConstraint(typer, position, originalExpectedType, originalActualType, p.first.type, p.second.type)
                     })
                 }
                 parameter(p2, name2) { error() }
@@ -137,7 +146,7 @@ equalityConstraint(typer : Typer, position : Int, expectedType : Type, actualTyp
                 constructor(p2, symbol2, typeArguments2) {
                     when(symbol1 != symbol2, { error() })
                     when(typeArguments1.size != typeArguments2.size, { error() })
-                    each(zip(typeArguments1, typeArguments2), p => equalityConstraint(typer, position, p.first, p.second))
+                    each(zip(typeArguments1, typeArguments2), p => solveEqualityConstraint(typer, position, originalExpectedType, originalActualType, p.first, p.second))
                 }
                 record(p2, fields2) { error() }
                 parameter(p2, name2) { error() }
@@ -164,7 +173,9 @@ typeToString(type : Type) : String {
         constructor(p2, symbol2, typeArguments2) {
             as := map(typeArguments2, a => typeToString(a))
             joined := join(map(typeArguments2, t => typeToString(t)), ", ")
-            if(typeArguments2.size == 0, { "\(symbol2)" }, { "\(symbol2)[\(joined)]" })
+            name := symbol2
+            js"name = name.replace(/[@].*/, '');"
+            if(typeArguments2.size == 0, { "\(name)" }, { "\(name)[\(joined)]" })
         }
         record(p2, fields2) {
             joined := join(map(fields2, f => "\(f.label) : \(typeToString(f.type))"), ", ")
