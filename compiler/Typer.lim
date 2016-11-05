@@ -3,7 +3,7 @@ Typer {
     topScope[a](body : () => a) : a
     type(name : String) : TypeDefinition
     variable(name : String) : Type
-    function(name : String) : FunctionDefinition
+    function(name : String) : Option[FunctionDefinition]
     bindFunction(name : String, definition : FunctionDefinition)
     bindVariable(name : String, type : Type)
     bindTypeVariable(position : Int, id : Int, type : Type)
@@ -16,7 +16,7 @@ Typer {
 }
 
 newTyper(modules : Array[Module]) : Typer {
-    types := newStringMapBuilder(flatten(map(modules, m => map(m.typeDefinitions, d => Pair(d.symbol, d)))))
+    types := newStringMapBuilder(preludeTypes().concat(flatten(map(modules, m => map(m.typeDefinitions, d => Pair(d.symbol, d))))))
     functions := newStringMapBuilder(flatten(map(modules, m => map(m.functionDefinitions, d => Pair(d.signature.symbol, d)))))
     variables := newStringMapBuilder([])
     substitution := newStringMapBuilder([])
@@ -41,7 +41,7 @@ newTyper(modules : Array[Module]) : Typer {
             types(name)
         }
         function(name) {
-            functions(name)
+            functions.get(name)
         }
         variable(name) {
             variables(name)
@@ -187,3 +187,39 @@ typeToString(type : Type) : String {
     }
 }
 
+
+preludeTypes() : Array[Pair[String, TypeDefinition]] {
+    typeNames := ["Void", "Bool", "String", "Int", "Float", "Array", "Option", "Pair", "F0", "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9"]
+    void := Type.constructor(0, "Void@_", [])
+    typeDefinitions := [
+        TypeDefinition(0, "Void@_", [], Bool.true, [
+            MethodSignature(0, "void", [], [], void)
+        ]),
+        TypeDefinition(0, "Pair@_", ["a", "b"], Bool.true, [
+            MethodSignature(0, "none", [], [], void),
+            MethodSignature(0, "some", [], [Parameter(0, "first", Type.parameter(0, "a")), Parameter(0, "second", Type.parameter(0, "b"))], void)
+        ]),
+        TypeDefinition(0, "Option@_", ["a"], Bool.true, [
+            MethodSignature(0, "none", [], [], void),
+            MethodSignature(0, "some", [], [Parameter(0, "value", Type.parameter(0, "a"))], void)
+        ]),
+        TypeDefinition(0, "String@_", [], Bool.false, [
+        ]),
+        TypeDefinition(0, "Int@_", [], Bool.false, [
+        ]),
+        TypeDefinition(0, "Float@_", [], Bool.false, [
+        ]),
+        TypeDefinition(0, "Array@_", ["a"], Bool.false, [
+        ]),
+        TypeDefinition(0, "F0@_", ["r"], Bool.false, [
+            MethodSignature(0, "invoke", [], [], Type.parameter(0, "r"))
+        ]),
+        TypeDefinition(0, "F1@_", ["p1, r"], Bool.false, [
+            MethodSignature(0, "invoke", [], [Parameter(0, "a1", Type.parameter(0, "p1"))], Type.parameter(0, "r"))
+        ]),
+        TypeDefinition(0, "F2@_", ["r"], Bool.false, [
+            MethodSignature(0, "invoke", [], [Parameter(0, "a1", Type.parameter(0, "p1")), Parameter(0, "a2", Type.parameter(0, "p2"))], Type.parameter(0, "r"))
+        ])
+    ]
+    map(typeDefinitions, d => Pair(d.symbol, d))
+}
