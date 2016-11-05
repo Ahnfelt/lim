@@ -94,10 +94,10 @@ checkArguments(typer : Typer, expectedType : Type, position : Int, signature : M
     instantiation := newStringMap(map(signature.typeParameters, p => Pair(p, Type.variable(position, typer.fresh))))
     parameterTypes := map(signature.parameters, p => typer.instantiate(instantiation, p.type))
     returnType := typer.instantiate(instantiation, signature.returnType)
-    namedParameters := map(signature.parameters.drop(arguments.unnamed.size()), p => p.name)
     unnamed := map(zip(parameterTypes, arguments.unnamed), p => {
         checkTerm(typer, p.first, p.second)
     })
+    namedParameters := map(signature.parameters.drop(arguments.unnamed.size()), p => p.name)
     named := map(zip(parameterTypes.drop(arguments.unnamed.size), namedParameters), p => {
         find(arguments.named, a => a.name == p.second) ? {
             some(a) {

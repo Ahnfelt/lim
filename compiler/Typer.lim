@@ -59,7 +59,7 @@ newTyper(modules : Array[Module]) : Typer {
         }
         occursCheck(position, id, outerType, type) {
             typer.expand(type) ? {
-                variable(p2, id2) { when(id == id2, { typer.error(position, "Circular type: _\(id.toString) = \(typeToString(typer.expand(outerType)))") }) }
+                variable(p2, id2) { when(id == id2, { js"debugger;"; typer.error(position, "Infinite type: _\(id.toString) = \(typeToString(typer.expand(outerType)))") }) }
                 constructor(p2, symbol2, typeArguments2) { each(typeArguments2, a => typer.occursCheck(position, id, outerType, a)) }
                 record(p2, fields2) { each(fields2, f => typer.occursCheck(position, id, outerType, f.type)) }
                 parameter(p2, name2) {}
@@ -106,7 +106,7 @@ equalityConstraint(typer : Typer, position : Int, expectedType : Type, actualTyp
     }
     typer.expand(expectedType) ? {
         variable(p1, id1) {
-            typer.expand(expectedType) ? {
+            typer.expand(actualType) ? {
                 variable(p2, id2) {
                     when(id1 != id2, {
                         typer.bindTypeVariable(position, id1, actualType)
@@ -118,8 +118,8 @@ equalityConstraint(typer : Typer, position : Int, expectedType : Type, actualTyp
             }
         }
         record(p1, fields1) {
-            typer.expand(expectedType) ? {
-                variable(p2, id2) { typer.bindTypeVariable(position, id2, actualType) }
+            typer.expand(actualType) ? {
+                variable(p2, id2) { typer.bindTypeVariable(position, id2, expectedType) }
                 constructor(p2, symbol2, typeArguments2) { error() }
                 record(p2, fields2) {
                     when(fields1.size != fields2.size, { error() })
@@ -132,8 +132,8 @@ equalityConstraint(typer : Typer, position : Int, expectedType : Type, actualTyp
             }
         }
         constructor(p1, symbol1, typeArguments1) {
-            typer.expand(expectedType) ? {
-                variable(p2, id2) { typer.bindTypeVariable(position, id2, actualType) }
+            typer.expand(actualType) ? {
+                variable(p2, id2) { typer.bindTypeVariable(position, id2, expectedType) }
                 constructor(p2, symbol2, typeArguments2) {
                     when(symbol1 != symbol2, { error() })
                     when(typeArguments1.size != typeArguments2.size, { error() })
@@ -144,8 +144,8 @@ equalityConstraint(typer : Typer, position : Int, expectedType : Type, actualTyp
             }
         }
         parameter(p1, name1) {
-            typer.expand(expectedType) ? {
-                variable(p2, id2) { typer.bindTypeVariable(position, id2, actualType) }
+            typer.expand(actualType) ? {
+                variable(p2, id2) { typer.bindTypeVariable(position, id2, expectedType) }
                 constructor(p2, symbol2, typeArguments2) { error() }
                 record(p2, fields2) { error() }
                 parameter(p2, name2) {
@@ -159,7 +159,7 @@ equalityConstraint(typer : Typer, position : Int, expectedType : Type, actualTyp
 typeToString(type : Type) : String {
     type ? {
         variable(p2, id2) {
-            "_"
+            "_\(id2.toString)"
         }
         constructor(p2, symbol2, typeArguments2) {
             as := map(typeArguments2, a => typeToString(a))
