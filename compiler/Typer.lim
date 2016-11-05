@@ -189,7 +189,6 @@ typeToString(type : Type) : String {
 
 
 preludeTypes() : Array[Pair[String, TypeDefinition]] {
-    typeNames := ["Void", "Bool", "String", "Int", "Float", "Array", "Option", "Pair", "F0", "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9"]
     void := Type.constructor(0, "Void@_", [])
     typeDefinitions := [
         TypeDefinition(0, "Void@_", [], Bool.true, [
