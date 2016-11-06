@@ -315,6 +315,7 @@ class Emitter {
 
 object Emitter {
     val reservedWords = Set(
+        "arguments",
         "break",
         "case",
         "catch",

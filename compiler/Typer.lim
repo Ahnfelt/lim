@@ -191,6 +191,8 @@ typeToString(type : Type) : String {
 preludeTypeDefinitions() : Array[Pair[String, TypeDefinition]] {
     void := Type.constructor(0, "Void@_", [])
     int := Type.constructor(0, "Int@_", [])
+    bool := Type.constructor(0, "Bool@_", [])
+    string := Type.constructor(0, "String@_", [])
     typeDefinitions := [
         TypeDefinition(0, "Void@_", [], Bool.true, [
             MethodSignature(0, "void", [], [], void)
@@ -210,6 +212,7 @@ preludeTypeDefinitions() : Array[Pair[String, TypeDefinition]] {
             MethodSignature(0, "true", [], [], void)
         ]),
         TypeDefinition(0, "Int@_", [], Bool.false, [
+            MethodSignature(0, "toString", [], [], string)
         ]),
         TypeDefinition(0, "Float@_", [], Bool.false, [
         ]),
