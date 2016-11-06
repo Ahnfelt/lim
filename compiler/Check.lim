@@ -193,7 +193,6 @@ checkTerm(typer : Typer, expectedType : Type, term : Term) : Term {
                         none { typer.error(position, "Unknown method: \(m.name)") }
                         some(s) { s }
                     }
-                    js"console.log('TODO: Missing method')"
                     typer.scope({
                         parameterTypes := map(signature.parameters, p => typer.instantiate(instantiation, p.type))
                         returnType := typer.instantiate(instantiation, signature.returnType)
@@ -205,6 +204,13 @@ checkTerm(typer : Typer, expectedType : Type, term : Term) : Term {
                     })
                 })
             })
+            each(typeDefinition.methodSignatures, s => {
+                find(methods, m => s.symbol == m.name) ? {
+                    none { typer.error(position, "Missing method: \(s.symbol)") }
+                    some(s) {}
+                }
+            })
+            when(methods.size > typeDefinition.methodSignatures.size, { typer.error(position, "Duplicate method") })
             Term.instance(position, symbol, thisName, typedMethods)
         }
         match(position, value, cases) {
@@ -223,16 +229,23 @@ checkTerm(typer : Typer, expectedType : Type, term : Term) : Term {
                 constructor(position2, symbol2, typeArguments2) {
                     typeDefinition := typer.type(symbol2)
                     when(!typeDefinition.isSum, { typer.error(position, "Can't match on non-sum type: \(typeToString(typer.expand(type)))") })
-                    map(typeDefinition.methodSignatures, s => {
+                    signatures := map(typeDefinition.methodSignatures, s => {
                         when(find(cases, c => c.body.name == s.symbol) == Option.none, {
                             typer.error(position, "Missing case: \(s.symbol) on type \(typeToString(typer.expand(type)))")
                         })
-                        js"console.log('TODO: Unkown case')"
                         instantiation := newStringMap(zip(typeDefinition.typeParameters, typeArguments2))
                         parameters := map(s.parameters, p => Parameter(p.position, p.name, typer.instantiate(instantiation, p.type)))
                         returnType := typer.instantiate(instantiation, s.returnType)
                         MethodSignature(s.position, s.symbol, s.typeParameters, parameters, returnType)
                     })
+                    each(cases, c => {
+                        find(typeDefinition.methodSignatures, s => s.symbol == c.body.name) ? {
+                            none { typer.error(position, "Unknown case: \(c.body.name)") }
+                            some(s) {}
+                        }
+                    })
+                    when(cases.size > typeDefinition.methodSignatures.size, { typer.error(position, "Duplicate case") })
+                    signatures
                 }
             }
             typedCases := map(cases, c => {
