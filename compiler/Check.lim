@@ -183,13 +183,28 @@ checkTerm(typer : Typer, expectedType : Type, term : Term) : Term {
         instance(position, symbol, thisName, methods) {
             typeDefinition := typer.type(symbol)
             typeArguments := map(typeDefinition.typeParameters, p => Type.variable(position, typer.fresh))
+            instantiation := newStringMap(zip(typeDefinition.typeParameters, typeArguments))
             type := Type.constructor(position, symbol, typeArguments)
             equalityConstraint(typer, position, expectedType, type)
             typedMethods := typer.scope({
                 thisName ? { some(name) { typer.bindVariable(name, type) }; none {} }
-                methods
+                map(methods, m => {
+                    signature := find(typeDefinition.methodSignatures, s => s.symbol == m.name) ? {
+                        none { typer.error(position, "Unknown method: \(m.name)") }
+                        some(s) { s }
+                    }
+                    js"console.log('TODO: Missing method')"
+                    typer.scope({
+                        parameterTypes := map(signature.parameters, p => typer.instantiate(instantiation, p.type))
+                        returnType := typer.instantiate(instantiation, signature.returnType)
+                        each(zip(m.parameters, parameterTypes), p => {
+                            typer.bindVariable(p.first, p.second)
+                        })
+                        typedBody := checkBody(typer, returnType, m.position, m.body)
+                        MethodImplementation(m.position, m.name, m.parameters, typedBody)
+                    })
+                })
             })
-            js"console.log('TODO: finish instance typing (check methods)')"
             Term.instance(position, symbol, thisName, typedMethods)
         }
         match(position, value, cases) {
@@ -212,6 +227,7 @@ checkTerm(typer : Typer, expectedType : Type, term : Term) : Term {
                         when(find(cases, c => c.body.name == s.symbol) == Option.none, {
                             typer.error(position, "Missing case: \(s.symbol) on type \(typeToString(typer.expand(type)))")
                         })
+                        js"console.log('TODO: Unkown case')"
                         instantiation := newStringMap(zip(typeDefinition.typeParameters, typeArguments2))
                         parameters := map(s.parameters, p => Parameter(p.position, p.name, typer.instantiate(instantiation, p.type)))
                         returnType := typer.instantiate(instantiation, s.returnType)

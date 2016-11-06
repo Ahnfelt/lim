@@ -206,6 +206,7 @@ preludeTypeDefinitions() : Array[Pair[String, TypeDefinition]] {
             MethodSignature(0, "some", [], [Parameter(0, "value", Type.parameter(0, "a"))], void)
         ]),
         TypeDefinition(0, "String@_", [], Bool.false, [
+            MethodSignature(0, "invoke", [], [Parameter(0, "index", int)], int),
             MethodSignature(0, "size", [], [], int),
             MethodSignature(0, "take", [], [Parameter(0, "count", int)], string),
             MethodSignature(0, "drop", [], [Parameter(0, "count", int)], string),

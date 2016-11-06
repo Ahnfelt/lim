@@ -182,7 +182,10 @@ resolveTerm(resolver : Resolver, term : Term) : Term {
                 methodCall(position, value, methodName, arguments) { Option.none }
                 variable(position, symbol) {
                     if(methodName == "invoke", {
-                        resolver.function(position, symbol)
+                        resolver.getVariable(position, symbol) ? {
+                            some(name) { Option.none }
+                            none { resolver.function(position, symbol) }
+                        }
                     }, {
                         Option.none
                     })
@@ -215,17 +218,6 @@ resolveTerm(resolver : Resolver, term : Term) : Term {
                             resolver.error(position, "No such variable: \(symbol)")
                         }
                     }
-                }
-            }
-        }
-        variable(position, symbol) {
-            functionName := resolver.function(position, symbol)
-            functionName ? {
-                some(name) {
-                    Term.functionCall(position, name, Arguments([], []))
-                }
-                none {
-                    Term.variable(position, resolver.variable(position, symbol))
                 }
             }
         }
