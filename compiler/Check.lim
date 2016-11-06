@@ -59,8 +59,9 @@ checkStatement(typer : Typer, expectedType : Type, statement : Statement) : Stat
             equalityConstraint(typer, position, expectedType, Type.constructor(position, "Void@_", []))
             type2 := or(type, Type.variable(position, typer.fresh))
             value2 := checkTerm(typer, type2, value)
-            typer.bindVariable(variable, typer.expand(type2))
-            Statement.let(position, variable, Option.some(type2), value2)
+            expandedType := typer.expand(type2)
+            typer.bindVariable(variable, expandedType)
+            Statement.let(position, variable, Option.some(expandedType), value2)
         }
         functions(definitions) {
             position := orPanic(first(definitions)).position
@@ -263,7 +264,16 @@ checkTerm(typer : Typer, expectedType : Type, term : Term) : Term {
                 none {
                     typeDefinition := typer.type(symbol)
                     when(!typeDefinition.isSum, { typer.error(position, "No such method: \(symbol).\(methodName)") })
-                    panic("TODO")
+                    find(typeDefinition.methodSignatures, s => s.symbol == methodName) ? {
+                        none { typer.error(position, "No such method: \(symbol).\(methodName)") }
+                        some(s) {
+                            typeArguments := map(typeDefinition.typeParameters, p => Type.variable(position, typer.fresh))
+                            instantiation := newStringMap(zip(typeDefinition.typeParameters, typeArguments))
+                            parameters := map(s.parameters, p => Parameter(p.position, p.name, typer.instantiate(instantiation, p.type)))
+                            returnType := Type.constructor(position, symbol, typeArguments)
+                            MethodSignature(s.position, s.symbol, s.typeParameters, parameters, returnType)
+                        }
+                    }
                 }
             }
             typedArguments := checkArguments(typer, expectedType, position, signature, arguments)
@@ -285,23 +295,20 @@ checkTerm(typer : Typer, expectedType : Type, term : Term) : Term {
                 constructor(position2, symbol2, typeArguments2) {
                     typeDefinition := typer.type(symbol2)
                     if(typeDefinition.isSum, {
-                        if(typeDefinition.methodSignatures.size == 1, {
-                            s := typeDefinition.methodSignatures.invoke(0)
-                            instantiation := newStringMap(zip(typeDefinition.typeParameters, typeArguments2))
-                            parameters := map(s.parameters, p => Parameter(p.position, p.name, typer.instantiate(instantiation, p.type)))
-                            field := find(parameters, p => p.name == methodName) ? {
-                                none {
-                                    typer.error(position, "No such field: \(methodName) on type \(symbol2)")
-                                }
-                                some(f) { f }
+                        when(typeDefinition.methodSignatures.size != 1, { typer.error(position, "No such method: \(methodName) on sum type \(symbol2)") })
+                        s := typeDefinition.methodSignatures.invoke(0)
+                        instantiation := newStringMap(zip(typeDefinition.typeParameters, typeArguments2))
+                        parameters := map(s.parameters, p => Parameter(p.position, p.name, typer.instantiate(instantiation, p.type)))
+                        field := find(parameters, p => p.name == methodName) ? {
+                            none {
+                                typer.error(position, "No such field: \(methodName) on object of type \(symbol2)")
                             }
-                            MethodSignature(s.position, field.name, [], [], field.type)
-                        }, {
-                            typer.error(position, "No such method: \(methodName) on sum type \(symbol2)")
-                        })
+                            some(f) { f }
+                        }
+                        MethodSignature(s.position, field.name, [], [], field.type)
                     }, {
                         find(typeDefinition.methodSignatures, s => s.symbol == methodName) ? {
-                            none { typer.error(position, "No such method: \(methodName) on type \(symbol2)") }
+                            none { typer.error(position, "No such method: \(methodName) on object of type \(symbol2)") }
                             some(s) {
                                 instantiation := newStringMap(zip(typeDefinition.typeParameters, typeArguments2))
                                 parameters := map(s.parameters, p => Parameter(p.position, p.name, typer.instantiate(instantiation, p.type)))

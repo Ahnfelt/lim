@@ -16,7 +16,7 @@ Typer {
 }
 
 newTyper(modules : Array[Module]) : Typer {
-    types := newStringMapBuilder(preludeTypes().concat(flatten(map(modules, m => map(m.typeDefinitions, d => Pair(d.symbol, d))))))
+    types := newStringMapBuilder(preludeTypeDefinitions().concat(flatten(map(modules, m => map(m.typeDefinitions, d => Pair(d.symbol, d))))))
     functions := newStringMapBuilder(flatten(map(modules, m => map(m.functionDefinitions, d => Pair(d.signature.symbol, d)))))
     variables := newStringMapBuilder([])
     substitution := newStringMapBuilder([])
@@ -188,8 +188,9 @@ typeToString(type : Type) : String {
 }
 
 
-preludeTypes() : Array[Pair[String, TypeDefinition]] {
+preludeTypeDefinitions() : Array[Pair[String, TypeDefinition]] {
     void := Type.constructor(0, "Void@_", [])
+    int := Type.constructor(0, "Int@_", [])
     typeDefinitions := [
         TypeDefinition(0, "Void@_", [], Bool.true, [
             MethodSignature(0, "void", [], [], void)
@@ -204,19 +205,25 @@ preludeTypes() : Array[Pair[String, TypeDefinition]] {
         ]),
         TypeDefinition(0, "String@_", [], Bool.false, [
         ]),
+        TypeDefinition(0, "Bool@_", [], Bool.true, [
+            MethodSignature(0, "false", [], [], void),
+            MethodSignature(0, "true", [], [], void)
+        ]),
         TypeDefinition(0, "Int@_", [], Bool.false, [
         ]),
         TypeDefinition(0, "Float@_", [], Bool.false, [
         ]),
         TypeDefinition(0, "Array@_", ["a"], Bool.false, [
+            MethodSignature(0, "invoke", [], [Parameter(0, "index", int)], Type.parameter(0, "a")),
+            MethodSignature(0, "size", [], [], int)
         ]),
         TypeDefinition(0, "F0@_", ["r"], Bool.false, [
             MethodSignature(0, "invoke", [], [], Type.parameter(0, "r"))
         ]),
-        TypeDefinition(0, "F1@_", ["p1, r"], Bool.false, [
+        TypeDefinition(0, "F1@_", ["p1", "r"], Bool.false, [
             MethodSignature(0, "invoke", [], [Parameter(0, "a1", Type.parameter(0, "p1"))], Type.parameter(0, "r"))
         ]),
-        TypeDefinition(0, "F2@_", ["r"], Bool.false, [
+        TypeDefinition(0, "F2@_", ["p1", "p2", "r"], Bool.false, [
             MethodSignature(0, "invoke", [], [Parameter(0, "a1", Type.parameter(0, "p1")), Parameter(0, "a2", Type.parameter(0, "p2"))], Type.parameter(0, "r"))
         ])
     ]
