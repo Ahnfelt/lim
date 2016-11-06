@@ -319,7 +319,13 @@ checkTerm(typer : Typer, expectedType : Type, term : Term) : Term {
                     typer.error(position, "No such method: \(methodName) on type parameter \(name2)")
                 }
                 record(position2, fields2) {
-                    panic("TODO: Record fields as methods")
+                    field := find(fields2, f => f.label == methodName) ? {
+                        none {
+                            typer.error(position, "No such field: \(methodName) in record \(typeToString(type))")
+                        }
+                        some(f) { f }
+                    }
+                    MethodSignature(position2, field.label, [], [], field.type)
                 }
                 constructor(position2, symbol2, typeArguments2) {
                     typeDefinition := typer.type(symbol2)
