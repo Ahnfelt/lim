@@ -44,7 +44,9 @@ resolveMethodImplementation(resolver : Resolver, i : MethodImplementation) : Met
 }
 
 resolveMatchCase(resolver : Resolver, case : MatchCase) : MatchCase {
-    MatchCase(resolveMethodImplementation(resolver, case.body), case.fieldNames)
+    body := case.body
+    resolvedImplementation := resolveMethodImplementation(resolver, body)
+    MatchCase(resolvedImplementation, case.fieldNames)
 }
 
 resolveBody(resolver : Resolver, body : Array[Statement]) : Array[Statement] {
@@ -200,6 +202,23 @@ resolveTerm(resolver : Resolver, term : Term) : Term {
             }
         }
         variable(position, symbol) {
+            resolver.getVariable(position, symbol) ? {
+                some(name) {
+                    Term.variable(position, name)
+                }
+                none {
+                    resolver.function(position, symbol) ? {
+                        some(functionName) {
+                            Term.functionCall(position, functionName, Arguments([], []))
+                        }
+                        none {
+                            resolver.error(position, "No such variable: \(symbol)")
+                        }
+                    }
+                }
+            }
+        }
+        variable(position, symbol) {
             functionName := resolver.function(position, symbol)
             functionName ? {
                 some(name) {
@@ -215,6 +234,7 @@ resolveTerm(resolver : Resolver, term : Term) : Term {
 
 Resolver {
     typeConstructor(position : Int, symbol : String) : String
+    getVariable(position : Int, symbol : String) : Option[String]
     variable(position : Int, symbol : String) : String
     function(position : Int, symbol : String) : Option[String]
     typeParameter(position : Int, symbol : String) : String
@@ -224,6 +244,7 @@ Resolver {
     addFunction(position : Int, name : String) : String
     addTypeParameter(position : Int, name : String) : String
     scope[t](body : () => t) : t
+    error[t](position : Int, text : String) : t
     setSource(text : String)
 }
 
@@ -310,6 +331,9 @@ newResolver(modules : Array[Module]) : Resolver {
                 }
             }
         }
+        getVariable(position, symbol) {
+            variables.get(symbol)
+        }
         variable(position, symbol) {
             variables.get(symbol) ? {
                 some(x) { x }
@@ -354,6 +378,10 @@ newResolver(modules : Array[Module]) : Resolver {
             functions = newStringMapBuilder(savedFunctions)
             typeParameters = newStringMapBuilder(savedTypeParameters)
             result
+        }
+        error(position, message) {
+            error("\(message)", position)
+            panic("\(message)")
         }
         setSource(text) {
             source = text
