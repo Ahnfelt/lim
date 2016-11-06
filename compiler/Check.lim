@@ -321,7 +321,7 @@ checkTerm(typer : Typer, expectedType : Type, term : Term) : Term {
                 record(position2, fields2) {
                     field := find(fields2, f => f.label == methodName) ? {
                         none {
-                            typer.error(position, "No such field: \(methodName) in record \(typeToString(type))")
+                            typer.error(position, "No such field: \(methodName) in record \(typeToString(typer.expand(type)))")
                         }
                         some(f) { f }
                     }
