@@ -8,7 +8,7 @@ parseCommaList[t](pc : Pc, parse : () => t, end : TokenType) : Array[t] {
     }, {
         result.push(parse())
         pc.lookahead("comma", [
-            Pair([end], { }),
+            Pair([end], { "" }),
             Pair([], { pc.consume(TokenType.comma) })
         ])
     })

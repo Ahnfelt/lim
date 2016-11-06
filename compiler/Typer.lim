@@ -206,6 +206,11 @@ preludeTypeDefinitions() : Array[Pair[String, TypeDefinition]] {
             MethodSignature(0, "some", [], [Parameter(0, "value", Type.parameter(0, "a"))], void)
         ]),
         TypeDefinition(0, "String@_", [], Bool.false, [
+            MethodSignature(0, "size", [], [], int),
+            MethodSignature(0, "take", [], [Parameter(0, "count", int)], string),
+            MethodSignature(0, "drop", [], [Parameter(0, "count", int)], string),
+            MethodSignature(0, "toLower", [], [], string),
+            MethodSignature(0, "toUpper", [], [], string)
         ]),
         TypeDefinition(0, "Bool@_", [], Bool.true, [
             MethodSignature(0, "false", [], [], void),
@@ -218,7 +223,10 @@ preludeTypeDefinitions() : Array[Pair[String, TypeDefinition]] {
         ]),
         TypeDefinition(0, "Array@_", ["a"], Bool.false, [
             MethodSignature(0, "invoke", [], [Parameter(0, "index", int)], Type.parameter(0, "a")),
-            MethodSignature(0, "size", [], [], int)
+            MethodSignature(0, "size", [], [], int),
+            MethodSignature(0, "take", [], [Parameter(0, "count", int)], Type.constructor(0, "Array@_", [Type.parameter(0, "a")])),
+            MethodSignature(0, "drop", [], [Parameter(0, "count", int)], Type.constructor(0, "Array@_", [Type.parameter(0, "a")])),
+            MethodSignature(0, "concat", [], [Parameter(0, "array", Type.constructor(0, "Array@_", [Type.parameter(0, "a")]))], Type.constructor(0, "Array@_", [Type.parameter(0, "a")]))
         ]),
         TypeDefinition(0, "F0@_", ["r"], Bool.false, [
             MethodSignature(0, "invoke", [], [], Type.parameter(0, "r"))
