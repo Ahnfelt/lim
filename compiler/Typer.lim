@@ -99,7 +99,7 @@ newTyper(modules : Array[Module]) : Typer {
         }
         error(position, problem) {
             moduleName := module.file
-            js"console.log('Type error in ' + moduleName + ':')"
+            js"console.log('Type error in ' + moduleName + ':');"
             panic("\(problem) \(positionText(newCharCursor(module.source), position))")
         }
     }

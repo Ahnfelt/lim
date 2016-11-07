@@ -118,7 +118,6 @@ join(array : Array[String], separator : String) : String {
 }
 
 panic[a](problem : String) : a {
-    js"'debugger';"
     js"throw problem;"
 }
 
