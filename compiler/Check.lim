@@ -95,6 +95,7 @@ checkArguments(typer : Typer, expectedType : Type, position : Int, signature : M
     instantiation := newStringMap(map(signature.typeParameters, p => Pair(p, Type.variable(position, typer.fresh))))
     parameterTypes := map(signature.parameters, p => typer.instantiate(instantiation, p.type))
     returnType := typer.instantiate(instantiation, signature.returnType)
+    equalityConstraint(typer, position, expectedType, returnType)
     unnamed := map(zip(parameterTypes, arguments.unnamed), p => {
         checkTerm(typer, p.first, p.second)
     })
@@ -111,7 +112,6 @@ checkArguments(typer : Typer, expectedType : Type, position : Int, signature : M
     })
     when(unnamed.size + named.size < parameterTypes.size, { typer.error(position, "Too few arguments") })
     when(unnamed.size + named.size > parameterTypes.size, { typer.error(position, "Too many arguments") })
-    equalityConstraint(typer, position, expectedType, returnType)
     Arguments(unnamed, named)
 }
 
@@ -128,9 +128,9 @@ checkTerm(typer : Typer, expectedType : Type, term : Term) : Term {
             }, {
                 Pair(Type.variable(position, typer.fresh), Type.constructor(position, "Bool@_", []))
             })
+            equalityConstraint(typer, position, expectedType, types.second)
             typedLeft := checkTerm(typer, types.first, left)
             typedRight := checkTerm(typer, types.first, right)
-            equalityConstraint(typer, position, expectedType, types.second)
             Term.binary(position, operator, typedLeft, typedRight)
         }
         unary(position, operator, value) {
@@ -139,8 +139,8 @@ checkTerm(typer : Typer, expectedType : Type, term : Term) : Term {
             }, {
                 Pair(Type.constructor(position, "Bool@_", []), Type.constructor(position, "Bool@_", []))
             })
-            typedValue := checkTerm(typer, types.first, value)
             equalityConstraint(typer, position, expectedType, types.second)
+            typedValue := checkTerm(typer, types.first, value)
             Term.unary(position, operator, typedValue)
         }
         codeUnit(position, value) {
@@ -166,8 +166,8 @@ checkTerm(typer : Typer, expectedType : Type, term : Term) : Term {
         }
         array(position, elements) {
             elementType := Type.variable(position, typer.fresh)
-            typedElements := map(elements, e => checkTerm(typer, elementType, e))
             equalityConstraint(typer, position, expectedType, Type.constructor(position, "Array@_", [elementType]))
+            typedElements := map(elements, e => checkTerm(typer, elementType, e))
             Term.array(position, typedElements)
         }
         record(position, fields) {
@@ -176,7 +176,7 @@ checkTerm(typer : Typer, expectedType : Type, term : Term) : Term {
                 typedValue := checkTerm(typer, p.second, p.first.value)
                 Pair(Field(p.first.position, p.first.label, typedValue), FieldType(p.first.position, p.first.label, p.second))
             })
-            recordType := Type.record(position, sortLexicographicallyBy(map(typedFields, p => p.second), f => f.label))
+            recordType := Type.record(position, sortByString(map(typedFields, p => p.second), f => f.label))
             equalityConstraint(typer, position, expectedType, recordType)
             Term.record(position, map(typedFields, p => p.first))
         }
@@ -308,10 +308,10 @@ checkTerm(typer : Typer, expectedType : Type, term : Term) : Term {
             typedArguments := checkArguments(typer, expectedType, position, signature, arguments)
             Term.staticCall(position, symbol, methodName, typedArguments)
         }
-        methodCall(position, value, methodName, arguments) {
+        methodCall(position, value, methodName, arguments, hintSymbol) {
             type := Type.variable(position, typer.fresh)
             typedValue := checkTerm(typer, type, value)
-            signature := typer.expand(type) ? {
+            signatureAndHint := typer.expand(type) ? {
                 variable(position2, id2) {
                     typer.error(position, "Method call requires known object type: \(methodName)")
                 }
@@ -325,7 +325,7 @@ checkTerm(typer : Typer, expectedType : Type, term : Term) : Term {
                         }
                         some(f) { f }
                     }
-                    MethodSignature(position2, field.label, [], [], field.type)
+                    Pair(MethodSignature(position2, field.label, [], [], field.type), "_field")
                 }
                 constructor(position2, symbol2, typeArguments2) {
                     typeDefinition := typer.type(symbol2)
@@ -340,7 +340,7 @@ checkTerm(typer : Typer, expectedType : Type, term : Term) : Term {
                             }
                             some(f) { f }
                         }
-                        MethodSignature(s.position, field.name, [], [], field.type)
+                        Pair(MethodSignature(s.position, field.name, [], [], field.type), "_field")
                     }, {
                         find(typeDefinition.methodSignatures, s => s.symbol == methodName) ? {
                             none { typer.error(position, "No such method: \(methodName) on object of type \(symbol2)") }
@@ -348,14 +348,14 @@ checkTerm(typer : Typer, expectedType : Type, term : Term) : Term {
                                 instantiation := newStringMap(zip(typeDefinition.typeParameters, typeArguments2))
                                 parameters := map(s.parameters, p => Parameter(p.position, p.name, typer.instantiate(instantiation, p.type)))
                                 returnType := typer.instantiate(instantiation, s.returnType)
-                                MethodSignature(s.position, s.symbol, s.typeParameters, parameters, returnType)
+                                Pair(MethodSignature(s.position, s.symbol, s.typeParameters, parameters, returnType), symbol2)
                             }
                         }
                     })
                 }
             }
-            typedArguments := checkArguments(typer, expectedType, position, signature, arguments)
-            Term.methodCall(position, typedValue, methodName, typedArguments)
+            typedArguments := checkArguments(typer, expectedType, position, signatureAndHint.first, arguments)
+            Term.methodCall(position, typedValue, methodName, typedArguments, signatureAndHint.second)
         }
         variable(position, symbol) {
             type := typer.variable(symbol)

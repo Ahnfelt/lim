@@ -175,7 +175,7 @@ class Emitter {
         case Lambda(offset, parameters, body) =>
             //emitTerm(builder, Instance(offset, None, "F" + parameters.length, None, List(MethodImplementation(offset, "invoke", parameters, body))))
             builder ++= "(function("
-            builder ++= parameters.mkString(", ")
+            builder ++= parameters.map(escapeVariable).mkString(", ")
             builder ++= ") {\n"
             emitStatements(builder, body)
             builder ++= "})"

@@ -146,8 +146,12 @@ or[a](option : Option[a], default : a) : a {
     }
 }
 
-sortLexicographicallyBy[a](array : Array[a], selector : a => String) : Array[a] {
+sortByString[a](array : Array[a], selector : a => String) : Array[a] {
     js"return array.slice().sort(function(a, b) { return selector(a).localeCompare(selector(b)); });"
+}
+
+sortByInt[a](array : Array[a], selector : a => Int) : Array[a] {
+    js"return array.slice().sort(function(a, b) { return selector(a) - selector(b); });"
 }
 
 Pair[a, b](first : a, second : b)

@@ -89,9 +89,19 @@ emitStatement(builder : StringBuilder, statement : Statement, return : Bool) {
 }
 
 emitArguments(builder : StringBuilder, arguments : Arguments) {
-    builder.append("(")
-    builder.append("???")
-    builder.append(")")
+    first := Bool.true
+    each(arguments.unnamed, a => {
+        when(!first, { builder.append(", ") })
+        first = Bool.false
+        emitTerm(builder, a)
+    })
+    js"/* TODO: Respect original evaluation order */"
+    named := sortByInt(arguments.named, a => a.order)
+    each(named, a => {
+        when(!first, { builder.append(", ") })
+        first = Bool.false
+        emitTerm(builder, a.value)
+    })
 }
 
 emitTerm(builder : StringBuilder, term : Term) {
@@ -181,22 +191,143 @@ emitTerm(builder : StringBuilder, term : Term) {
         functionCall(position, methodName, arguments) {
             name := baseName(methodName)
             builder.append(escapeMethod(name))
+            builder.append("(")
             emitArguments(builder, arguments)
+            builder.append(")")
         }
         staticCall(position, symbol, methodName, arguments) {
-            name := baseName(symbol)
-            builder.append("\(escapeUpper(symbol)).\(escapeMethod(methodName))")
-            emitArguments(builder, arguments)
+            if(symbol == "Bool@_", {
+                builder.append(methodName)
+            }, {
+                name := baseName(symbol)
+                builder.append("\(escapeUpper(name)).\(escapeMethod(methodName))")
+                builder.append("(")
+                emitArguments(builder, arguments)
+                builder.append(")")
+            })
         }
-        methodCall(position, value, methodName, arguments) {
-            emitTerm(builder, value)
-            builder.append(".\(escapeMethod(methodName))")
-            emitArguments(builder, arguments)
+        methodCall(position, value, methodName, arguments, hintSymbol) {
+            if(hintSymbol == "_field", {
+                emitTerm(builder, value)
+                builder.append(".\(escapeMethod(methodName))")
+            }, {
+                specialMethods().get("\(hintSymbol).\(methodName)") ? {
+                    some(f) {
+                        f(value, builder, arguments)
+                    }
+                    none {
+                        emitTerm(builder, value)
+                        builder.append(".\(escapeMethod(methodName))")
+                        builder.append("(")
+                        emitArguments(builder, arguments)
+                        builder.append(")")
+                    }
+                }
+            })
         }
         variable(position, symbol) {
             builder.append(escapeVariable(symbol))
         }
     }
+}
+
+specialMethods() : StringMap[(Term, StringBuilder, Arguments) => Void] {
+    newStringMap([
+        Pair("Array@_.invoke", (value, builder, arguments) => {
+            emitTerm(builder, value)
+            builder.append("[")
+            emitArguments(builder, arguments)
+            builder.append("]")
+        }),
+        Pair("Array@_.size", (value, builder, arguments) => {
+            emitTerm(builder, value)
+            builder.append(".length")
+        }),
+        Pair("Array@_.take", (value, builder, arguments) => {
+            emitTerm(builder, value)
+            builder.append(".slice(0, ")
+            emitArguments(builder, arguments)
+            builder.append(")")
+        }),
+        Pair("Array@_.drop", (value, builder, arguments) => {
+            emitTerm(builder, value)
+            builder.append(".slice(")
+            emitArguments(builder, arguments)
+            builder.append(")")
+        }),
+        Pair("String@_.invoke", (value, builder, arguments) => {
+            emitTerm(builder, value)
+            builder.append(".charCodeAt(")
+            emitArguments(builder, arguments)
+            builder.append(")")
+        }),
+        Pair("String@_.size", (value, builder, arguments) => {
+            emitTerm(builder, value)
+            builder.append(".length")
+        }),
+        Pair("String@_.take", (value, builder, arguments) => {
+            emitTerm(builder, value)
+            builder.append(".substr(0, ")
+            emitArguments(builder, arguments)
+            builder.append(")")
+        }),
+        Pair("String@_.drop", (value, builder, arguments) => {
+            emitTerm(builder, value)
+            builder.append(".substr(")
+            emitArguments(builder, arguments)
+            builder.append(")")
+        }),
+        Pair("String@_.toUpper", (value, builder, arguments) => {
+            emitTerm(builder, value)
+            builder.append(".toUpperCase()")
+        }),
+        Pair("String@_.toLower", (value, builder, arguments) => {
+            emitTerm(builder, value)
+            builder.append(".toLowerCase()")
+        }),
+        Pair("F0@_.invoke", (value, builder, arguments) => {
+            emitTerm(builder, value)
+            builder.append("()")
+        }),
+        Pair("F1@_.invoke", (value, builder, arguments) => {
+            emitTerm(builder, value)
+            builder.append("(")
+            emitArguments(builder, arguments)
+            builder.append(")")
+        }),
+        Pair("F2@_.invoke", (value, builder, arguments) => {
+            emitTerm(builder, value)
+            builder.append("(")
+            emitArguments(builder, arguments)
+            builder.append(")")
+        }),
+        Pair("F3@_.invoke", (value, builder, arguments) => {
+            emitTerm(builder, value)
+            builder.append("(")
+            emitArguments(builder, arguments)
+            builder.append(")")
+        }),
+        Pair("Void@_.toString", (value, builder, arguments) => {
+            builder.append("(")
+            emitTerm(builder, value)
+            builder.append(", 'undefined')")
+        }),
+        Pair("Bool@_.toString", (value, builder, arguments) => {
+            builder.append("('' + ")
+            emitTerm(builder, value)
+            builder.append(")")
+        }),
+        Pair("Int@_.toString", (value, builder, arguments) => {
+            builder.append("('' + ")
+            emitTerm(builder, value)
+            builder.append(")")
+        }),
+        Pair("Float@_.toString", (value, builder, arguments) => {
+            builder.append("('' + ")
+            emitTerm(builder, value)
+            builder.append(")")
+        })
+    ])
 }
 
 escapeVariable(name : String) : String {

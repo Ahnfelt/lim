@@ -161,7 +161,7 @@ resolveTerm(resolver : Resolver, term : Term) : Term {
             resolvedNamedArguments := map(arguments.named, a => NamedArgument(a.order, a.name, resolveTerm(resolver, a.value)))
             Term.staticCall(position, resolvedSymbol, methodName, Arguments(resolvedArguments, resolvedNamedArguments))
         }
-        methodCall(position, value, methodName, arguments) {
+        methodCall(position, value, methodName, arguments, hintSymbol) {
             functionName := value ? {
                 binary(position, operator, left, right) { Option.none }
                 unary(position, operator, value) { Option.none }
@@ -177,7 +177,7 @@ resolveTerm(resolver : Resolver, term : Term) : Term {
                 lambda(position, parameters, body) { Option.none }
                 functionCall(position, name, arguments) { Option.none }
                 staticCall(position, symbol, methodName, arguments) { Option.none }
-                methodCall(position, value, methodName, arguments) { Option.none }
+                methodCall(position, value, methodName, arguments, hintSymbol) { Option.none }
                 variable(position, symbol) {
                     if(methodName == "invoke", {
                         resolver.getVariable(position, symbol) ? {
@@ -198,7 +198,7 @@ resolveTerm(resolver : Resolver, term : Term) : Term {
                 }
                 none {
                     resolvedValue := resolveTerm(resolver, value)
-                    Term.methodCall(position, resolvedValue, methodName, resolvedArguments)
+                    Term.methodCall(position, resolvedValue, methodName, resolvedArguments, hintSymbol)
                 }
             }
         }

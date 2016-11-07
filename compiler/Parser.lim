@@ -39,7 +39,7 @@ parseRecordType(pc : Pc) : Type {
     pc.consume(TokenType.leftSquare)
     fields := parseCommaList(pc, parseField, TokenType.rightSquare)
     pc.consume(TokenType.rightSquare)
-    sortedFields := sortLexicographicallyBy(fields, f => f.label)
+    sortedFields := sortByString(fields, f => f.label)
     Type.record(position, fields)
 }
 
@@ -356,10 +356,10 @@ parseCall(pc : Pc) : Term {
         result = pc.lookahead("method call", [
             Pair([TokenType.leftRound], {
                 arguments := parseArguments(pc)
-                Term.methodCall(position, result, methodName, arguments)
+                Term.methodCall(position, result, methodName, arguments, "")
             }),
             Pair([], {
-                 Term.methodCall(position, result, methodName, Arguments([], []))
+                 Term.methodCall(position, result, methodName, Arguments([], []), "")
             })
         ])
     })

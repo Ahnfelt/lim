@@ -237,6 +237,9 @@ preludeTypeDefinitions() : Array[Pair[String, TypeDefinition]] {
         ]),
         TypeDefinition(0, "F2@_", ["p1", "p2", "r"], Bool.false, [
             MethodSignature(0, "invoke", [], [Parameter(0, "a1", Type.parameter(0, "p1")), Parameter(0, "a2", Type.parameter(0, "p2"))], Type.parameter(0, "r"))
+        ]),
+        TypeDefinition(0, "F3@_", ["p1", "p2", "p3", "r"], Bool.false, [
+            MethodSignature(0, "invoke", [], [Parameter(0, "a1", Type.parameter(0, "p1")), Parameter(0, "a2", Type.parameter(0, "p2")), Parameter(0, "a3", Type.parameter(0, "p3"))], Type.parameter(0, "r"))
         ])
     ]
     map(typeDefinitions, d => Pair(d.symbol, d))

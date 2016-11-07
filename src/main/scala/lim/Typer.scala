@@ -31,7 +31,6 @@ class Typer(buffer : Array[Char]) {
             MethodSignature(0, "toUpper", List(), List(), TypeConstructor(0, None, "String", List(), None), Some((value, terms) => MethodCall(0, value, "toUpperCase", terms, List()))),
             MethodSignature(0, "toLower", List(), List(), TypeConstructor(0, None, "String", List(), None), Some((value, terms) => MethodCall(0, value, "toLowerCase", terms, List())))
         )),
-        // TODO: Make this use native false / true (it's a non-working mix of native and non-native right now)
         (None, "Bool") -> TypeDefinition(0, "Bool", List(), RequestModifier, List(
             MethodSignature(0, "false", List(), List(), TypeConstructor(0, None, "Void", List(), None), None),
             MethodSignature(0, "true", List(), List(), TypeConstructor(0, None, "Void", List(), None), None)
