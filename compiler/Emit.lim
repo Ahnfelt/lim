@@ -134,7 +134,7 @@ emitTerm(builder : StringBuilder, term : Term) {
             emitTerm(builder, value)
         }
         codeUnit(position, value) {
-            builder.append("???")
+            builder.append(value.toString)
         }
         text(position, value) {
             builder.append(escapeString(value))

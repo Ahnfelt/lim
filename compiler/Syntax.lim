@@ -1,7 +1,7 @@
 Term ? {
     binary(position : Int, operator : TokenType, left : Term, right : Term)
     unary(position : Int, operator : TokenType, value : Term)
-    codeUnit(position : Int, value : String)
+    codeUnit(position : Int, value : Int)
     text(position : Int, value : String)
     textLiteral(position : Int, parts : Array[Term])
     integer(position : Int, value : String)
