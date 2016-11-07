@@ -284,6 +284,7 @@ parseText(pc : Pc) : Term {
     parts := newArrayBuilder()
     firstText := pc.consume(TokenType.textStart)
     firstText = firstText.drop(1)
+    firstText = firstText.take(firstText.size - 1)
     when(firstText.size > 0, { parts.push(Term.text(position, firstText)) })
     done := Bool.false
     while({ !done }, {

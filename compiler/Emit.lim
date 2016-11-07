@@ -373,7 +373,6 @@ escapeUpper(name : String) : String {
 }
 
 escapeString(value : String) : String {
-    js"console.log('TODO: Escape strings')"
     "\"\(value)\""
 }
 
