@@ -673,5 +673,5 @@ testAll(moduleSources : Array[Pair[String, String]]) {
     emitted := builder.drain
     js"console.log('------------------------ ' + emitted.length);"
     js"if(window.compilesOfKeen == null) window.compilesOfKeen = 1; else window.compilesOfKeen += 1;"
-    js"if(window.compilesOfKeen < 3) { var globalEval = eval; globalEval(emitted); window.doCompileKeenNow(); } else console.log(emitted);"
+    js"if(window.compilesOfKeen < 3) { eval.call(window, emitted); window.doCompileKeenNow(); } else console.log(emitted);"
 }
