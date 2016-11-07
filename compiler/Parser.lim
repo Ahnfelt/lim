@@ -247,6 +247,8 @@ parseAtom(pc : Pc) : Term {
             text := pc.consume(TokenType.codeUnit)
             c := 0
             when(text == "'\\\\'", { c = '\\' })
+            when(text == "'\\''", { c = '\'' })
+            when(text == "'\\\"'", { c = '"' })
             when(text == "'\\r'", { c = '\r' })
             when(text == "'\\n'", { c = '\n' })
             when(text == "'\\t'", { c = '\t' })
@@ -258,6 +260,7 @@ parseAtom(pc : Pc) : Term {
         Pair([TokenType.text], {
             position := pc.position
             text := pc.consume(TokenType.text)
+            text = text.drop(1)
             Term.text(position, text)
         }),
         Pair([TokenType.textStart], {
@@ -280,6 +283,7 @@ parseText(pc : Pc) : Term {
     position := pc.position
     parts := newArrayBuilder()
     firstText := pc.consume(TokenType.textStart)
+    firstText = firstText.drop(1)
     when(firstText.size > 0, { parts.push(Term.text(position, firstText)) })
     done := Bool.false
     while({ !done }, {
@@ -287,11 +291,14 @@ parseText(pc : Pc) : Term {
         pc.lookahead("end of string", [
             Pair([TokenType.textEnd], {
                 text := pc.consume(TokenType.textEnd)
+                text = text.drop(1)
                 when(text.size > 0, { parts.push(Term.text(position, text)) })
                 done = Bool.true
             }),
             Pair([TokenType.textMiddle], {
                 text := pc.consume(TokenType.textMiddle)
+                text = text.drop(1)
+                text = text.take(text.size - 1)
                 when(text.size > 0, { parts.push(Term.text(position, text)) })
             })
         ])

@@ -1045,6 +1045,12 @@ var c = 0;
 when((text == "'\\\\'"), (function() {
 c = 92;
 }));
+when((text == "'\\''"), (function() {
+c = 39;
+}));
+when((text == "'\\\"'"), (function() {
+c = 34;
+}));
 when((text == "'\\r'"), (function() {
 c = 13;
 }));
@@ -1067,6 +1073,7 @@ return Term.codeUnit(position, c);
 var position = pc.position();
 // String
 var text = pc.consume(TokenType.text());
+text = text.substr(1);
 return Term.text(position, text);
 })), Pair.pair([TokenType.textStart()], (function() {
 return parseText(pc);
@@ -1089,10 +1096,11 @@ return Term.floating(position, value);
 function parseText(pc) {
 // Int
 var position = pc.position();
-// ArrayBuilder[_812]
+// ArrayBuilder[_824]
 var parts = newArrayBuilder();
 // String
 var firstText = pc.consume(TokenType.textStart());
+firstText = firstText.substr(1);
 when((firstText.length > 0), (function() {
 return parts.push(Term.text(position, firstText));
 }));
@@ -1105,6 +1113,7 @@ parts.push(parseTerm(pc));
 return pc.lookahead("end of string", [Pair.pair([TokenType.textEnd()], (function() {
 // String
 var text = pc.consume(TokenType.textEnd());
+text = text.substr(1);
 when((text.length > 0), (function() {
 return parts.push(Term.text(position, text));
 }));
@@ -1112,6 +1121,9 @@ done = true;
 })), Pair.pair([TokenType.textMiddle()], (function() {
 // String
 var text = pc.consume(TokenType.textMiddle());
+text = text.substr(1);
+text = text.substr(0, (text.length - 1));
+debugger;
 return when((text.length > 0), (function() {
 return parts.push(Term.text(position, text));
 }));
@@ -1321,7 +1333,7 @@ return Statement.ffi(position, language, code);
 // (Pc) => Array[Statement]
 function parseBody(pc) {
 pc.consume(TokenType.leftCurly());
-// ArrayBuilder[_1268]
+// ArrayBuilder[_1290]
 var result = newArrayBuilder();
 while_((function() {
 return pc.lookahead("statement or }", [Pair.pair([TokenType.rightCurly()], (function() {
@@ -1463,7 +1475,7 @@ return MethodSignature.methodSignature(position, name, typeParameters, parameter
 function parseFunctionDefinitions(pc) {
 // Int
 var position = pc.position();
-// ArrayBuilder[_1609]
+// ArrayBuilder[_1631]
 var result = newArrayBuilder();
 while_((function() {
 return pc.lookahead("function", [Pair.pair([TokenType.lower(), TokenType.leftRound(), TokenType.rightRound(), TokenType.leftCurly()], (function() {
@@ -1509,7 +1521,7 @@ return FunctionDefinition.functionDefinition(position, signature, body);
 // (Pc) => Array[MethodSignature]
 function parseMethodSignatures(pc) {
 pc.consume(TokenType.leftCurly());
-// ArrayBuilder[_1735]
+// ArrayBuilder[_1757]
 var result = newArrayBuilder();
 while_((function() {
 return pc.lookahead("method signature or }", [Pair.pair([TokenType.rightCurly()], (function() {
@@ -1583,9 +1595,9 @@ return TypeDefinition.typeDefinition(position, name, typeParameters, (isSum || i
 
 // (Pc, String, String, String, String) => Module
 function parseModule(pc, package_, alias, file, source) {
-// ArrayBuilder[_1912]
+// ArrayBuilder[_1934]
 var typeDefinitions = newArrayBuilder();
-// ArrayBuilder[_1916]
+// ArrayBuilder[_1938]
 var functionDefinitions = newArrayBuilder();
 while_((function() {
 return pc.lookahead("definition or end of file", [Pair.pair([TokenType.outsideFile()], (function() {
@@ -2245,9 +2257,9 @@ return map(m.functionDefinitions, (function(d) {
 return Pair.pair(d.signature.symbol, d);
 }));
 }))));
-// StringMapBuilder[_3110]
+// StringMapBuilder[_3132]
 var variables = newStringMapBuilder([]);
-// StringMapBuilder[_3115]
+// StringMapBuilder[_3137]
 var substitution = newStringMapBuilder([]);
 // Int
 var nextId = 0;
@@ -2256,7 +2268,7 @@ var module = modules[0];
 return {
 scope: function(body) {
 var typer = this;
-// Array[Pair[String, _3110]]
+// Array[Pair[String, _3132]]
 var oldVariables = variables.toArray();
 // Array[Pair[String, FunctionDefinition]]
 var oldFunctions = functions.toArray();
@@ -2436,7 +2448,7 @@ return solveEqualityConstraint(typer, position, expectedType, actualType, expect
 
 // (Typer, Int, Type, Type, Type, Type) => Void
 function solveEqualityConstraint(typer, position, originalExpectedType, originalActualType, expectedType, actualType) {
-// F0[_3261]
+// F0[_3283]
 var error = (function() {
 return typer.error(position, ("Expected " + typeToString(typer.expand(originalExpectedType)) + ", got " + typeToString(typer.expand(originalActualType))));
 });
@@ -3790,7 +3802,7 @@ return resolver.error(position, ("No such variable: " + symbol));
 function newResolver(modules) {
 // String
 var source = "";
-// F2[String, Int, _5118]
+// F2[String, Int, _5140]
 var error = (function(e, p) {
 return panic((e + " " + positionText(newCharCursor(source), p)));
 });
@@ -3818,9 +3830,9 @@ return map(m.functionDefinitions, (function(d) {
 return Pair.pair(d.signature.symbol, (d.signature.symbol + "@" + m.package_));
 }));
 })));
-// StringMapBuilder[_5192]
+// StringMapBuilder[_5214]
 var definedTypes = newStringMapBuilder([]);
-// StringMapBuilder[_5197]
+// StringMapBuilder[_5219]
 var definedFunctions = newStringMapBuilder([]);
 each(modules, (function(m) {
 source = m.source;
@@ -3864,9 +3876,9 @@ return map(m.typeDefinitions, (function(d) {
 return Pair.pair((m.alias + "." + d.symbol), (d.symbol + "@" + m.package_));
 }));
 }))));
-// StringMapBuilder[_5315]
+// StringMapBuilder[_5337]
 var variables = newStringMapBuilder([]);
-// StringMapBuilder[_5320]
+// StringMapBuilder[_5342]
 var typeParameters = newStringMapBuilder([]);
 return {
 typeConstructor: function(position, symbol) {
@@ -4063,7 +4075,7 @@ for(var i = 0; i < array.length; i++) body(array[i]);
 
 // (Array[a]) => Array[Pair[Int, a]]
 function indexed(array) {
-// Array[_5428]
+// Array[_5450]
 var result = [];
 for(var i = 0; i < array.length; i++) result.push(Pair.pair(i, array[i]));
 return result;
@@ -4071,7 +4083,7 @@ return result;
 
 // (Array[a], Array[b]) => Array[Pair[a, b]]
 function zip(left, right) {
-// Array[_5432]
+// Array[_5454]
 var result = [];
 for(var i = 0; i < left.length && i < right.length; i++) result.push(Pair.pair(left[i], right[i]));
 return result;
@@ -4079,7 +4091,7 @@ return result;
 
 // (Array[a], F1[a, b]) => Array[b]
 function map(array, body) {
-// Array[_5436]
+// Array[_5458]
 var result = [];
 for(var i = 0; i < array.length; i++) result.push(body(array[i]));
 return result;
@@ -4087,7 +4099,7 @@ return result;
 
 // (Array[a], F1[a, Bool]) => Array[a]
 function filter(array, condition) {
-// Array[_5440]
+// Array[_5462]
 var result = [];
 for(var i = 0; i < array.length; i++) if(condition(array[i])) result.push(array[i]);
 return result;
@@ -4110,7 +4122,7 @@ return Option.none();
 
 // (Array[a]) => Array[a]
 function firsts(array) {
-// Array[_5458]
+// Array[_5480]
 var result = [];
 for(var i = 0; i < array.length - 1; i++) result.push(array[i]);
 return result;
@@ -4127,7 +4139,7 @@ return Option.none();
 
 // (Array[a]) => Array[a]
 function lasts(array) {
-// Array[_5474]
+// Array[_5496]
 var result = [];
 for(var i = 1; i < array.length; i++) result.push(array[i]);
 return result;
@@ -4147,7 +4159,7 @@ return true;
 
 // (Array[Array[a]]) => Array[a]
 function flatten(array) {
-// Array[_5482]
+// Array[_5504]
 var result = [];
 for(var i = 0; i < array.length; i++) for(var j = 0; j < array[i].length; j++) result.push(array[i][j]);
 return result;
@@ -4166,7 +4178,7 @@ throw problem;
 
 // (Array[F0[Option[a]]]) => Option[a]
 function orElse(options) {
-// Option[_5488]?
+// Option[_5510]?
 var result = Option.none();
 // Int
 var i = 0;
@@ -4235,7 +4247,7 @@ return builder.has(key);
 // (Array[Pair[String, v]]) => StringMapBuilder[v]
 function newStringMapBuilder(array) {
 var map = {};
-// StringMapBuilder[_5542]?!
+// StringMapBuilder[_5564]?!
 var builder = {
 invoke: function(key) {
 var this_ = this;
@@ -4267,7 +4279,7 @@ delete map['~' + key];
 },
 toArray: function() {
 var this_ = this;
-// Array[_5539]
+// Array[_5561]
 var result = [];
 for(var key in map) if(this_.has(key.substr(1))) result.push(Pair.pair(key.substr(1), map[key]));
 return result;
@@ -4285,7 +4297,7 @@ return builder;
 
 // (String) => CharCursor
 function newCharCursor(buffer) {
-// ArrayBuilder[_5556]
+// ArrayBuilder[_5578]
 var stack = newArrayBuilder();
 // Int
 var offset = 0;
@@ -4398,11 +4410,11 @@ return ("at line " + ("" + position.line) + " column " + ("" + position.column))
 
 // (TokenCursor, String) => Pc
 function newPc(cursor, buffer) {
-// F1[_5679, _5680]
+// F1[_5701, _5702]
 var tokenTypeText = (function(tokenType) {
 return tokenType._;
 });
-// F1[_5683, _5684]
+// F1[_5705, _5706]
 var tokenText = (function(token) {
 return buffer.substring(token.from, token.to);
 });
@@ -4432,7 +4444,7 @@ return text;
 lookahead: function(expected, cases) {
 // Int
 var i = 0;
-// Option[_5725]?
+// Option[_5747]?
 var result = Option.none();
 while_((function() {
 return ((i < cases.length) && (result == Option.none()));
@@ -4550,7 +4562,7 @@ return Option.none();
 var firstAcceptedToken = (function(bodies) {
 // Int
 var i = 0;
-// Option[_5894]?
+// Option[_5916]?
 var result = Option.none();
 // Array[F0[Option[Token]]]
 var array = bodies;
@@ -4762,7 +4774,7 @@ return Option.some(Token.token(TokenType.numeral(), from, to));
 
 // (String) => Array[Token]
 function lexTokens(buffer) {
-// ArrayBuilder[_6354]
+// ArrayBuilder[_6376]
 var builder = newArrayBuilder();
 // CharCursor
 var cursor = newCharCursor(buffer);
@@ -4816,12 +4828,12 @@ return result;
 
 // () => ArrayBuilder[t]
 function newArrayBuilder() {
-// Array[_6405]
+// Array[_6427]
 var array = [];
 return {
 drain: function() {
 var this_ = this;
-// Array[_6405]
+// Array[_6427]
 var result = array;
 array = [];
 return result;
@@ -4842,7 +4854,7 @@ return array.pop()
 },
 top: function() {
 var this_ = this;
-// Option[_6422]?
+// Option[_6444]?
 var result = Option.none();
 when((array.length > 0), (function() {
 result = Option.some(array[array.length - 1])
@@ -4855,14 +4867,14 @@ for(var i = 0; i < array.length; i++) body(array[i]);
 },
 map: function(body) {
 var this_ = this;
-// ArrayBuilder[_6432]
+// ArrayBuilder[_6454]
 var result = newArrayBuilder();
 for(var i = 0; i < array.length; i++) result.push(body(array[i]));
 return result;
 },
 filter: function(body) {
 var this_ = this;
-// ArrayBuilder[_6437]
+// ArrayBuilder[_6459]
 var result = newArrayBuilder();
 for(var i = 0; i < array.length; i++) if(body(array[i])) result.push(array[i]);
 return result;
