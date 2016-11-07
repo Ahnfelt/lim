@@ -149,7 +149,6 @@ resolveTerm(resolver : Resolver, term : Term) : Term {
                 Term.lambda(position, resolvedParameters, resolvedBody)
             })
         }
-        ffiJs(position, code) { term }
         functionCall(position, name, arguments) {
             resolvedName := orPanic(resolver.function(position, name))
             resolvedArguments := map(arguments.unnamed, a => resolveTerm(resolver, a))
@@ -176,7 +175,6 @@ resolveTerm(resolver : Resolver, term : Term) : Term {
                 instance(position, symbol, thisName, methods) { Option.none }
                 match(position, value, cases) { Option.none }
                 lambda(position, parameters, body) { Option.none }
-                ffiJs(position, code) { Option.none }
                 functionCall(position, name, arguments) { Option.none }
                 staticCall(position, symbol, methodName, arguments) { Option.none }
                 methodCall(position, value, methodName, arguments) { Option.none }

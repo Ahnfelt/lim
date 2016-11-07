@@ -15,7 +15,6 @@ Term ? {
     instance(position : Int, symbol : String, thisName : Option[String], methods : Array[MethodImplementation])
     match(position : Int, value : Term, cases : Array[MatchCase])
     lambda(position : Int, parameters : Array[String], body : Array[Statement])
-    ffiJs(position : Int, code : String)
 }
 
 MatchCase(body : MethodImplementation, fieldNames : Array[String])

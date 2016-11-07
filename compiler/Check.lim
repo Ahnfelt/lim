@@ -362,8 +362,5 @@ checkTerm(typer : Typer, expectedType : Type, term : Term) : Term {
             equalityConstraint(typer, position, expectedType, type)
             term
         }
-        ffiJs(position, code) {
-            term
-        }
     }
 }

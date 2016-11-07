@@ -1,6 +1,12 @@
 emitModule(builder : StringBuilder, module : Module) {
-    each(module.typeDefinitions, d => emitTypeDefinition(builder, d))
-    each(module.functionDefinitions, d => emitFunctionDefinition(builder, d))
+    each(module.typeDefinitions, d => {
+        emitTypeDefinition(builder, d)
+        builder.append("\n")
+    })
+    each(module.functionDefinitions, d => {
+        emitFunctionDefinition(builder, d)
+        builder.append("\n")
+    })
 }
 
 emitTypeDefinition(builder : StringBuilder, definition : TypeDefinition) {
@@ -26,53 +32,69 @@ emitTypeDefinition(builder : StringBuilder, definition : TypeDefinition) {
             })
             builder.append("}")
         })
-        builder.append("\n};\n\n")
+        builder.append("\n};\n")
     })
 }
 
 emitFunctionDefinition(builder : StringBuilder, definition : FunctionDefinition) {
     name := baseName(definition.signature.symbol)
-    parameters := join(map(definition.signature.parameters, p => "\(escapeVariable(p.name))"), ", ")
+    parameters := join(map(definition.signature.parameters, p => escapeVariable(p.name)), ", ")
     builder.append("function \(escapeMethod(name))(\(parameters)) {\n")
     emitBody(builder, definition.body)
-    builder.append("}\n\n")
+    builder.append("}\n")
 }
 
 emitBody(builder : StringBuilder, body : Array[Statement]) {
-    panic("TODO")
+    firsts := body.take(body.size - 1)
+    lasts := body.drop(body.size - 1)
+    each(firsts, s => emitStatement(builder, s, Bool.false))
+    each(lasts, s => emitStatement(builder, s, Bool.true))
 }
 
-emitStatement(builder : StringBuilder, statement : Statement) {
+emitStatement(builder : StringBuilder, statement : Statement, return : Bool) {
     statement ? {
         term(position, term) {
-            panic("TODO")
+            when(return, { builder.append("return ") })
+            emitTerm(builder, term)
+            builder.append(";\n")
         }
         let(position, variable, type, value) {
-            panic("TODO")
+            builder.append("var \(escapeVariable(variable)) = ")
+            emitTerm(builder, value)
+            builder.append(";\n")
         }
         functions(definitions) {
-            panic("TODO")
+            each(definitions, d => emitFunctionDefinition(builder, d))
         }
         assign(position, variable, value) {
-            panic("TODO")
+            builder.append("\(escapeVariable(variable)) = ")
+            emitTerm(builder, value)
+            builder.append(";\n")
         }
         increment(position, variable, value) {
-            panic("TODO")
+            builder.append("\(escapeVariable(variable)) += ")
+            emitTerm(builder, value)
+            builder.append(";\n")
         }
         decrement(position, variable, value) {
-            panic("TODO")
+            builder.append("\(escapeVariable(variable)) -= ")
+            emitTerm(builder, value)
+            builder.append(";\n")
         }
         ffi(position, language, code) {
-            panic("TODO")
+            builder.append(code)
+            builder.append("\n")
         }
     }
 }
 
 emitArguments(builder : StringBuilder, arguments : Arguments) {
+    builder.append("(")
     panic("TODO")
+    builder.append(")")
 }
 
-emitTerm(builder : StringBuilder, term : Term) : Term {
+emitTerm(builder : StringBuilder, term : Term) {
     term ? {
         binary(position, operator, left, right) {
             panic("TODO")
@@ -84,22 +106,44 @@ emitTerm(builder : StringBuilder, term : Term) : Term {
             panic("TODO")
         }
         text(position, value) {
-            panic("TODO")
+            builder.append(escapeString(value))
         }
         textLiteral(position, parts) {
-            panic("TODO")
+            first := Bool.true
+            when(parts.size > 1, { builder.append("(") })
+            each(parts, p => {
+                when(!first, { builder.append(" + ") })
+                first = Bool.false
+                emitTerm(builder, p)
+            })
+            when(parts.size > 1, { builder.append(")") })
         }
         integer(position, value) {
-            panic("TODO")
+            builder.append(value)
         }
         floating(position, value) {
-            panic("TODO")
+            builder.append(value)
         }
         array(position, elements) {
-            panic("TODO")
+            first := Bool.true
+            builder.append("[")
+            each(elements, e => {
+                when(!first, { builder.append(", ") })
+                first = Bool.false
+                emitTerm(builder, e)
+            })
+            builder.append("]")
         }
         record(position, fields) {
-            panic("TODO")
+            first := Bool.true
+            builder.append("{")
+            each(fields, f => {
+                when(!first, { builder.append(", ") })
+                first = Bool.false
+                builder.append("\(escapeMethod(f.label)): ")
+                emitTerm(builder, f.value)
+            })
+            builder.append("}")
         }
         instance(position, symbol, thisName, methods) {
             panic("TODO")
@@ -108,26 +152,30 @@ emitTerm(builder : StringBuilder, term : Term) : Term {
             panic("TODO")
         }
         lambda(position, parameters, body) {
-            panic("TODO")
+            ps := join(map(parameters, p => escapeVariable(p)), ", ")
+            builder.append("(function(\(ps)) {\n")
+            emitBody(builder, body)
+            builder.append("})")
         }
         functionCall(position, methodName, arguments) {
-            panic("TODO")
+            builder.append(escapeMethod(methodName))
+            emitArguments(builder, arguments)
         }
         staticCall(position, symbol, methodName, arguments) {
-            panic("TODO")
+            name := baseName(symbol)
+            builder.append("\(escapeUpper(symbol)).\(escapeMethod(methodName))")
+            emitArguments(builder, arguments)
         }
         methodCall(position, value, methodName, arguments) {
-            panic("TODO")
+            emitTerm(builder, value)
+            builder.append(".\(escapeMethod(methodName))")
+            emitArguments(builder, arguments)
         }
         variable(position, symbol) {
-            panic("TODO")
-        }
-        ffiJs(position, code) {
-            panic("TODO")
+            builder.append(escapeVariable(symbol))
         }
     }
 }
-
 
 escapeVariable(name : String) : String {
     if(reservedWords().has(name), { "\(name)_" }, { name })
