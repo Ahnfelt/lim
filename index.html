@@ -7,48 +7,51 @@
     </head>
     <body>
         <script>
-            function loadText(url, array, callback) {
-                var xmlhttp = new XMLHttpRequest();
-                xmlhttp.onreadystatechange = function() {
-                    if (xmlhttp.readyState == XMLHttpRequest.DONE) {
-                        if(xmlhttp.status == 200) {
-                            array.push({_: "pair", first: url, second: xmlhttp.responseText});
-                            callback(array);
-                        } else {
-                            console.error('AJAX error ' + xmlhttp.status);
+            function doCompileKeenNow() {
+                function loadText(url, array, callback) {
+                    var xmlhttp = new XMLHttpRequest();
+                    xmlhttp.onreadystatechange = function() {
+                        if (xmlhttp.readyState == XMLHttpRequest.DONE) {
+                            if(xmlhttp.status == 200) {
+                                array.push({_: "pair", first: url, second: xmlhttp.responseText});
+                                callback(array);
+                            } else {
+                                console.error('AJAX error ' + xmlhttp.status);
+                            }
                         }
-                    }
-                };
-                xmlhttp.open("GET", url, true);
-                xmlhttp.send();
+                    };
+                    xmlhttp.open("GET", url, true);
+                    xmlhttp.send();
+                }
+
+                var moduleFiles = [
+                    "compiler/ArrayBuilder.lim",
+                    "compiler/Lexer.lim",
+                    "compiler/Resolver.lim",
+                    "compiler/StringMap.lim",
+                    "compiler/CharCursor.lim",
+                    "compiler/Pc.lim",
+                    "compiler/StringBuilder.lim",
+                    "compiler/Token.lim",
+                    "compiler/Prelude.lim",
+                    "compiler/Syntax.lim",
+                    "compiler/TokenCursor.lim",
+                    "compiler/Parser.lim",
+                    "compiler/Typer.lim",
+                    "compiler/Check.lim",
+                    "compiler/Emit.lim"
+                ];
+
+                var moduleSources = [];
+
+                function compile() {
+                    if(moduleFiles.length != moduleSources.length) return;
+                    testAll(moduleSources)
+                }
+
+                for(var i = 0; i < moduleFiles.length; i++) loadText(moduleFiles[i], moduleSources, compile);
             }
-
-            var moduleFiles = [
-                "compiler/ArrayBuilder.lim",
-                "compiler/Lexer.lim",
-                "compiler/Resolver.lim",
-                "compiler/StringMap.lim",
-                "compiler/CharCursor.lim",
-                "compiler/Pc.lim",
-                "compiler/StringBuilder.lim",
-                "compiler/Token.lim",
-                "compiler/Prelude.lim",
-                "compiler/Syntax.lim",
-                "compiler/TokenCursor.lim",
-                "compiler/Parser.lim",
-                "compiler/Typer.lim",
-                "compiler/Check.lim",
-                "compiler/Emit.lim"
-            ];
-
-            var moduleSources = [];
-
-            function compile() {
-                if(moduleFiles.length != moduleSources.length) return;
-                testAll(moduleSources)
-            }
-
-            for(var i = 0; i < moduleFiles.length; i++) loadText(moduleFiles[i], moduleSources, compile);
+            doCompileKeenNow();
         </script>
     </body>
 </html>

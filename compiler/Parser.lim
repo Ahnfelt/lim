@@ -280,6 +280,7 @@ parseAtom(pc : Pc) : Term {
 }
 
 parseText(pc : Pc) : Term {
+    js"/* TODO: Replace line breaks with escaped line breaks \r and \n */"
     position := pc.position
     parts := newArrayBuilder()
     firstText := pc.consume(TokenType.textStart)
@@ -424,6 +425,7 @@ parseFfi(pc : Pc) : Statement {
     language := pc.consume(TokenType.lower)
     when(language != "js", { panic("Expected FFI js, got FFI \(language)") })
     code := pc.consume(TokenType.text)
+    code = code.drop(1)
     Statement.ffi(position, language, code)
 }
 
@@ -668,5 +670,8 @@ testAll(moduleSources : Array[Pair[String, String]]) {
         js"console.log('Emitting ' + moduleName);"
         emitModule(builder, p.second)
     })
-    js"console.log(builder.drain());"
+    emitted := builder.drain
+    js"console.log('------------------------');"
+    js"if(window.compilesOfKeen == null) window.compilesOfKeen = 1; else window.compilesOfKeen += 1;"
+    js"if(window.compilesOfKeen < 3) { eval(emitted); window.doCompileKeenNow(); } else console.log(emitted);"
 }
