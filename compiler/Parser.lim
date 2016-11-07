@@ -671,7 +671,7 @@ testAll(moduleSources : Array[Pair[String, String]]) {
         emitModule(builder, p.second)
     })
     emitted := builder.drain
-    js"console.log('------------------------');"
+    js"console.log('------------------------ ' + emitted.length);"
     js"if(window.compilesOfKeen == null) window.compilesOfKeen = 1; else window.compilesOfKeen += 1;"
-    js"if(window.compilesOfKeen < 3) { eval(emitted); window.doCompileKeenNow(); } else console.log(emitted);"
+    js"if(window.compilesOfKeen < 3) { var globalEval = eval; globalEval(emitted); window.doCompileKeenNow(); } else console.log(emitted);"
 }

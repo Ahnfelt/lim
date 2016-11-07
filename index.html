@@ -46,7 +46,9 @@
 
                 function compile() {
                     if(moduleFiles.length != moduleSources.length) return;
-                    testAll(moduleSources)
+                    var go = testAll;
+                    testAll = null; // To ensure we won't call the same version of the compile again
+                    go(moduleSources);
                 }
 
                 for(var i = 0; i < moduleFiles.length; i++) loadText(moduleFiles[i], moduleSources, compile);
