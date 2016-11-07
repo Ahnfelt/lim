@@ -177,10 +177,21 @@ emitTerm(builder : StringBuilder, term : Term) {
             builder.append("}")
         }
         instance(position, symbol, thisName, methods) {
+            when(symbol == "F0@_" || symbol == "F1@_" || symbol == "F2@_" || symbol == "F3@_", { panic("Can't create explicit instance of lambda function F*@_") })
             builder.append("???")
         }
-        match(position, value, cases) {
-            builder.append("???")
+        match(position, value, cases, hintSymbol) {
+            if(hintSymbol == "Bool@_", {
+                builder.append("(")
+                emitTerm(builder, value)
+                builder.append(" ? (function() {\n")
+                emitBody(builder, orPanic(find(cases, c => c.body.name == "true")).body.body)
+                builder.append("})() : (function() {\n")
+                emitBody(builder, orPanic(find(cases, c => c.body.name == "false")).body.body)
+                builder.append("})())")
+            }, {
+                builder.append("???")
+            })
         }
         lambda(position, parameters, body) {
             ps := join(map(parameters, p => escapeVariable(p)), ", ")
@@ -306,11 +317,6 @@ specialMethods() : StringMap[(Term, StringBuilder, Arguments) => Void] {
             builder.append("(")
             emitArguments(builder, arguments)
             builder.append(")")
-        }),
-        Pair("Void@_.toString", (value, builder, arguments) => {
-            builder.append("(")
-            emitTerm(builder, value)
-            builder.append(", 'undefined')")
         }),
         Pair("Bool@_.toString", (value, builder, arguments) => {
             builder.append("('' + ")

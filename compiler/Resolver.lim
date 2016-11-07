@@ -137,10 +137,10 @@ resolveTerm(resolver : Resolver, term : Term) : Term {
             resolvedMethods := map(methods, i => resolveMethodImplementation(resolver, i))
             Term.instance(position, resolvedSymbol, thisName, resolvedMethods)
         }
-        match(position, value, cases) {
+        match(position, value, cases, hintSymbol) {
             resolvedValue := resolveTerm(resolver, value)
             resolvedCases := map(cases, c => resolveMatchCase(resolver, c))
-            Term.match(position, resolvedValue, resolvedCases)
+            Term.match(position, resolvedValue, resolvedCases, hintSymbol)
         }
         lambda(position, parameters, body) {
             resolver.scope({
@@ -173,7 +173,7 @@ resolveTerm(resolver : Resolver, term : Term) : Term {
                 array(position, elements) { Option.none }
                 record(position, fields) { Option.none }
                 instance(position, symbol, thisName, methods) { Option.none }
-                match(position, value, cases) { Option.none }
+                match(position, value, cases, hintSymbol) { Option.none }
                 lambda(position, parameters, body) { Option.none }
                 functionCall(position, name, arguments) { Option.none }
                 staticCall(position, symbol, methodName, arguments) { Option.none }

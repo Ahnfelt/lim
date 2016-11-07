@@ -13,7 +13,7 @@ Term ? {
     functionCall(position : Int, name : String, arguments : Arguments)
     methodCall(position : Int, value : Term, name : String, arguments : Arguments, hintSymbol : String)
     instance(position : Int, symbol : String, thisName : Option[String], methods : Array[MethodImplementation])
-    match(position : Int, value : Term, cases : Array[MatchCase])
+    match(position : Int, value : Term, cases : Array[MatchCase], hintSymbol : String)
     lambda(position : Int, parameters : Array[String], body : Array[Statement])
 }
 

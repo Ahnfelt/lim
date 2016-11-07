@@ -213,10 +213,10 @@ checkTerm(typer : Typer, expectedType : Type, term : Term) : Term {
             when(methods.size > typeDefinition.methodSignatures.size, { typer.error(position, "Duplicate method") })
             Term.instance(position, symbol, thisName, typedMethods)
         }
-        match(position, value, cases) {
+        match(position, value, cases, hintSymbol) {
             type := Type.variable(position, typer.fresh)
             typedValue := checkTerm(typer, type, value)
-            signatures := typer.expand(type) ? {
+            signaturesAndHint := typer.expand(type) ? {
                 variable(position2, id2) {
                     typer.error(position, "Match requires known object type")
                 }
@@ -245,11 +245,11 @@ checkTerm(typer : Typer, expectedType : Type, term : Term) : Term {
                         }
                     })
                     when(cases.size > typeDefinition.methodSignatures.size, { typer.error(position, "Duplicate case") })
-                    signatures
+                    Pair(signatures, symbol2)
                 }
             }
             typedCases := map(cases, c => {
-                find(signatures, s => c.body.name == s.symbol) ? {
+                find(signaturesAndHint.first, s => c.body.name == s.symbol) ? {
                     none { typer.error(position, "No such case: \(c.body.name) in type \(typeToString(typer.expand(type)))") }
                     some(s) {
                         fieldNames := map(s.parameters, p => p.name)
@@ -264,7 +264,7 @@ checkTerm(typer : Typer, expectedType : Type, term : Term) : Term {
                     }
                 }
             })
-            Term.match(position, typedValue, typedCases)
+            Term.match(position, typedValue, typedCases, signaturesAndHint.second)
         }
         lambda(position, parameters, body) {
             parameterTypes := map(parameters, p => Type.variable(position, typer.fresh))

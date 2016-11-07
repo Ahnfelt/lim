@@ -393,7 +393,7 @@ parseMatch(pc : Pc) : Term {
             position := pc.position
             pc.consume(TokenType.question)
             cases := parseMethodImplementations(pc, Bool.false)
-            Term.match(position, value, map(cases.second, m => MatchCase(m, [])))
+            Term.match(position, value, map(cases.second, m => MatchCase(m, [])), "")
         }),
         Pair([], {
             value

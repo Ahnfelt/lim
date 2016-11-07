@@ -194,8 +194,7 @@ preludeTypeDefinitions() : Array[Pair[String, TypeDefinition]] {
     bool := Type.constructor(0, "Bool@_", [])
     string := Type.constructor(0, "String@_", [])
     typeDefinitions := [
-        TypeDefinition(0, "Void@_", [], Bool.true, [
-            MethodSignature(0, "void", [], [], void)
+        TypeDefinition(0, "Void@_", [], Bool.false, [
         ]),
         TypeDefinition(0, "Pair@_", ["a", "b"], Bool.true, [
             MethodSignature(0, "none", [], [], void),
@@ -221,6 +220,7 @@ preludeTypeDefinitions() : Array[Pair[String, TypeDefinition]] {
             MethodSignature(0, "toString", [], [], string)
         ]),
         TypeDefinition(0, "Float@_", [], Bool.false, [
+            MethodSignature(0, "toString", [], [], string)
         ]),
         TypeDefinition(0, "Array@_", ["a"], Bool.false, [
             MethodSignature(0, "invoke", [], [Parameter(0, "index", int)], Type.parameter(0, "a")),
