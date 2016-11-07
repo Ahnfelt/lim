@@ -1,0 +1,200 @@
+emitModule(builder : StringBuilder, module : Module) {
+    each(module.typeDefinitions, d => emitTypeDefinition(builder, d))
+    each(module.functionDefinitions, d => emitFunctionDefinition(builder, d))
+}
+
+emitTypeDefinition(builder : StringBuilder, definition : TypeDefinition) {
+    when(definition.isSum, {
+        name := baseName(definition.symbol)
+        builder.append("var \(escapeUpper(name)) = {\n")
+        first := Bool.true
+        each(definition.methodSignatures, s => {
+            when(!first, { builder.append(",\n") })
+            first = Bool.false
+            when(s.parameters.size == 0, {
+                builder.append("\(escapeMethod(s.symbol))_k: {_: \(escapeString(s.symbol))},\n")
+            })
+            builder.append("\(escapeMethod(s.symbol)): function(")
+            builder.append(join(map(s.parameters, p => escapeVariable(p.name)), ", "))
+            builder.append(") {\n")
+            if(s.parameters.size == 0, {
+                builder.append("return \(escapeUpper(name)).\(escapeMethod(s.symbol))_k;\n")
+            }, {
+                builder.append("return {_: \(escapeString(s.symbol))")
+                builder.append(join(map(s.parameters, p => ", \(escapeMethod(p.name)): \(escapeVariable(p.name))"), ""))
+                builder.append("};\n")
+            })
+            builder.append("}")
+        })
+        builder.append("\n};\n\n")
+    })
+}
+
+emitFunctionDefinition(builder : StringBuilder, definition : FunctionDefinition) {
+    name := baseName(definition.signature.symbol)
+    parameters := join(map(definition.signature.parameters, p => "\(escapeVariable(p.name))"), ", ")
+    builder.append("function \(escapeMethod(name))(\(parameters)) {\n")
+    emitBody(builder, definition.body)
+    builder.append("}\n\n")
+}
+
+emitBody(builder : StringBuilder, body : Array[Statement]) {
+    panic("TODO")
+}
+
+emitStatement(builder : StringBuilder, statement : Statement) {
+    statement ? {
+        term(position, term) {
+            panic("TODO")
+        }
+        let(position, variable, type, value) {
+            panic("TODO")
+        }
+        functions(definitions) {
+            panic("TODO")
+        }
+        assign(position, variable, value) {
+            panic("TODO")
+        }
+        increment(position, variable, value) {
+            panic("TODO")
+        }
+        decrement(position, variable, value) {
+            panic("TODO")
+        }
+        ffi(position, language, code) {
+            panic("TODO")
+        }
+    }
+}
+
+emitArguments(builder : StringBuilder, arguments : Arguments) {
+    panic("TODO")
+}
+
+emitTerm(builder : StringBuilder, term : Term) : Term {
+    term ? {
+        binary(position, operator, left, right) {
+            panic("TODO")
+        }
+        unary(position, operator, value) {
+            panic("TODO")
+        }
+        codeUnit(position, value) {
+            panic("TODO")
+        }
+        text(position, value) {
+            panic("TODO")
+        }
+        textLiteral(position, parts) {
+            panic("TODO")
+        }
+        integer(position, value) {
+            panic("TODO")
+        }
+        floating(position, value) {
+            panic("TODO")
+        }
+        array(position, elements) {
+            panic("TODO")
+        }
+        record(position, fields) {
+            panic("TODO")
+        }
+        instance(position, symbol, thisName, methods) {
+            panic("TODO")
+        }
+        match(position, value, cases) {
+            panic("TODO")
+        }
+        lambda(position, parameters, body) {
+            panic("TODO")
+        }
+        functionCall(position, methodName, arguments) {
+            panic("TODO")
+        }
+        staticCall(position, symbol, methodName, arguments) {
+            panic("TODO")
+        }
+        methodCall(position, value, methodName, arguments) {
+            panic("TODO")
+        }
+        variable(position, symbol) {
+            panic("TODO")
+        }
+        ffiJs(position, code) {
+            panic("TODO")
+        }
+    }
+}
+
+
+escapeVariable(name : String) : String {
+    if(reservedWords().has(name), { "\(name)_" }, { name })
+}
+
+escapeMethod(name : String) : String {
+    if(reservedWords().has(name), { "\(name)_" }, { name })
+}
+
+escapeUpper(name : String) : String {
+    name
+}
+
+escapeString(value : String) : String {
+    js"console.log('TODO: Escape strings')"
+    "\"\(value)\""
+}
+
+reservedWords() : StringMap[Bool] {
+    newStringMap(map([
+        "arguments",
+        "break",
+        "case",
+        "catch",
+        "class",
+        "const",
+        "continue",
+        "debugger",
+        "default",
+        "delete",
+        "do",
+        "else",
+        "export",
+        "extends",
+        "finally",
+        "for",
+        "function",
+        "if",
+        "import",
+        "in",
+        "instanceof",
+        "new",
+        "return",
+        "super",
+        "switch",
+        "this",
+        "throw",
+        "try",
+        "typeof",
+        "var",
+        "void",
+        "while",
+        "with",
+        "yield",
+        "enum",
+        "implements",
+        "interface",
+        "let",
+        "package",
+        "private",
+        "protected",
+        "public",
+        "static",
+        "await"
+    ], w => Pair(w, Bool.true)))
+}
+
+baseName(name : String) : String {
+    js"return name.replace(/[@].*/, '');"
+}

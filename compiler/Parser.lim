@@ -646,4 +646,11 @@ testAll(moduleSources : Array[Pair[String, String]]) {
         Pair(p.first, checkModule(typer, p.second))
     })
     js"console.dir(typedModules);"
+    builder := newStringBuilder()
+    each(typedModules, p => {
+        moduleName := p.first
+        js"console.log('Emitting ' + moduleName);"
+        emitModule(builder, p.second)
+    })
+    js"console.log(builder.drain());"
 }
