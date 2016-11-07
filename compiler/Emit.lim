@@ -97,10 +97,31 @@ emitArguments(builder : StringBuilder, arguments : Arguments) {
 emitTerm(builder : StringBuilder, term : Term) {
     term ? {
         binary(position, operator, left, right) {
-            panic("TODO")
+            emitTerm(builder, left)
+            builder.append(" ")
+            done := Bool.false
+            when(operator == TokenType.star, { builder.append("*"); done = Bool.true })
+            when(operator == TokenType.slash, { builder.append("/"); done = Bool.true })
+            when(operator == TokenType.plus, { builder.append("+"); done = Bool.true })
+            when(operator == TokenType.minus, { builder.append("-"); done = Bool.true })
+            when(operator == TokenType.equal, { builder.append("=="); done = Bool.true })
+            when(operator == TokenType.notEqual, { builder.append("!="); done = Bool.true })
+            when(operator == TokenType.less, { builder.append("<"); done = Bool.true })
+            when(operator == TokenType.lessEqual, { builder.append("<="); done = Bool.true })
+            when(operator == TokenType.greater, { builder.append(">"); done = Bool.true })
+            when(operator == TokenType.greaterEqual, { builder.append(">="); done = Bool.true })
+            when(operator == TokenType.and, { builder.append("&&"); done = Bool.true })
+            when(operator == TokenType.or, { builder.append("||"); done = Bool.true })
+            when(!done, { panic("Unknown binary operator") })
+            builder.append(" ")
+            emitTerm(builder, right)
         }
         unary(position, operator, value) {
-            panic("TODO")
+            done := Bool.false
+            when(operator == TokenType.minus, { builder.append("-"); done = Bool.true })
+            when(operator == TokenType.exclamation, { builder.append("!"); done = Bool.true })
+            when(!done, { panic("Unknown unary operator") })
+            emitTerm(builder, value)
         }
         codeUnit(position, value) {
             panic("TODO")
