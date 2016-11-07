@@ -178,7 +178,20 @@ emitTerm(builder : StringBuilder, term : Term) {
         }
         instance(position, symbol, thisName, methods) {
             when(symbol == "F0@_" || symbol == "F1@_" || symbol == "F2@_" || symbol == "F3@_", { panic("Can't create explicit instance of lambda function F*@_") })
-            builder.append("???")
+            builder.append("{\n")
+            each(indexed(methods), m => {
+                builder.append(escapeMethod(m.second.name))
+                builder.append(": ")
+                builder.append("function(")
+                builder.append(join(m.second.parameters, ", "))
+                builder.append(") {\n")
+                thisName ? { some(x) { builder.append("var \(escapeVariable(x)) = this;\n") }; none {} }
+                emitBody(builder, m.second.body)
+                builder.append("}")
+                when(m.first < methods.size - 1, { builder.append(",") })
+                builder.append("\n")
+            })
+            builder.append("}")
         }
         match(position, value, cases, hintSymbol) {
             if(hintSymbol == "Bool@_", {
@@ -190,7 +203,18 @@ emitTerm(builder : StringBuilder, term : Term) {
                 emitBody(builder, orPanic(find(cases, c => c.body.name == "false")).body.body)
                 builder.append("})())")
             }, {
-                builder.append("???")
+                builder.append("(function(_match) { switch(_match._) {\n")
+                each(cases, c => {
+                    builder.append("case \(escapeString(c.body.name)): return (function(){\n")
+                    each(indexed(c.body.parameters), p => {
+                        builder.append("var \(escapeVariable(p.second)) = _match.\(escapeMethod(c.fieldNames()(p.first)));\n")
+                    })
+                    emitBody(builder, c.body.body)
+                    builder.append("})();\n")
+                })
+                builder.append("}})(")
+                emitTerm(builder, value)
+                builder.append(")")
             })
         }
         lambda(position, parameters, body) {
