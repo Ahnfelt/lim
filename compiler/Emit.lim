@@ -90,7 +90,7 @@ emitStatement(builder : StringBuilder, statement : Statement, return : Bool) {
 
 emitArguments(builder : StringBuilder, arguments : Arguments) {
     builder.append("(")
-    panic("TODO")
+    builder.append("???")
     builder.append(")")
 }
 
@@ -124,7 +124,7 @@ emitTerm(builder : StringBuilder, term : Term) {
             emitTerm(builder, value)
         }
         codeUnit(position, value) {
-            panic("TODO")
+            builder.append("???")
         }
         text(position, value) {
             builder.append(escapeString(value))
@@ -167,10 +167,10 @@ emitTerm(builder : StringBuilder, term : Term) {
             builder.append("}")
         }
         instance(position, symbol, thisName, methods) {
-            panic("TODO")
+            builder.append("???")
         }
         match(position, value, cases) {
-            panic("TODO")
+            builder.append("???")
         }
         lambda(position, parameters, body) {
             ps := join(map(parameters, p => escapeVariable(p)), ", ")
@@ -179,7 +179,8 @@ emitTerm(builder : StringBuilder, term : Term) {
             builder.append("})")
         }
         functionCall(position, methodName, arguments) {
-            builder.append(escapeMethod(methodName))
+            name := baseName(methodName)
+            builder.append(escapeMethod(name))
             emitArguments(builder, arguments)
         }
         staticCall(position, symbol, methodName, arguments) {
