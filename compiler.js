@@ -129,21 +129,111 @@ return Bool.true_k;
 
 
 
+var Position = {
+position: function(line, column, buffer, offset) {
+return {_: "position", line: line, column: column, buffer: buffer, offset: offset};
+}
+};
 
-function newFileSystem() {
-return require('fs');
+
+function newCharCursor(buffer) {
+var stack = newArrayBuilder();
+var offset = 0;
+return {
+offset: function() {
+var this_ = this;
+return offset;
+},
+buffer: function() {
+var this_ = this;
+return buffer;
+},
+invoke: function(ahead) {
+var this_ = this;
+var i = offset + ahead;
+return if_(i < 0 || i >= buffer.length, (function() {
+return 0;
+}), (function() {
+return buffer.charCodeAt(i);
+}));
+},
+skip: function(ahead) {
+var this_ = this;
+offset += ahead;
+},
+pastEnd: function() {
+var this_ = this;
+return offset >= buffer.length;
+},
+lookAhead: function(ahead) {
+var this_ = this;
+var result = true;
+var i = 0;
+while_((function() {
+return i < ahead.length;
+}), (function() {
+when(ahead[i] != this_.invoke(i), (function() {
+result = false;
+}));
+i += 1;
+}));
+return result;
+},
+top: function(closeSymbol) {
+var this_ = this;
+return stack.size() != 0 && stack.invoke(stack.size() - 1) == closeSymbol;
+},
+push: function(closeSymbol) {
+var this_ = this;
+return stack.push(closeSymbol);
+},
+pop: function(closeSymbol) {
+var this_ = this;
+when(stack.size() == 0, (function() {
+return panic(("Unexpected '" + codeUnit(closeSymbol) + "' " + positionText(this_, offset)));
+}));
+when(stack.invoke(stack.size() - 1) != closeSymbol, (function() {
+return panic(("Expected '" + codeUnit(stack.invoke(stack.size() - 1)) + "', got '" + codeUnit(closeSymbol) + "' " + positionText(this_, offset)));
+}));
+return stack.pop();
+},
+skipWhitespace: function() {
+var this_ = this;
+var ignoreNewLine = stack.size() > 0 && stack.invoke(stack.size() - 1) == 41 || stack.invoke(stack.size() - 1) == 93 || stack.invoke(stack.size() - 1) == 34;
+return while_((function() {
+return offset < buffer.length && this_.invoke(0) == 32 || this_.invoke(0) == 9 || this_.invoke(0) == 13 || ignoreNewLine && this_.invoke(0) == 10;
+}), (function() {
+return this_.skip(1);
+}));
+},
+position: function(offset) {
+var this_ = this;
+var at = 0;
+var line = 1;
+var column = 1;
+while_((function() {
+return at < offset;
+}), (function() {
+if_(at < buffer.length && buffer.charCodeAt(at) == 10, (function() {
+line += 1;
+column = 1;
+}), (function() {
+column += 1;
+}));
+at += 1;
+}));
+return Position.position(line, column, buffer, offset);
+}
+};
 }
 
-function readDirectory(fs, directory, onSuccess, onError) {
-fs.readdir(directory, function(error, filenames) { if(error) onError(error); else onSuccess(filenames) });
+function codeUnit(c) {
+return String.fromCharCode(c);
 }
 
-function readTextFile(fs, filename, onSuccess, onError) {
-fs.readFile(filename, 'utf-8', function(error, text) { if(error) onError(error); else onSuccess(text) });
-}
-
-function writeTextFile(fs, filename, text, onSuccess, onError) {
-fs.writeFile(filename, text, function(error) { if(error) onError(error); else onSuccess() });
+function positionText(cursor, offset) {
+var position = cursor.position(offset);
+return ("at line " + ('' + position.line) + " column " + ('' + position.column));
 }
 
 
@@ -791,103 +881,6 @@ return Bool.true_k;
 
 
 
-function compile(fs, moduleSources) {
-var parsedModules = map(moduleSources, (function(p) {
-var moduleName = p.first;
-console.log('Parsing ' + moduleName);
-var tokens = lexTokens(p.second);
-var pc = newPc(newTokenCursor(tokens, 0), p.second);
-return Pair.pair(p.first, parseModule(pc, "_current", "_Current", p.first, p.second));
-}));
-var resolver = newResolver(map(parsedModules, (function(p) {
-return p.second;
-})));
-var resolvedModules = map(parsedModules, (function(p) {
-var moduleName = p.first;
-console.log('Resolving ' + moduleName);
-return Pair.pair(p.first, resolveModule(resolver, p.second));
-}));
-var typer = newTyper(map(resolvedModules, (function(p) {
-return p.second;
-})));
-var typedModules = map(resolvedModules, (function(p) {
-var moduleName = p.first;
-console.log('Typing ' + moduleName);
-return Pair.pair(p.first, checkModule(typer, p.second));
-}));
-var builder = newStringBuilder();
-each(typedModules, (function(p) {
-var moduleName = p.first;
-console.log('Emitting ' + moduleName);
-return emitModule(builder, p.second);
-}));
-var emitted = builder.drain();
-return writeTextFile(fs, "compiler.js", (emitted + "\n\nmain();\n"), (function() {
-console.log('Wrote compiler.js')
-}), (function(error) {
-return panic(error);
-}));
-}
-
-function main() {
-var fs = newFileSystem();
-var moduleFiles = newArrayBuilder();
-return readDirectory(fs, "compiler", (function(files) {
-return each(files, (function(file) {
-var filename = ("compiler/" + file);
-return readTextFile(fs, filename, (function(text) {
-moduleFiles.push(Pair.pair(filename, text));
-return when(moduleFiles.size() == files.length, (function() {
-var sortedFiles = sortByString(moduleFiles.drain(), (function(p) {
-return p.first;
-}));
-return compile(fs, sortedFiles);
-}));
-}), (function(error) {
-return panic(error);
-}));
-}));
-}), (function(error) {
-return panic(error);
-}));
-}
-
-
-var Pair = {
-pair: function(first, second) {
-return {_: "pair", first: first, second: second};
-}
-};
-
-var Option = {
-none_k: {_: "none"},
-none: function() {
-return Option.none_k;
-},
-some: function(value) {
-return {_: "some", value: value};
-}
-};
-
-
-var Bool = {
-false_k: {_: "false"},
-false: function() {
-return Bool.false_k;
-},
-true_k: {_: "true"},
-true: function() {
-return Bool.true_k;
-}
-};
-
-
-
-
-
-
-
-
 function emitModule(builder, module) {
 var prelude = map(preludeTypeDefinitions(), (function(p) {
 return p.second;
@@ -1466,788 +1459,21 @@ return Bool.true_k;
 
 
 
-var Position = {
-position: function(line, column, buffer, offset) {
-return {_: "position", line: line, column: column, buffer: buffer, offset: offset};
-}
-};
 
-
-function newCharCursor(buffer) {
-var stack = newArrayBuilder();
-var offset = 0;
-return {
-offset: function() {
-var this_ = this;
-return offset;
-},
-buffer: function() {
-var this_ = this;
-return buffer;
-},
-invoke: function(ahead) {
-var this_ = this;
-var i = offset + ahead;
-return if_(i < 0 || i >= buffer.length, (function() {
-return 0;
-}), (function() {
-return buffer.charCodeAt(i);
-}));
-},
-skip: function(ahead) {
-var this_ = this;
-offset += ahead;
-},
-pastEnd: function() {
-var this_ = this;
-return offset >= buffer.length;
-},
-lookAhead: function(ahead) {
-var this_ = this;
-var result = true;
-var i = 0;
-while_((function() {
-return i < ahead.length;
-}), (function() {
-when(ahead[i] != this_.invoke(i), (function() {
-result = false;
-}));
-i += 1;
-}));
-return result;
-},
-top: function(closeSymbol) {
-var this_ = this;
-return stack.size() != 0 && stack.invoke(stack.size() - 1) == closeSymbol;
-},
-push: function(closeSymbol) {
-var this_ = this;
-return stack.push(closeSymbol);
-},
-pop: function(closeSymbol) {
-var this_ = this;
-when(stack.size() == 0, (function() {
-return panic(("Unexpected '" + codeUnit(closeSymbol) + "' " + positionText(this_, offset)));
-}));
-when(stack.invoke(stack.size() - 1) != closeSymbol, (function() {
-return panic(("Expected '" + codeUnit(stack.invoke(stack.size() - 1)) + "', got '" + codeUnit(closeSymbol) + "' " + positionText(this_, offset)));
-}));
-return stack.pop();
-},
-skipWhitespace: function() {
-var this_ = this;
-var ignoreNewLine = stack.size() > 0 && stack.invoke(stack.size() - 1) == 41 || stack.invoke(stack.size() - 1) == 93 || stack.invoke(stack.size() - 1) == 34;
-return while_((function() {
-return offset < buffer.length && this_.invoke(0) == 32 || this_.invoke(0) == 9 || this_.invoke(0) == 13 || ignoreNewLine && this_.invoke(0) == 10;
-}), (function() {
-return this_.skip(1);
-}));
-},
-position: function(offset) {
-var this_ = this;
-var at = 0;
-var line = 1;
-var column = 1;
-while_((function() {
-return at < offset;
-}), (function() {
-if_(at < buffer.length && buffer.charCodeAt(at) == 10, (function() {
-line += 1;
-column = 1;
-}), (function() {
-column += 1;
-}));
-at += 1;
-}));
-return Position.position(line, column, buffer, offset);
-}
-};
+function newFileSystem() {
+return require('fs');
 }
 
-function codeUnit(c) {
-return String.fromCharCode(c);
+function readDirectory(fs, directory, onSuccess, onError) {
+fs.readdir(directory, function(error, filenames) { if(error) onError(error); else onSuccess(filenames) });
 }
 
-function positionText(cursor, offset) {
-var position = cursor.position(offset);
-return ("at line " + ('' + position.line) + " column " + ('' + position.column));
+function readTextFile(fs, filename, onSuccess, onError) {
+fs.readFile(filename, 'utf-8', function(error, text) { if(error) onError(error); else onSuccess(text) });
 }
 
-
-var Pair = {
-pair: function(first, second) {
-return {_: "pair", first: first, second: second};
-}
-};
-
-var Option = {
-none_k: {_: "none"},
-none: function() {
-return Option.none_k;
-},
-some: function(value) {
-return {_: "some", value: value};
-}
-};
-
-
-var Bool = {
-false_k: {_: "false"},
-false: function() {
-return Bool.false_k;
-},
-true_k: {_: "true"},
-true: function() {
-return Bool.true_k;
-}
-};
-
-
-
-
-
-
-
-
-
-function resolveModule(resolver, module) {
-resolver.setSource(module.source);
-return Module.module(module.package_, module.file, module.alias, module.source, map(module.typeDefinitions, (function(d) {
-return resolveTypeDefinition(resolver, d);
-})), map(module.functionDefinitions, (function(d) {
-return resolveFunctionDefinition(resolver, d, true);
-})));
-}
-
-function resolveTypeDefinition(resolver, d) {
-return resolver.scope((function() {
-var symbol = resolver.typeConstructor(d.position, d.symbol);
-var typeParameters = map(d.typeParameters, (function(p) {
-return resolver.addTypeParameter(d.position, p);
-}));
-var methodSignatures = map(d.methodSignatures, (function(s) {
-return resolver.scope((function() {
-return resolveMethodSignatureInScope(resolver, s, false);
-}));
-}));
-return TypeDefinition.typeDefinition(d.position, symbol, typeParameters, d.isSum, methodSignatures);
-}));
-}
-
-function resolveFunctionDefinition(resolver, d, topLevel) {
-return resolver.scope((function() {
-var signature = resolveMethodSignatureInScope(resolver, d.signature, topLevel);
-var body = resolveBody(resolver, d.body);
-return FunctionDefinition.functionDefinition(d.position, signature, body);
-}));
-}
-
-function resolveMethodSignatureInScope(resolver, s, topLevel) {
-var symbol = if_(topLevel, (function() {
-return resolver.variable(s.position, s.symbol);
-}), (function() {
-return s.symbol;
-}));
-var typeParameters = map(s.typeParameters, (function(p) {
-return resolver.addTypeParameter(s.position, p);
-}));
-var parameters = map(s.parameters, (function(p) {
-return Parameter.parameter(p.position, resolver.addVariable(p.position, p.name), resolveType(resolver, p.type));
-}));
-var returnType = resolveType(resolver, s.returnType);
-return MethodSignature.methodSignature(s.position, symbol, s.typeParameters, parameters, returnType);
-}
-
-function resolveMethodImplementation(resolver, i) {
-return resolver.scope((function() {
-var parameters = map(i.parameters, (function(p) {
-return resolver.addVariable(i.position, p);
-}));
-var body = resolveBody(resolver, i.body);
-return MethodImplementation.methodImplementation(i.position, i.name, parameters, body);
-}));
-}
-
-function resolveMatchCase(resolver, case_) {
-var body = case_.body;
-var resolvedImplementation = resolveMethodImplementation(resolver, body);
-return MatchCase.matchCase(resolvedImplementation, case_.fieldNames);
-}
-
-function resolveBody(resolver, body) {
-return resolver.scope((function() {
-return map(body, (function(s) {
-return resolveStatement(resolver, s);
-}));
-}));
-}
-
-function resolveStatement(resolver, statement) {
-return (function(_match) { switch(_match._) {
-case "term": return (function(){
-var position = _match.position;
-var term = _match.term;
-return Statement.term(position, resolveTerm(resolver, term));
-})();
-case "let": return (function(){
-var position = _match.position;
-var variable = _match.variable;
-var type = _match.type;
-var value = _match.value;
-var value2 = resolveTerm(resolver, value);
-resolver.assertNoVariable(position, variable);
-resolver.addVariable(position, variable);
-var variableType = (function(_match) { switch(_match._) {
-case "some": return (function(){
-var t = _match.value;
-return Option.some(resolveType(resolver, t));
-})();
-case "none": return (function(){
-return Option.none();
-})();
-}})(type);
-return Statement.let_(position, resolver.variable(position, variable), variableType, value2);
-})();
-case "functions": return (function(){
-var definitions = _match.definitions;
-each(definitions, (function(d) {
-return resolver.addFunction(d.position, d.signature.symbol);
-}));
-return Statement.functions(map(definitions, (function(d) {
-return resolveFunctionDefinition(resolver, d, false);
-})));
-})();
-case "assign": return (function(){
-var position = _match.position;
-var variable = _match.variable;
-var value = _match.value;
-return Statement.assign(position, resolver.variable(position, variable), resolveTerm(resolver, value));
-})();
-case "increment": return (function(){
-var position = _match.position;
-var variable = _match.variable;
-var value = _match.value;
-return Statement.increment(position, resolver.variable(position, variable), resolveTerm(resolver, value));
-})();
-case "decrement": return (function(){
-var position = _match.position;
-var variable = _match.variable;
-var value = _match.value;
-return Statement.decrement(position, resolver.variable(position, variable), resolveTerm(resolver, value));
-})();
-case "ffi": return (function(){
-var position = _match.position;
-var language = _match.language;
-var code = _match.code;
-return Statement.ffi(position, language, code);
-})();
-}})(statement);
-}
-
-function resolveType(resolver, type) {
-return (function(_match) { switch(_match._) {
-case "constructor": return (function(){
-var position = _match.position;
-var symbol = _match.symbol;
-var typeArguments = _match.typeArguments;
-var resolvedSymbol = resolver.typeConstructor(position, symbol);
-var resolvedTypeArguments = map(typeArguments, (function(a) {
-return resolveType(resolver, a);
-}));
-return Type.constructor(position, resolvedSymbol, resolvedTypeArguments);
-})();
-case "record": return (function(){
-var position = _match.position;
-var fields = _match.fields;
-return Type.record(position, map(fields, (function(f) {
-return FieldType.fieldType(f.position, f.label, resolveType(resolver, f.type));
-})));
-})();
-case "parameter": return (function(){
-var position = _match.position;
-var name = _match.name;
-return Type.parameter(position, resolver.typeParameter(position, name));
-})();
-case "variable": return (function(){
-var position = _match.position;
-var id = _match.id;
-return type;
-})();
-}})(type);
-}
-
-function resolveTerm(resolver, term) {
-return (function(_match) { switch(_match._) {
-case "binary": return (function(){
-var position = _match.position;
-var operator = _match.operator;
-var left = _match.left;
-var right = _match.right;
-return Term.binary(position, operator, resolveTerm(resolver, left), resolveTerm(resolver, right));
-})();
-case "unary": return (function(){
-var position = _match.position;
-var operator = _match.operator;
-var value = _match.value;
-return Term.unary(position, operator, resolveTerm(resolver, value));
-})();
-case "codeUnit": return (function(){
-var position = _match.position;
-var value = _match.value;
-return term;
-})();
-case "text": return (function(){
-var position = _match.position;
-var value = _match.value;
-return term;
-})();
-case "textLiteral": return (function(){
-var position = _match.position;
-var parts = _match.parts;
-return Term.textLiteral(position, map(parts, (function(p) {
-return resolveTerm(resolver, p);
-})));
-})();
-case "integer": return (function(){
-var position = _match.position;
-var value = _match.value;
-return term;
-})();
-case "floating": return (function(){
-var position = _match.position;
-var value = _match.value;
-return term;
-})();
-case "array": return (function(){
-var position = _match.position;
-var elements = _match.elements;
-return Term.array(position, map(elements, (function(e) {
-return resolveTerm(resolver, e);
-})));
-})();
-case "record": return (function(){
-var position = _match.position;
-var fields = _match.fields;
-return Term.record(position, map(fields, (function(f) {
-return Field.field(f.position, f.label, resolveTerm(resolver, f.value));
-})));
-})();
-case "instance": return (function(){
-var position = _match.position;
-var symbol = _match.symbol;
-var thisName = _match.thisName;
-var methods = _match.methods;
-(function(_match) { switch(_match._) {
-case "some": return (function(){
-var n = _match.value;
-return resolver.addVariable(position, n);
-})();
-case "none": return (function(){
-return "";
-})();
-}})(thisName);
-var resolvedSymbol = resolver.typeConstructor(position, symbol);
-var resolvedMethods = map(methods, (function(i) {
-return resolveMethodImplementation(resolver, i);
-}));
-return Term.instance(position, resolvedSymbol, thisName, resolvedMethods);
-})();
-case "match": return (function(){
-var position = _match.position;
-var value = _match.value;
-var cases = _match.cases;
-var hintSymbol = _match.hintSymbol;
-var resolvedValue = resolveTerm(resolver, value);
-var resolvedCases = map(cases, (function(c) {
-return resolveMatchCase(resolver, c);
-}));
-return Term.match(position, resolvedValue, resolvedCases, hintSymbol);
-})();
-case "lambda": return (function(){
-var position = _match.position;
-var parameters = _match.parameters;
-var body = _match.body;
-return resolver.scope((function() {
-var resolvedParameters = map(parameters, (function(p) {
-return resolver.addVariable(position, p);
-}));
-var resolvedBody = resolveBody(resolver, body);
-return Term.lambda(position, resolvedParameters, resolvedBody);
-}));
-})();
-case "functionCall": return (function(){
-var position = _match.position;
-var name = _match.name;
-var arguments_ = _match.arguments_;
-var resolvedName = orPanic(resolver.function_(position, name));
-var resolvedArguments = map(arguments_.unnamed, (function(a) {
-return resolveTerm(resolver, a);
-}));
-var resolvedNamedArguments = map(arguments_.named, (function(a) {
-return NamedArgument.namedArgument(a.order, a.name, resolveTerm(resolver, a.value));
-}));
-return Term.functionCall(position, resolvedName, Arguments.arguments_(resolvedArguments, resolvedNamedArguments));
-})();
-case "staticCall": return (function(){
-var position = _match.position;
-var symbol = _match.symbol;
-var methodName = _match.name;
-var arguments_ = _match.arguments_;
-var resolvedSymbol = resolver.staticName(position, symbol);
-var resolvedArguments = map(arguments_.unnamed, (function(a) {
-return resolveTerm(resolver, a);
-}));
-var resolvedNamedArguments = map(arguments_.named, (function(a) {
-return NamedArgument.namedArgument(a.order, a.name, resolveTerm(resolver, a.value));
-}));
-return Term.staticCall(position, resolvedSymbol, methodName, Arguments.arguments_(resolvedArguments, resolvedNamedArguments));
-})();
-case "methodCall": return (function(){
-var position = _match.position;
-var value = _match.value;
-var methodName = _match.name;
-var arguments_ = _match.arguments_;
-var hintSymbol = _match.hintSymbol;
-var functionName = (function(_match) { switch(_match._) {
-case "binary": return (function(){
-var position = _match.position;
-var operator = _match.operator;
-var left = _match.left;
-var right = _match.right;
-return Option.none();
-})();
-case "unary": return (function(){
-var position = _match.position;
-var operator = _match.operator;
-var value = _match.value;
-return Option.none();
-})();
-case "codeUnit": return (function(){
-var position = _match.position;
-var value = _match.value;
-return Option.none();
-})();
-case "text": return (function(){
-var position = _match.position;
-var value = _match.value;
-return Option.none();
-})();
-case "textLiteral": return (function(){
-var position = _match.position;
-var parts = _match.parts;
-return Option.none();
-})();
-case "integer": return (function(){
-var position = _match.position;
-var value = _match.value;
-return Option.none();
-})();
-case "floating": return (function(){
-var position = _match.position;
-var value = _match.value;
-return Option.none();
-})();
-case "array": return (function(){
-var position = _match.position;
-var elements = _match.elements;
-return Option.none();
-})();
-case "record": return (function(){
-var position = _match.position;
-var fields = _match.fields;
-return Option.none();
-})();
-case "instance": return (function(){
-var position = _match.position;
-var symbol = _match.symbol;
-var thisName = _match.thisName;
-var methods = _match.methods;
-return Option.none();
-})();
-case "match": return (function(){
-var position = _match.position;
-var value = _match.value;
-var cases = _match.cases;
-var hintSymbol = _match.hintSymbol;
-return Option.none();
-})();
-case "lambda": return (function(){
-var position = _match.position;
-var parameters = _match.parameters;
-var body = _match.body;
-return Option.none();
-})();
-case "functionCall": return (function(){
-var position = _match.position;
-var name = _match.name;
-var arguments_ = _match.arguments_;
-return Option.none();
-})();
-case "staticCall": return (function(){
-var position = _match.position;
-var symbol = _match.symbol;
-var methodName = _match.name;
-var arguments_ = _match.arguments_;
-return Option.none();
-})();
-case "methodCall": return (function(){
-var position = _match.position;
-var value = _match.value;
-var methodName = _match.name;
-var arguments_ = _match.arguments_;
-var hintSymbol = _match.hintSymbol;
-return Option.none();
-})();
-case "variable": return (function(){
-var position = _match.position;
-var symbol = _match.symbol;
-return if_(methodName == "invoke", (function() {
-return (function(_match) { switch(_match._) {
-case "some": return (function(){
-var name = _match.value;
-return Option.none();
-})();
-case "none": return (function(){
-return resolver.function_(position, symbol);
-})();
-}})(resolver.getVariable(position, symbol));
-}), (function() {
-return Option.none();
-}));
-})();
-}})(value);
-var resolvedUnnamed = map(arguments_.unnamed, (function(a) {
-return resolveTerm(resolver, a);
-}));
-var resolvedNamed = map(arguments_.named, (function(a) {
-return NamedArgument.namedArgument(a.order, a.name, resolveTerm(resolver, a.value));
-}));
-var resolvedArguments = Arguments.arguments_(resolvedUnnamed, resolvedNamed);
-return (function(_match) { switch(_match._) {
-case "some": return (function(){
-var name = _match.value;
-return Term.functionCall(position, name, resolvedArguments);
-})();
-case "none": return (function(){
-var resolvedValue = resolveTerm(resolver, value);
-return Term.methodCall(position, resolvedValue, methodName, resolvedArguments, hintSymbol);
-})();
-}})(functionName);
-})();
-case "variable": return (function(){
-var position = _match.position;
-var symbol = _match.symbol;
-return (function(_match) { switch(_match._) {
-case "some": return (function(){
-var name = _match.value;
-return Term.variable(position, name);
-})();
-case "none": return (function(){
-return (function(_match) { switch(_match._) {
-case "some": return (function(){
-var functionName = _match.value;
-return Term.functionCall(position, functionName, Arguments.arguments_([], []));
-})();
-case "none": return (function(){
-return resolver.error(position, ("No such variable: " + symbol));
-})();
-}})(resolver.function_(position, symbol));
-})();
-}})(resolver.getVariable(position, symbol));
-})();
-}})(term);
-}
-
-function newResolver(modules) {
-var source = "";
-var error = (function(e, p) {
-return panic((e + " " + positionText(newCharCursor(source), p)));
-});
-var preludeTypes = ["Void", "Bool", "String", "Int", "Float", "Array", "Option", "Pair", "F0", "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9"];
-var modulePreludeTypes = map(preludeTypes, (function(t) {
-return ("_." + t);
-}));
-var canonicalPreludeTypes = map(preludeTypes, (function(t) {
-return (t + "@_");
-}));
-var preludeTypeConstructors = zip(preludeTypes.concat(modulePreludeTypes), canonicalPreludeTypes.concat(canonicalPreludeTypes));
-var allTypes = flatten(map(modules, (function(m) {
-return map(m.typeDefinitions, (function(d) {
-return Pair.pair(d.symbol, (d.symbol + "@" + m.package_));
-}));
-})));
-var allFunctions = flatten(map(modules, (function(m) {
-return map(m.functionDefinitions, (function(d) {
-return Pair.pair(d.signature.symbol, (d.signature.symbol + "@" + m.package_));
-}));
-})));
-var definedTypes = newStringMapBuilder([]);
-var definedFunctions = newStringMapBuilder([]);
-each(modules, (function(m) {
-source = m.source;
-return each(m.typeDefinitions, (function(d) {
-var unique = (d.symbol + "@" + m.package_);
-when(definedTypes.has(unique), (function() {
-var moduleName = m.file;
-console.log('Resolving ' + moduleName);
-return error(("Duplicate type definition: " + d.symbol), d.position);
-}));
-return definedTypes.set(unique, true);
-}));
-}));
-each(modules, (function(m) {
-source = m.source;
-return each(m.functionDefinitions, (function(d) {
-var unique = (d.signature.symbol + "@" + m.package_);
-when(definedFunctions.has(unique), (function() {
-var moduleName = m.file;
-console.log('Resolving ' + moduleName);
-return error(("Duplicate function definition: " + d.signature.symbol), d.position);
-}));
-return definedFunctions.set(unique, true);
-}));
-}));
-var typeConstructors = newStringMapBuilder(preludeTypeConstructors.concat(allTypes));
-var functions = newStringMapBuilder(allFunctions);
-var moduleAliases = newStringMapBuilder(map(modules, (function(m) {
-return Pair.pair(m.alias, m.package_);
-})));
-var moduleTypeConstructors = newStringMapBuilder(flatten(map(modules, (function(m) {
-return map(m.typeDefinitions, (function(d) {
-return Pair.pair((m.alias + "." + d.symbol), (d.symbol + "@" + m.package_));
-}));
-}))));
-var variables = newStringMapBuilder([]);
-var typeParameters = newStringMapBuilder([]);
-return {
-typeConstructor: function(position, symbol) {
-return (function(_match) { switch(_match._) {
-case "some": return (function(){
-var x = _match.value;
-return x;
-})();
-case "none": return (function(){
-return (function(_match) { switch(_match._) {
-case "some": return (function(){
-var x = _match.value;
-return x;
-})();
-case "none": return (function(){
-return error(("No such type: " + symbol), position);
-})();
-}})(moduleTypeConstructors.get(symbol));
-})();
-}})(typeConstructors.get(symbol));
-},
-typeParameter: function(position, symbol) {
-return (function(_match) { switch(_match._) {
-case "some": return (function(){
-var x = _match.value;
-return x;
-})();
-case "none": return (function(){
-return error(("No such type parameter: " + symbol), position);
-})();
-}})(typeParameters.get(symbol));
-},
-staticName: function(position, symbol) {
-return (function(_match) { switch(_match._) {
-case "some": return (function(){
-var x = _match.value;
-return x;
-})();
-case "none": return (function(){
-return (function(_match) { switch(_match._) {
-case "some": return (function(){
-var x = _match.value;
-return x;
-})();
-case "none": return (function(){
-return (function(_match) { switch(_match._) {
-case "some": return (function(){
-var x = _match.value;
-return x;
-})();
-case "none": return (function(){
-return error(("No such module or type: " + symbol), position);
-})();
-}})(moduleTypeConstructors.get(symbol));
-})();
-}})(moduleAliases.get(symbol));
-})();
-}})(typeConstructors.get(symbol));
-},
-getVariable: function(position, symbol) {
-return variables.get(symbol);
-},
-variable: function(position, symbol) {
-return (function(_match) { switch(_match._) {
-case "some": return (function(){
-var x = _match.value;
-return x;
-})();
-case "none": return (function(){
-return (function(_match) { switch(_match._) {
-case "none": return (function(){
-return error(("No such variable: " + symbol + " (but there is a method with that name)"), position);
-})();
-case "some": return (function(){
-var x = _match.value;
-return x;
-})();
-}})(functions.get(symbol));
-})();
-}})(variables.get(symbol));
-},
-function_: function(position, symbol) {
-return functions.get(symbol);
-},
-assertNoVariable: function(position, name) {
-return when(variables.has(name), (function() {
-return error(("Suspicious shadowing of variable: " + name), position);
-}));
-},
-addVariable: function(position, name) {
-variables.set(name, name);
-return name;
-},
-addFunction: function(position, name) {
-functions.set(name, name);
-return name;
-},
-addTypeParameter: function(position, name) {
-(function(_match) { switch(_match._) {
-case "some": return (function(){
-var n = _match.value;
-return error(("Suspicious shadowing of type parameter: " + name), position);
-})();
-case "none": return (function(){
-return "";
-})();
-}})(typeParameters.get(name));
-typeParameters.set(name, name);
-return name;
-},
-scope: function(body) {
-var savedTypeConstructors = typeConstructors.toArray();
-var savedVariables = variables.toArray();
-var savedFunctions = functions.toArray();
-var savedTypeParameters = typeParameters.toArray();
-var result = body();
-typeConstructors = newStringMapBuilder(savedTypeConstructors);
-variables = newStringMapBuilder(savedVariables);
-functions = newStringMapBuilder(savedFunctions);
-typeParameters = newStringMapBuilder(savedTypeParameters);
-return result;
-},
-error: function(position, message) {
-error(message, position);
-return panic(message);
-},
-setSource: function(text) {
-source = text;
-}
-};
+function writeTextFile(fs, filename, text, onSuccess, onError) {
+fs.writeFile(filename, text, function(error) { if(error) onError(error); else onSuccess() });
 }
 
 
@@ -2606,64 +1832,65 @@ return Bool.true_k;
 
 
 
-
-function newPc(cursor, buffer) {
-var tokenTypeText = (function(tokenType) {
-return tokenType._;
-});
-var tokenText = (function(token) {
-return buffer.substring(token.from, token.to);
-});
-var positionText = (function(token) {
-var token2 = token;
-var position = newCharCursor(buffer).position(token.from);
-return ("at line " + ('' + position.line) + " column " + ('' + position.column));
-});
-return {
-position: function() {
-return cursor.invoke(0).from;
-},
-consume: function(tokenType) {
-var ahead = cursor.invoke(0);
-when(ahead.token != tokenType, (function() {
-return panic(("Expected " + tokenTypeText(tokenType) + ", got " + tokenText(ahead) + " " + positionText(ahead)));
+function compile(fs, moduleSources) {
+var parsedModules = map(moduleSources, (function(p) {
+var moduleName = p.first;
+console.log('Parsing ' + moduleName);
+var tokens = lexTokens(p.second);
+var pc = newPc(newTokenCursor(tokens, 0), p.second);
+return Pair.pair(p.first, parseModule(pc, "_current", "_Current", p.first, p.second));
 }));
-var text = tokenText(ahead);
-cursor.skip(1);
-return text;
-},
-lookahead: function(expected, cases) {
-var i = 0;
-var result = Option.none();
-while_((function() {
-return i < cases.length && result == Option.none();
-}), (function() {
-var case_ = cases[i];
-var j = 0;
-var match = true;
-while_((function() {
-return j < case_.first.length;
-}), (function() {
-match = match && case_.first[j] == cursor.invoke(j).token;
-j += 1;
+var resolver = newResolver(map(parsedModules, (function(p) {
+return p.second;
+})));
+var resolvedModules = map(parsedModules, (function(p) {
+var moduleName = p.first;
+console.log('Resolving ' + moduleName);
+return Pair.pair(p.first, resolveModule(resolver, p.second));
 }));
-when(match, (function() {
-result = Option.some(case_.second());
+var typer = newTyper(map(resolvedModules, (function(p) {
+return p.second;
+})));
+var typedModules = map(resolvedModules, (function(p) {
+var moduleName = p.first;
+console.log('Typing ' + moduleName);
+return Pair.pair(p.first, checkModule(typer, p.second));
 }));
-i += 1;
+var builder = newStringBuilder();
+each(typedModules, (function(p) {
+var moduleName = p.first;
+console.log('Emitting ' + moduleName);
+return emitModule(builder, p.second);
 }));
-return (function(_match) { switch(_match._) {
-case "none": return (function(){
-var ahead = cursor.invoke(0);
-return panic(("Expected " + expected + ", got " + tokenText(ahead) + " " + positionText(ahead)));
-})();
-case "some": return (function(){
-var value = _match.value;
-return value;
-})();
-}})(result);
+var emitted = builder.drain();
+return writeTextFile(fs, "compiler.js", (emitted + "\n\nmain();\n"), (function() {
+console.log('Wrote compiler.js')
+}), (function(error) {
+return panic(error);
+}));
 }
-};
+
+function main() {
+var fs = newFileSystem();
+var moduleFiles = newArrayBuilder();
+return readDirectory(fs, "compiler", (function(files) {
+return each(files, (function(file) {
+var filename = ("compiler/" + file);
+return readTextFile(fs, filename, (function(text) {
+moduleFiles.push(Pair.pair(filename, text));
+return when(moduleFiles.size() == files.length, (function() {
+var sortedFiles = sortByString(moduleFiles.drain(), (function(p) {
+return p.first;
+}));
+return compile(fs, sortedFiles);
+}));
+}), (function(error) {
+return panic(error);
+}));
+}));
+}), (function(error) {
+return panic(error);
+}));
 }
 
 
@@ -3499,6 +2726,102 @@ return Bool.true_k;
 
 
 
+function newPc(cursor, buffer) {
+var tokenTypeText = (function(tokenType) {
+return tokenType._;
+});
+var tokenText = (function(token) {
+return buffer.substring(token.from, token.to);
+});
+var positionText = (function(token) {
+var token2 = token;
+var position = newCharCursor(buffer).position(token.from);
+return ("at line " + ('' + position.line) + " column " + ('' + position.column));
+});
+return {
+position: function() {
+return cursor.invoke(0).from;
+},
+consume: function(tokenType) {
+var ahead = cursor.invoke(0);
+when(ahead.token != tokenType, (function() {
+return panic(("Expected " + tokenTypeText(tokenType) + ", got " + tokenText(ahead) + " " + positionText(ahead)));
+}));
+var text = tokenText(ahead);
+cursor.skip(1);
+return text;
+},
+lookahead: function(expected, cases) {
+var i = 0;
+var result = Option.none();
+while_((function() {
+return i < cases.length && result == Option.none();
+}), (function() {
+var case_ = cases[i];
+var j = 0;
+var match = true;
+while_((function() {
+return j < case_.first.length;
+}), (function() {
+match = match && case_.first[j] == cursor.invoke(j).token;
+j += 1;
+}));
+when(match, (function() {
+result = Option.some(case_.second());
+}));
+i += 1;
+}));
+return (function(_match) { switch(_match._) {
+case "none": return (function(){
+var ahead = cursor.invoke(0);
+return panic(("Expected " + expected + ", got " + tokenText(ahead) + " " + positionText(ahead)));
+})();
+case "some": return (function(){
+var value = _match.value;
+return value;
+})();
+}})(result);
+}
+};
+}
+
+
+var Pair = {
+pair: function(first, second) {
+return {_: "pair", first: first, second: second};
+}
+};
+
+var Option = {
+none_k: {_: "none"},
+none: function() {
+return Option.none_k;
+},
+some: function(value) {
+return {_: "some", value: value};
+}
+};
+
+
+var Bool = {
+false_k: {_: "false"},
+false: function() {
+return Bool.false_k;
+},
+true_k: {_: "true"},
+true: function() {
+return Bool.true_k;
+}
+};
+
+
+
+
+
+
+
+
+
 var Pair = {
 pair: function(first, second) {
 return {_: "pair", first: first, second: second};
@@ -3723,6 +3046,683 @@ return Bool.true_k;
 
 
 
+function resolveModule(resolver, module) {
+resolver.setSource(module.source);
+return Module.module(module.package_, module.file, module.alias, module.source, map(module.typeDefinitions, (function(d) {
+return resolveTypeDefinition(resolver, d);
+})), map(module.functionDefinitions, (function(d) {
+return resolveFunctionDefinition(resolver, d, true);
+})));
+}
+
+function resolveTypeDefinition(resolver, d) {
+return resolver.scope((function() {
+var symbol = resolver.typeConstructor(d.position, d.symbol);
+var typeParameters = map(d.typeParameters, (function(p) {
+return resolver.addTypeParameter(d.position, p);
+}));
+var methodSignatures = map(d.methodSignatures, (function(s) {
+return resolver.scope((function() {
+return resolveMethodSignatureInScope(resolver, s, false);
+}));
+}));
+return TypeDefinition.typeDefinition(d.position, symbol, typeParameters, d.isSum, methodSignatures);
+}));
+}
+
+function resolveFunctionDefinition(resolver, d, topLevel) {
+return resolver.scope((function() {
+var signature = resolveMethodSignatureInScope(resolver, d.signature, topLevel);
+var body = resolveBody(resolver, d.body);
+return FunctionDefinition.functionDefinition(d.position, signature, body);
+}));
+}
+
+function resolveMethodSignatureInScope(resolver, s, topLevel) {
+var symbol = if_(topLevel, (function() {
+return resolver.variable(s.position, s.symbol);
+}), (function() {
+return s.symbol;
+}));
+var typeParameters = map(s.typeParameters, (function(p) {
+return resolver.addTypeParameter(s.position, p);
+}));
+var parameters = map(s.parameters, (function(p) {
+return Parameter.parameter(p.position, resolver.addVariable(p.position, p.name), resolveType(resolver, p.type));
+}));
+var returnType = resolveType(resolver, s.returnType);
+return MethodSignature.methodSignature(s.position, symbol, s.typeParameters, parameters, returnType);
+}
+
+function resolveMethodImplementation(resolver, i) {
+return resolver.scope((function() {
+var parameters = map(i.parameters, (function(p) {
+return resolver.addVariable(i.position, p);
+}));
+var body = resolveBody(resolver, i.body);
+return MethodImplementation.methodImplementation(i.position, i.name, parameters, body);
+}));
+}
+
+function resolveMatchCase(resolver, case_) {
+var body = case_.body;
+var resolvedImplementation = resolveMethodImplementation(resolver, body);
+return MatchCase.matchCase(resolvedImplementation, case_.fieldNames);
+}
+
+function resolveBody(resolver, body) {
+return resolver.scope((function() {
+return map(body, (function(s) {
+return resolveStatement(resolver, s);
+}));
+}));
+}
+
+function resolveStatement(resolver, statement) {
+return (function(_match) { switch(_match._) {
+case "term": return (function(){
+var position = _match.position;
+var term = _match.term;
+return Statement.term(position, resolveTerm(resolver, term));
+})();
+case "let": return (function(){
+var position = _match.position;
+var variable = _match.variable;
+var type = _match.type;
+var value = _match.value;
+var value2 = resolveTerm(resolver, value);
+resolver.assertNoVariable(position, variable);
+resolver.addVariable(position, variable);
+var variableType = (function(_match) { switch(_match._) {
+case "some": return (function(){
+var t = _match.value;
+return Option.some(resolveType(resolver, t));
+})();
+case "none": return (function(){
+return Option.none();
+})();
+}})(type);
+return Statement.let_(position, resolver.variable(position, variable), variableType, value2);
+})();
+case "functions": return (function(){
+var definitions = _match.definitions;
+each(definitions, (function(d) {
+return resolver.addFunction(d.position, d.signature.symbol);
+}));
+return Statement.functions(map(definitions, (function(d) {
+return resolveFunctionDefinition(resolver, d, false);
+})));
+})();
+case "assign": return (function(){
+var position = _match.position;
+var variable = _match.variable;
+var value = _match.value;
+return Statement.assign(position, resolver.variable(position, variable), resolveTerm(resolver, value));
+})();
+case "increment": return (function(){
+var position = _match.position;
+var variable = _match.variable;
+var value = _match.value;
+return Statement.increment(position, resolver.variable(position, variable), resolveTerm(resolver, value));
+})();
+case "decrement": return (function(){
+var position = _match.position;
+var variable = _match.variable;
+var value = _match.value;
+return Statement.decrement(position, resolver.variable(position, variable), resolveTerm(resolver, value));
+})();
+case "ffi": return (function(){
+var position = _match.position;
+var language = _match.language;
+var code = _match.code;
+return Statement.ffi(position, language, code);
+})();
+}})(statement);
+}
+
+function resolveType(resolver, type) {
+return (function(_match) { switch(_match._) {
+case "constructor": return (function(){
+var position = _match.position;
+var symbol = _match.symbol;
+var typeArguments = _match.typeArguments;
+var resolvedSymbol = resolver.typeConstructor(position, symbol);
+var resolvedTypeArguments = map(typeArguments, (function(a) {
+return resolveType(resolver, a);
+}));
+return Type.constructor(position, resolvedSymbol, resolvedTypeArguments);
+})();
+case "record": return (function(){
+var position = _match.position;
+var fields = _match.fields;
+return Type.record(position, map(fields, (function(f) {
+return FieldType.fieldType(f.position, f.label, resolveType(resolver, f.type));
+})));
+})();
+case "parameter": return (function(){
+var position = _match.position;
+var name = _match.name;
+return Type.parameter(position, resolver.typeParameter(position, name));
+})();
+case "variable": return (function(){
+var position = _match.position;
+var id = _match.id;
+return type;
+})();
+}})(type);
+}
+
+function resolveTerm(resolver, term) {
+return (function(_match) { switch(_match._) {
+case "binary": return (function(){
+var position = _match.position;
+var operator = _match.operator;
+var left = _match.left;
+var right = _match.right;
+return Term.binary(position, operator, resolveTerm(resolver, left), resolveTerm(resolver, right));
+})();
+case "unary": return (function(){
+var position = _match.position;
+var operator = _match.operator;
+var value = _match.value;
+return Term.unary(position, operator, resolveTerm(resolver, value));
+})();
+case "codeUnit": return (function(){
+var position = _match.position;
+var value = _match.value;
+return term;
+})();
+case "text": return (function(){
+var position = _match.position;
+var value = _match.value;
+return term;
+})();
+case "textLiteral": return (function(){
+var position = _match.position;
+var parts = _match.parts;
+return Term.textLiteral(position, map(parts, (function(p) {
+return resolveTerm(resolver, p);
+})));
+})();
+case "integer": return (function(){
+var position = _match.position;
+var value = _match.value;
+return term;
+})();
+case "floating": return (function(){
+var position = _match.position;
+var value = _match.value;
+return term;
+})();
+case "array": return (function(){
+var position = _match.position;
+var elements = _match.elements;
+return Term.array(position, map(elements, (function(e) {
+return resolveTerm(resolver, e);
+})));
+})();
+case "record": return (function(){
+var position = _match.position;
+var fields = _match.fields;
+return Term.record(position, map(fields, (function(f) {
+return Field.field(f.position, f.label, resolveTerm(resolver, f.value));
+})));
+})();
+case "instance": return (function(){
+var position = _match.position;
+var symbol = _match.symbol;
+var thisName = _match.thisName;
+var methods = _match.methods;
+(function(_match) { switch(_match._) {
+case "some": return (function(){
+var n = _match.value;
+return resolver.addVariable(position, n);
+})();
+case "none": return (function(){
+return "";
+})();
+}})(thisName);
+var resolvedSymbol = resolver.typeConstructor(position, symbol);
+var resolvedMethods = map(methods, (function(i) {
+return resolveMethodImplementation(resolver, i);
+}));
+return Term.instance(position, resolvedSymbol, thisName, resolvedMethods);
+})();
+case "match": return (function(){
+var position = _match.position;
+var value = _match.value;
+var cases = _match.cases;
+var hintSymbol = _match.hintSymbol;
+var resolvedValue = resolveTerm(resolver, value);
+var resolvedCases = map(cases, (function(c) {
+return resolveMatchCase(resolver, c);
+}));
+return Term.match(position, resolvedValue, resolvedCases, hintSymbol);
+})();
+case "lambda": return (function(){
+var position = _match.position;
+var parameters = _match.parameters;
+var body = _match.body;
+return resolver.scope((function() {
+var resolvedParameters = map(parameters, (function(p) {
+return resolver.addVariable(position, p);
+}));
+var resolvedBody = resolveBody(resolver, body);
+return Term.lambda(position, resolvedParameters, resolvedBody);
+}));
+})();
+case "functionCall": return (function(){
+var position = _match.position;
+var name = _match.name;
+var arguments_ = _match.arguments_;
+var resolvedName = orPanic(resolver.function_(position, name));
+var resolvedArguments = map(arguments_.unnamed, (function(a) {
+return resolveTerm(resolver, a);
+}));
+var resolvedNamedArguments = map(arguments_.named, (function(a) {
+return NamedArgument.namedArgument(a.order, a.name, resolveTerm(resolver, a.value));
+}));
+return Term.functionCall(position, resolvedName, Arguments.arguments_(resolvedArguments, resolvedNamedArguments));
+})();
+case "staticCall": return (function(){
+var position = _match.position;
+var symbol = _match.symbol;
+var methodName = _match.name;
+var arguments_ = _match.arguments_;
+var resolvedSymbol = resolver.staticName(position, symbol);
+var resolvedArguments = map(arguments_.unnamed, (function(a) {
+return resolveTerm(resolver, a);
+}));
+var resolvedNamedArguments = map(arguments_.named, (function(a) {
+return NamedArgument.namedArgument(a.order, a.name, resolveTerm(resolver, a.value));
+}));
+return Term.staticCall(position, resolvedSymbol, methodName, Arguments.arguments_(resolvedArguments, resolvedNamedArguments));
+})();
+case "methodCall": return (function(){
+var position = _match.position;
+var value = _match.value;
+var methodName = _match.name;
+var arguments_ = _match.arguments_;
+var hintSymbol = _match.hintSymbol;
+var functionName = (function(_match) { switch(_match._) {
+case "binary": return (function(){
+var position = _match.position;
+var operator = _match.operator;
+var left = _match.left;
+var right = _match.right;
+return Option.none();
+})();
+case "unary": return (function(){
+var position = _match.position;
+var operator = _match.operator;
+var value = _match.value;
+return Option.none();
+})();
+case "codeUnit": return (function(){
+var position = _match.position;
+var value = _match.value;
+return Option.none();
+})();
+case "text": return (function(){
+var position = _match.position;
+var value = _match.value;
+return Option.none();
+})();
+case "textLiteral": return (function(){
+var position = _match.position;
+var parts = _match.parts;
+return Option.none();
+})();
+case "integer": return (function(){
+var position = _match.position;
+var value = _match.value;
+return Option.none();
+})();
+case "floating": return (function(){
+var position = _match.position;
+var value = _match.value;
+return Option.none();
+})();
+case "array": return (function(){
+var position = _match.position;
+var elements = _match.elements;
+return Option.none();
+})();
+case "record": return (function(){
+var position = _match.position;
+var fields = _match.fields;
+return Option.none();
+})();
+case "instance": return (function(){
+var position = _match.position;
+var symbol = _match.symbol;
+var thisName = _match.thisName;
+var methods = _match.methods;
+return Option.none();
+})();
+case "match": return (function(){
+var position = _match.position;
+var value = _match.value;
+var cases = _match.cases;
+var hintSymbol = _match.hintSymbol;
+return Option.none();
+})();
+case "lambda": return (function(){
+var position = _match.position;
+var parameters = _match.parameters;
+var body = _match.body;
+return Option.none();
+})();
+case "functionCall": return (function(){
+var position = _match.position;
+var name = _match.name;
+var arguments_ = _match.arguments_;
+return Option.none();
+})();
+case "staticCall": return (function(){
+var position = _match.position;
+var symbol = _match.symbol;
+var methodName = _match.name;
+var arguments_ = _match.arguments_;
+return Option.none();
+})();
+case "methodCall": return (function(){
+var position = _match.position;
+var value = _match.value;
+var methodName = _match.name;
+var arguments_ = _match.arguments_;
+var hintSymbol = _match.hintSymbol;
+return Option.none();
+})();
+case "variable": return (function(){
+var position = _match.position;
+var symbol = _match.symbol;
+return if_(methodName == "invoke", (function() {
+return (function(_match) { switch(_match._) {
+case "some": return (function(){
+var name = _match.value;
+return Option.none();
+})();
+case "none": return (function(){
+return resolver.function_(position, symbol);
+})();
+}})(resolver.getVariable(position, symbol));
+}), (function() {
+return Option.none();
+}));
+})();
+}})(value);
+var resolvedUnnamed = map(arguments_.unnamed, (function(a) {
+return resolveTerm(resolver, a);
+}));
+var resolvedNamed = map(arguments_.named, (function(a) {
+return NamedArgument.namedArgument(a.order, a.name, resolveTerm(resolver, a.value));
+}));
+var resolvedArguments = Arguments.arguments_(resolvedUnnamed, resolvedNamed);
+return (function(_match) { switch(_match._) {
+case "some": return (function(){
+var name = _match.value;
+return Term.functionCall(position, name, resolvedArguments);
+})();
+case "none": return (function(){
+var resolvedValue = resolveTerm(resolver, value);
+return Term.methodCall(position, resolvedValue, methodName, resolvedArguments, hintSymbol);
+})();
+}})(functionName);
+})();
+case "variable": return (function(){
+var position = _match.position;
+var symbol = _match.symbol;
+return (function(_match) { switch(_match._) {
+case "some": return (function(){
+var name = _match.value;
+return Term.variable(position, name);
+})();
+case "none": return (function(){
+return (function(_match) { switch(_match._) {
+case "some": return (function(){
+var functionName = _match.value;
+return Term.functionCall(position, functionName, Arguments.arguments_([], []));
+})();
+case "none": return (function(){
+return resolver.error(position, ("No such variable: " + symbol));
+})();
+}})(resolver.function_(position, symbol));
+})();
+}})(resolver.getVariable(position, symbol));
+})();
+}})(term);
+}
+
+function newResolver(modules) {
+var source = "";
+var error = (function(e, p) {
+return panic((e + " " + positionText(newCharCursor(source), p)));
+});
+var preludeTypes = ["Void", "Bool", "String", "Int", "Float", "Array", "Option", "Pair", "F0", "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9"];
+var modulePreludeTypes = map(preludeTypes, (function(t) {
+return ("_." + t);
+}));
+var canonicalPreludeTypes = map(preludeTypes, (function(t) {
+return (t + "@_");
+}));
+var preludeTypeConstructors = zip(preludeTypes.concat(modulePreludeTypes), canonicalPreludeTypes.concat(canonicalPreludeTypes));
+var allTypes = flatten(map(modules, (function(m) {
+return map(m.typeDefinitions, (function(d) {
+return Pair.pair(d.symbol, (d.symbol + "@" + m.package_));
+}));
+})));
+var allFunctions = flatten(map(modules, (function(m) {
+return map(m.functionDefinitions, (function(d) {
+return Pair.pair(d.signature.symbol, (d.signature.symbol + "@" + m.package_));
+}));
+})));
+var definedTypes = newStringMapBuilder([]);
+var definedFunctions = newStringMapBuilder([]);
+each(modules, (function(m) {
+source = m.source;
+return each(m.typeDefinitions, (function(d) {
+var unique = (d.symbol + "@" + m.package_);
+when(definedTypes.has(unique), (function() {
+var moduleName = m.file;
+console.log('Resolving ' + moduleName);
+return error(("Duplicate type definition: " + d.symbol), d.position);
+}));
+return definedTypes.set(unique, true);
+}));
+}));
+each(modules, (function(m) {
+source = m.source;
+return each(m.functionDefinitions, (function(d) {
+var unique = (d.signature.symbol + "@" + m.package_);
+when(definedFunctions.has(unique), (function() {
+var moduleName = m.file;
+console.log('Resolving ' + moduleName);
+return error(("Duplicate function definition: " + d.signature.symbol), d.position);
+}));
+return definedFunctions.set(unique, true);
+}));
+}));
+var typeConstructors = newStringMapBuilder(preludeTypeConstructors.concat(allTypes));
+var functions = newStringMapBuilder(allFunctions);
+var moduleAliases = newStringMapBuilder(map(modules, (function(m) {
+return Pair.pair(m.alias, m.package_);
+})));
+var moduleTypeConstructors = newStringMapBuilder(flatten(map(modules, (function(m) {
+return map(m.typeDefinitions, (function(d) {
+return Pair.pair((m.alias + "." + d.symbol), (d.symbol + "@" + m.package_));
+}));
+}))));
+var variables = newStringMapBuilder([]);
+var typeParameters = newStringMapBuilder([]);
+return {
+typeConstructor: function(position, symbol) {
+return (function(_match) { switch(_match._) {
+case "some": return (function(){
+var x = _match.value;
+return x;
+})();
+case "none": return (function(){
+return (function(_match) { switch(_match._) {
+case "some": return (function(){
+var x = _match.value;
+return x;
+})();
+case "none": return (function(){
+return error(("No such type: " + symbol), position);
+})();
+}})(moduleTypeConstructors.get(symbol));
+})();
+}})(typeConstructors.get(symbol));
+},
+typeParameter: function(position, symbol) {
+return (function(_match) { switch(_match._) {
+case "some": return (function(){
+var x = _match.value;
+return x;
+})();
+case "none": return (function(){
+return error(("No such type parameter: " + symbol), position);
+})();
+}})(typeParameters.get(symbol));
+},
+staticName: function(position, symbol) {
+return (function(_match) { switch(_match._) {
+case "some": return (function(){
+var x = _match.value;
+return x;
+})();
+case "none": return (function(){
+return (function(_match) { switch(_match._) {
+case "some": return (function(){
+var x = _match.value;
+return x;
+})();
+case "none": return (function(){
+return (function(_match) { switch(_match._) {
+case "some": return (function(){
+var x = _match.value;
+return x;
+})();
+case "none": return (function(){
+return error(("No such module or type: " + symbol), position);
+})();
+}})(moduleTypeConstructors.get(symbol));
+})();
+}})(moduleAliases.get(symbol));
+})();
+}})(typeConstructors.get(symbol));
+},
+getVariable: function(position, symbol) {
+return variables.get(symbol);
+},
+variable: function(position, symbol) {
+return (function(_match) { switch(_match._) {
+case "some": return (function(){
+var x = _match.value;
+return x;
+})();
+case "none": return (function(){
+return (function(_match) { switch(_match._) {
+case "none": return (function(){
+return error(("No such variable: " + symbol + " (but there is a method with that name)"), position);
+})();
+case "some": return (function(){
+var x = _match.value;
+return x;
+})();
+}})(functions.get(symbol));
+})();
+}})(variables.get(symbol));
+},
+function_: function(position, symbol) {
+return functions.get(symbol);
+},
+assertNoVariable: function(position, name) {
+return when(variables.has(name), (function() {
+return error(("Suspicious shadowing of variable: " + name), position);
+}));
+},
+addVariable: function(position, name) {
+variables.set(name, name);
+return name;
+},
+addFunction: function(position, name) {
+functions.set(name, name);
+return name;
+},
+addTypeParameter: function(position, name) {
+(function(_match) { switch(_match._) {
+case "some": return (function(){
+var n = _match.value;
+return error(("Suspicious shadowing of type parameter: " + name), position);
+})();
+case "none": return (function(){
+return "";
+})();
+}})(typeParameters.get(name));
+typeParameters.set(name, name);
+return name;
+},
+scope: function(body) {
+var savedTypeConstructors = typeConstructors.toArray();
+var savedVariables = variables.toArray();
+var savedFunctions = functions.toArray();
+var savedTypeParameters = typeParameters.toArray();
+var result = body();
+typeConstructors = newStringMapBuilder(savedTypeConstructors);
+variables = newStringMapBuilder(savedVariables);
+functions = newStringMapBuilder(savedFunctions);
+typeParameters = newStringMapBuilder(savedTypeParameters);
+return result;
+},
+error: function(position, message) {
+error(message, position);
+return panic(message);
+},
+setSource: function(text) {
+source = text;
+}
+};
+}
+
+
+var Pair = {
+pair: function(first, second) {
+return {_: "pair", first: first, second: second};
+}
+};
+
+var Option = {
+none_k: {_: "none"},
+none: function() {
+return Option.none_k;
+},
+some: function(value) {
+return {_: "some", value: value};
+}
+};
+
+
+var Bool = {
+false_k: {_: "false"},
+false: function() {
+return Bool.false_k;
+},
+true_k: {_: "true"},
+true: function() {
+return Bool.true_k;
+}
+};
+
+
+
+
+
+
+
+
+
 function newStringBuilder() {
 var string = "";
 return {
@@ -3741,6 +3741,107 @@ size: function() {
 return string.length;
 }
 };
+}
+
+
+var Pair = {
+pair: function(first, second) {
+return {_: "pair", first: first, second: second};
+}
+};
+
+var Option = {
+none_k: {_: "none"},
+none: function() {
+return Option.none_k;
+},
+some: function(value) {
+return {_: "some", value: value};
+}
+};
+
+
+var Bool = {
+false_k: {_: "false"},
+false: function() {
+return Bool.false_k;
+},
+true_k: {_: "true"},
+true: function() {
+return Bool.true_k;
+}
+};
+
+
+
+
+
+
+
+
+
+
+function newStringMap(array) {
+var builder = newStringMapBuilder(array);
+return {
+invoke: function(key) {
+return builder.invoke(key);
+},
+get: function(key) {
+return builder.get(key);
+},
+has: function(key) {
+return builder.has(key);
+}
+};
+}
+
+function newStringMapBuilder(array) {
+var map = {};
+var builder = {
+invoke: function(key) {
+var this_ = this;
+return if_(this_.has(key), (function() {
+return map['~' + key];
+}), (function() {
+return panic(("No such key: " + key));
+}));
+},
+get: function(key) {
+var this_ = this;
+return if_(this_.has(key), (function() {
+return Option.some(map['~' + key]);
+}), (function() {
+return Option.none();
+}));
+},
+has: function(key) {
+var this_ = this;
+return map.hasOwnProperty('~' + key);
+},
+set: function(key, value) {
+var this_ = this;
+map['~' + key] = value;
+},
+remove: function(key, value) {
+var this_ = this;
+delete map['~' + key];
+},
+toArray: function() {
+var this_ = this;
+var result = [];
+for(var key in map) if(this_.has(key.substr(1))) result.push(Pair.pair(key.substr(1), map[key]));
+return result;
+},
+toStringMap: function() {
+var this_ = this;
+return newStringMap(this_.toArray());
+}
+};
+each(array, (function(p) {
+return builder.set(p.first, p.second);
+}));
+return builder;
 }
 
 
@@ -4193,68 +4294,22 @@ return Bool.true_k;
 
 
 
-
-function newStringMap(array) {
-var builder = newStringMapBuilder(array);
+function newTokenCursor(tokens, offset) {
 return {
-invoke: function(key) {
-return builder.invoke(key);
-},
-get: function(key) {
-return builder.get(key);
-},
-has: function(key) {
-return builder.has(key);
-}
-};
-}
-
-function newStringMapBuilder(array) {
-var map = {};
-var builder = {
-invoke: function(key) {
+invoke: function(ahead) {
 var this_ = this;
-return if_(this_.has(key), (function() {
-return map['~' + key];
-}), (function() {
-return panic(("No such key: " + key));
-}));
+return tokens[offset + ahead];
 },
-get: function(key) {
+skip: function(ahead) {
 var this_ = this;
-return if_(this_.has(key), (function() {
-return Option.some(map['~' + key]);
-}), (function() {
-return Option.none();
-}));
+offset += ahead;
 },
-has: function(key) {
+skipWith: function(result, ahead) {
 var this_ = this;
-return map.hasOwnProperty('~' + key);
-},
-set: function(key, value) {
-var this_ = this;
-map['~' + key] = value;
-},
-remove: function(key, value) {
-var this_ = this;
-delete map['~' + key];
-},
-toArray: function() {
-var this_ = this;
-var result = [];
-for(var key in map) if(this_.has(key.substr(1))) result.push(Pair.pair(key.substr(1), map[key]));
+this_.skip(ahead);
 return result;
-},
-toStringMap: function() {
-var this_ = this;
-return newStringMap(this_.toArray());
 }
 };
-each(array, (function(p) {
-return builder.set(p.first, p.second);
-}));
-return builder;
 }
 
 
@@ -4671,61 +4726,6 @@ var typeDefinitions = [TypeDefinition.typeDefinition(0, "Void@_", [], false, [])
 return map(typeDefinitions, (function(d) {
 return Pair.pair(d.symbol, d);
 }));
-}
-
-
-var Pair = {
-pair: function(first, second) {
-return {_: "pair", first: first, second: second};
-}
-};
-
-var Option = {
-none_k: {_: "none"},
-none: function() {
-return Option.none_k;
-},
-some: function(value) {
-return {_: "some", value: value};
-}
-};
-
-
-var Bool = {
-false_k: {_: "false"},
-false: function() {
-return Bool.false_k;
-},
-true_k: {_: "true"},
-true: function() {
-return Bool.true_k;
-}
-};
-
-
-
-
-
-
-
-
-
-function newTokenCursor(tokens, offset) {
-return {
-invoke: function(ahead) {
-var this_ = this;
-return tokens[offset + ahead];
-},
-skip: function(ahead) {
-var this_ = this;
-offset += ahead;
-},
-skipWith: function(result, ahead) {
-var this_ = this;
-this_.skip(ahead);
-return result;
-}
-};
 }
 
 
