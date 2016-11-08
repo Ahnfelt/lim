@@ -640,38 +640,3 @@ parseModule(pc : Pc, package : String, alias : String, file : String, source : S
         functionDefinitions = functionDefinitions.drain
     )
 }
-
-testAll(moduleSources : Array[Pair[String, String]]) {
-    parsedModules := map(moduleSources, p => {
-        moduleName := p.first
-        js"console.log('Parsing ' + moduleName);"
-        tokens := lexTokens(p.second)
-        pc := newPc(newTokenCursor(tokens, 0), p.second)
-        Pair(p.first, parseModule(pc, "_current", "_Current", p.first, p.second))
-    })
-    js"console.dir(parsedModules);"
-    resolver := newResolver(map(parsedModules, p => p.second))
-    resolvedModules := map(parsedModules, p => {
-        moduleName := p.first
-        js"console.log('Resolving ' + moduleName);"
-        Pair(p.first, resolveModule(resolver, p.second))
-    })
-    js"console.dir(resolvedModules);"
-    typer := newTyper(map(resolvedModules, p => p.second))
-    typedModules := map(resolvedModules, p => {
-        moduleName := p.first
-        js"console.log('Typing ' + moduleName);"
-        Pair(p.first, checkModule(typer, p.second))
-    })
-    js"console.dir(typedModules);"
-    builder := newStringBuilder()
-    each(typedModules, p => {
-        moduleName := p.first
-        js"console.log('Emitting ' + moduleName);"
-        emitModule(builder, p.second)
-    })
-    emitted := builder.drain
-    js"console.log('------------------------ ' + emitted.length);"
-    js"if(window.compilesOfKeen == null) window.compilesOfKeen = 1; else window.compilesOfKeen += 1;"
-    js"if(window.compilesOfKeen < 3) { eval.call(window, emitted); window.doCompileKeenNow(); } else console.log(emitted);"
-}

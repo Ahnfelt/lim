@@ -197,8 +197,7 @@ preludeTypeDefinitions() : Array[Pair[String, TypeDefinition]] {
         TypeDefinition(0, "Void@_", [], Bool.false, [
         ]),
         TypeDefinition(0, "Pair@_", ["a", "b"], Bool.true, [
-            MethodSignature(0, "none", [], [], void),
-            MethodSignature(0, "some", [], [Parameter(0, "first", Type.parameter(0, "a")), Parameter(0, "second", Type.parameter(0, "b"))], void)
+            MethodSignature(0, "pair", [], [Parameter(0, "first", Type.parameter(0, "a")), Parameter(0, "second", Type.parameter(0, "b"))], void)
         ]),
         TypeDefinition(0, "Option@_", ["a"], Bool.true, [
             MethodSignature(0, "none", [], [], void),

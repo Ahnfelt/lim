@@ -592,7 +592,8 @@ object Parser {
         }
         val output = test(builder.toString())
         println(output)
-        new FileOutputStream("compiler.js").write(output.toString.getBytes("UTF-8"))
+        val finalOutput = output + "\n\nif(typeof window === 'undefined') main();\n"
+        new FileOutputStream("compiler.js").write(finalOutput.toString.getBytes("UTF-8"))
         Thread.sleep(100)
     }
 

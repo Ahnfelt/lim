@@ -1,4 +1,40 @@
 
+var Pair = {
+pair: function(first, second) {
+return {_: "pair", first: first, second: second};
+}
+};
+
+var Option = {
+none_k: {_: "none"},
+none: function() {
+return Option.none_k;
+},
+some: function(value) {
+return {_: "some", value: value};
+}
+};
+
+
+var Bool = {
+false_k: {_: "false"},
+false: function() {
+return Bool.false_k;
+},
+true_k: {_: "true"},
+true: function() {
+return Bool.true_k;
+}
+};
+
+
+
+
+
+
+
+
+
 function newArrayBuilder() {
 var array = [];
 return {
@@ -56,6 +92,42 @@ return array.length;
 }
 };
 }
+
+
+var Pair = {
+pair: function(first, second) {
+return {_: "pair", first: first, second: second};
+}
+};
+
+var Option = {
+none_k: {_: "none"},
+none: function() {
+return Option.none_k;
+},
+some: function(value) {
+return {_: "some", value: value};
+}
+};
+
+
+var Bool = {
+false_k: {_: "false"},
+false: function() {
+return Bool.false_k;
+},
+true_k: {_: "true"},
+true: function() {
+return Bool.true_k;
+}
+};
+
+
+
+
+
+
+
 
 var Position = {
 position: function(line, column, buffer, offset) {
@@ -163,6 +235,1282 @@ function positionText(cursor, offset) {
 var position = cursor.position(offset);
 return ("at line " + ('' + position.line) + " column " + ('' + position.column));
 }
+
+
+var Pair = {
+pair: function(first, second) {
+return {_: "pair", first: first, second: second};
+}
+};
+
+var Option = {
+none_k: {_: "none"},
+none: function() {
+return Option.none_k;
+},
+some: function(value) {
+return {_: "some", value: value};
+}
+};
+
+
+var Bool = {
+false_k: {_: "false"},
+false: function() {
+return Bool.false_k;
+},
+true_k: {_: "true"},
+true: function() {
+return Bool.true_k;
+}
+};
+
+
+
+
+
+
+
+
+function emitModule(builder, module) {
+var prelude = map(preludeTypeDefinitions(), (function(p) {
+return p.second;
+}));
+each(prelude.concat(module.typeDefinitions), (function(d) {
+emitTypeDefinition(builder, d);
+return builder.append("\n");
+}));
+return each(module.functionDefinitions, (function(d) {
+emitFunctionDefinition(builder, d);
+return builder.append("\n");
+}));
+}
+
+function emitTypeDefinition(builder, definition) {
+return when(definition.isSum, (function() {
+var name = baseName(definition.symbol);
+builder.append(("var " + escapeUpper(name) + " = {\n"));
+var first = true;
+each(definition.methodSignatures, (function(s) {
+when(!first, (function() {
+return builder.append(",\n");
+}));
+first = false;
+when(s.parameters.length == 0, (function() {
+return builder.append((escapeMethod(s.symbol) + "_k: {_: " + escapeString(s.symbol) + "},\n"));
+}));
+builder.append((escapeMethod(s.symbol) + ": function("));
+builder.append(join(map(s.parameters, (function(p) {
+return escapeVariable(p.name);
+})), ", "));
+builder.append(") {\n");
+if_(s.parameters.length == 0, (function() {
+return builder.append(("return " + escapeUpper(name) + "." + escapeMethod(s.symbol) + "_k;\n"));
+}), (function() {
+builder.append(("return {_: " + escapeString(s.symbol)));
+builder.append(join(map(s.parameters, (function(p) {
+return (", " + escapeMethod(p.name) + ": " + escapeVariable(p.name));
+})), ""));
+return builder.append("};\n");
+}));
+return builder.append("}");
+}));
+return builder.append("\n};\n");
+}));
+}
+
+function emitFunctionDefinition(builder, definition) {
+var name = baseName(definition.signature.symbol);
+var parameters = join(map(definition.signature.parameters, (function(p) {
+return escapeVariable(p.name);
+})), ", ");
+builder.append(("function " + escapeMethod(name) + "(" + parameters + ") {\n"));
+emitBody(builder, definition.body);
+return builder.append("}\n");
+}
+
+function emitBody(builder, body) {
+var firsts = body.slice(0, body.length - 1);
+var lasts = body.slice(body.length - 1);
+each(firsts, (function(s) {
+return emitStatement(builder, s, false);
+}));
+return each(lasts, (function(s) {
+return emitStatement(builder, s, true);
+}));
+}
+
+function emitStatement(builder, statement, return_) {
+return (function(_match) { switch(_match._) {
+case "term": return (function(){
+var position = _match.position;
+var term = _match.term;
+when(return_, (function() {
+return builder.append("return ");
+}));
+emitTerm(builder, term);
+return builder.append(";\n");
+})();
+case "let": return (function(){
+var position = _match.position;
+var variable = _match.variable;
+var type = _match.type;
+var value = _match.value;
+builder.append(("var " + escapeVariable(variable) + " = "));
+emitTerm(builder, value);
+return builder.append(";\n");
+})();
+case "functions": return (function(){
+var definitions = _match.definitions;
+return each(definitions, (function(d) {
+return emitFunctionDefinition(builder, d);
+}));
+})();
+case "assign": return (function(){
+var position = _match.position;
+var variable = _match.variable;
+var value = _match.value;
+builder.append((escapeVariable(variable) + " = "));
+emitTerm(builder, value);
+return builder.append(";\n");
+})();
+case "increment": return (function(){
+var position = _match.position;
+var variable = _match.variable;
+var value = _match.value;
+builder.append((escapeVariable(variable) + " += "));
+emitTerm(builder, value);
+return builder.append(";\n");
+})();
+case "decrement": return (function(){
+var position = _match.position;
+var variable = _match.variable;
+var value = _match.value;
+builder.append((escapeVariable(variable) + " -= "));
+emitTerm(builder, value);
+return builder.append(";\n");
+})();
+case "ffi": return (function(){
+var position = _match.position;
+var language = _match.language;
+var code = _match.code;
+builder.append(code);
+return builder.append("\n");
+})();
+}})(statement);
+}
+
+function emitArguments(builder, arguments_) {
+var first = true;
+each(arguments_.unnamed, (function(a) {
+when(!first, (function() {
+return builder.append(", ");
+}));
+first = false;
+return emitTerm(builder, a);
+}));
+/* TODO: Respect original evaluation order */
+var named = sortByInt(arguments_.named, (function(a) {
+return a.order;
+}));
+return each(named, (function(a) {
+when(!first, (function() {
+return builder.append(", ");
+}));
+first = false;
+return emitTerm(builder, a.value);
+}));
+}
+
+function emitTerm(builder, term) {
+return (function(_match) { switch(_match._) {
+case "binary": return (function(){
+var position = _match.position;
+var operator = _match.operator;
+var left = _match.left;
+var right = _match.right;
+emitTerm(builder, left);
+builder.append(" ");
+var done = false;
+when(operator == TokenType.star(), (function() {
+builder.append("*");
+done = true;
+}));
+when(operator == TokenType.slash(), (function() {
+builder.append("/");
+done = true;
+}));
+when(operator == TokenType.plus(), (function() {
+builder.append("+");
+done = true;
+}));
+when(operator == TokenType.minus(), (function() {
+builder.append("-");
+done = true;
+}));
+when(operator == TokenType.equal(), (function() {
+builder.append("==");
+done = true;
+}));
+when(operator == TokenType.notEqual(), (function() {
+builder.append("!=");
+done = true;
+}));
+when(operator == TokenType.less(), (function() {
+builder.append("<");
+done = true;
+}));
+when(operator == TokenType.lessEqual(), (function() {
+builder.append("<=");
+done = true;
+}));
+when(operator == TokenType.greater(), (function() {
+builder.append(">");
+done = true;
+}));
+when(operator == TokenType.greaterEqual(), (function() {
+builder.append(">=");
+done = true;
+}));
+when(operator == TokenType.and(), (function() {
+builder.append("&&");
+done = true;
+}));
+when(operator == TokenType.or(), (function() {
+builder.append("||");
+done = true;
+}));
+when(!done, (function() {
+return panic("Unknown binary operator");
+}));
+builder.append(" ");
+return emitTerm(builder, right);
+})();
+case "unary": return (function(){
+var position = _match.position;
+var operator = _match.operator;
+var value = _match.value;
+var done = false;
+when(operator == TokenType.minus(), (function() {
+builder.append("-");
+done = true;
+}));
+when(operator == TokenType.exclamation(), (function() {
+builder.append("!");
+done = true;
+}));
+when(!done, (function() {
+return panic("Unknown unary operator");
+}));
+return emitTerm(builder, value);
+})();
+case "codeUnit": return (function(){
+var position = _match.position;
+var value = _match.value;
+return builder.append(('' + value));
+})();
+case "text": return (function(){
+var position = _match.position;
+var value = _match.value;
+return builder.append(escapeString(value));
+})();
+case "textLiteral": return (function(){
+var position = _match.position;
+var parts = _match.parts;
+var first = true;
+when(parts.length > 1, (function() {
+return builder.append("(");
+}));
+each(parts, (function(p) {
+when(!first, (function() {
+return builder.append(" + ");
+}));
+first = false;
+return emitTerm(builder, p);
+}));
+return when(parts.length > 1, (function() {
+return builder.append(")");
+}));
+})();
+case "integer": return (function(){
+var position = _match.position;
+var value = _match.value;
+return builder.append(value);
+})();
+case "floating": return (function(){
+var position = _match.position;
+var value = _match.value;
+return builder.append(value);
+})();
+case "array": return (function(){
+var position = _match.position;
+var elements = _match.elements;
+var first = true;
+builder.append("[");
+each(elements, (function(e) {
+when(!first, (function() {
+return builder.append(", ");
+}));
+first = false;
+return emitTerm(builder, e);
+}));
+return builder.append("]");
+})();
+case "record": return (function(){
+var position = _match.position;
+var fields = _match.fields;
+var first = true;
+builder.append("{");
+each(fields, (function(f) {
+when(!first, (function() {
+return builder.append(", ");
+}));
+first = false;
+builder.append((escapeMethod(f.label) + ": "));
+return emitTerm(builder, f.value);
+}));
+return builder.append("}");
+})();
+case "instance": return (function(){
+var position = _match.position;
+var symbol = _match.symbol;
+var thisName = _match.thisName;
+var methods = _match.methods;
+when(symbol == "F0@_" || symbol == "F1@_" || symbol == "F2@_" || symbol == "F3@_", (function() {
+return panic("Can't create explicit instance of lambda function F*@_");
+}));
+builder.append("{\n");
+each(indexed(methods), (function(m) {
+builder.append(escapeMethod(m.second.name));
+builder.append(": ");
+builder.append("function(");
+builder.append(join(m.second.parameters, ", "));
+builder.append(") {\n");
+(function(_match) { switch(_match._) {
+case "some": return (function(){
+var x = _match.value;
+return builder.append(("var " + escapeVariable(x) + " = this;\n"));
+})();
+case "none": return (function(){
+})();
+}})(thisName);
+emitBody(builder, m.second.body);
+builder.append("}");
+when(m.first < methods.length - 1, (function() {
+return builder.append(",");
+}));
+return builder.append("\n");
+}));
+return builder.append("}");
+})();
+case "match": return (function(){
+var position = _match.position;
+var value = _match.value;
+var cases = _match.cases;
+var hintSymbol = _match.hintSymbol;
+return if_(hintSymbol == "Bool@_", (function() {
+builder.append("(");
+emitTerm(builder, value);
+builder.append(" ? (function() {\n");
+emitBody(builder, orPanic(find(cases, (function(c) {
+return c.body.name == "true";
+}))).body.body);
+builder.append("})() : (function() {\n");
+emitBody(builder, orPanic(find(cases, (function(c) {
+return c.body.name == "false";
+}))).body.body);
+return builder.append("})())");
+}), (function() {
+builder.append("(function(_match) { switch(_match._) {\n");
+each(cases, (function(c) {
+builder.append(("case " + escapeString(c.body.name) + ": return (function(){\n"));
+each(indexed(c.body.parameters), (function(p) {
+return builder.append(("var " + escapeVariable(p.second) + " = _match." + escapeMethod(c.fieldNames[p.first]) + ";\n"));
+}));
+emitBody(builder, c.body.body);
+return builder.append("})();\n");
+}));
+builder.append("}})(");
+emitTerm(builder, value);
+return builder.append(")");
+}));
+})();
+case "lambda": return (function(){
+var position = _match.position;
+var parameters = _match.parameters;
+var body = _match.body;
+var ps = join(map(parameters, (function(p) {
+return escapeVariable(p);
+})), ", ");
+builder.append(("(function(" + ps + ") {\n"));
+emitBody(builder, body);
+return builder.append("})");
+})();
+case "functionCall": return (function(){
+var position = _match.position;
+var methodName = _match.name;
+var arguments_ = _match.arguments_;
+var name = baseName(methodName);
+builder.append(escapeMethod(name));
+builder.append("(");
+emitArguments(builder, arguments_);
+return builder.append(")");
+})();
+case "staticCall": return (function(){
+var position = _match.position;
+var symbol = _match.symbol;
+var methodName = _match.name;
+var arguments_ = _match.arguments_;
+return if_(symbol == "Bool@_", (function() {
+return builder.append(methodName);
+}), (function() {
+var name = baseName(symbol);
+builder.append((escapeUpper(name) + "." + escapeMethod(methodName)));
+builder.append("(");
+emitArguments(builder, arguments_);
+return builder.append(")");
+}));
+})();
+case "methodCall": return (function(){
+var position = _match.position;
+var value = _match.value;
+var methodName = _match.name;
+var arguments_ = _match.arguments_;
+var hintSymbol = _match.hintSymbol;
+return if_(hintSymbol == "_field", (function() {
+emitTerm(builder, value);
+return builder.append(("." + escapeMethod(methodName)));
+}), (function() {
+return (function(_match) { switch(_match._) {
+case "some": return (function(){
+var f = _match.value;
+return f(value, builder, arguments_);
+})();
+case "none": return (function(){
+emitTerm(builder, value);
+builder.append(("." + escapeMethod(methodName)));
+builder.append("(");
+emitArguments(builder, arguments_);
+return builder.append(")");
+})();
+}})(specialMethods().get((hintSymbol + "." + methodName)));
+}));
+})();
+case "variable": return (function(){
+var position = _match.position;
+var symbol = _match.symbol;
+return builder.append(escapeVariable(symbol));
+})();
+}})(term);
+}
+
+function specialMethods() {
+return newStringMap([Pair.pair("Array@_.invoke", (function(value, builder, arguments_) {
+emitTerm(builder, value);
+builder.append("[");
+emitArguments(builder, arguments_);
+return builder.append("]");
+})), Pair.pair("Array@_.size", (function(value, builder, arguments_) {
+emitTerm(builder, value);
+return builder.append(".length");
+})), Pair.pair("Array@_.take", (function(value, builder, arguments_) {
+emitTerm(builder, value);
+builder.append(".slice(0, ");
+emitArguments(builder, arguments_);
+return builder.append(")");
+})), Pair.pair("Array@_.drop", (function(value, builder, arguments_) {
+emitTerm(builder, value);
+builder.append(".slice(");
+emitArguments(builder, arguments_);
+return builder.append(")");
+})), Pair.pair("String@_.invoke", (function(value, builder, arguments_) {
+emitTerm(builder, value);
+builder.append(".charCodeAt(");
+emitArguments(builder, arguments_);
+return builder.append(")");
+})), Pair.pair("String@_.size", (function(value, builder, arguments_) {
+emitTerm(builder, value);
+return builder.append(".length");
+})), Pair.pair("String@_.take", (function(value, builder, arguments_) {
+emitTerm(builder, value);
+builder.append(".substr(0, ");
+emitArguments(builder, arguments_);
+return builder.append(")");
+})), Pair.pair("String@_.drop", (function(value, builder, arguments_) {
+emitTerm(builder, value);
+builder.append(".substr(");
+emitArguments(builder, arguments_);
+return builder.append(")");
+})), Pair.pair("String@_.toUpper", (function(value, builder, arguments_) {
+emitTerm(builder, value);
+return builder.append(".toUpperCase()");
+})), Pair.pair("String@_.toLower", (function(value, builder, arguments_) {
+emitTerm(builder, value);
+return builder.append(".toLowerCase()");
+})), Pair.pair("F0@_.invoke", (function(value, builder, arguments_) {
+emitTerm(builder, value);
+return builder.append("()");
+})), Pair.pair("F1@_.invoke", (function(value, builder, arguments_) {
+emitTerm(builder, value);
+builder.append("(");
+emitArguments(builder, arguments_);
+return builder.append(")");
+})), Pair.pair("F2@_.invoke", (function(value, builder, arguments_) {
+emitTerm(builder, value);
+builder.append("(");
+emitArguments(builder, arguments_);
+return builder.append(")");
+})), Pair.pair("F3@_.invoke", (function(value, builder, arguments_) {
+emitTerm(builder, value);
+builder.append("(");
+emitArguments(builder, arguments_);
+return builder.append(")");
+})), Pair.pair("Bool@_.toString", (function(value, builder, arguments_) {
+builder.append("('' + ");
+emitTerm(builder, value);
+return builder.append(")");
+})), Pair.pair("Int@_.toString", (function(value, builder, arguments_) {
+builder.append("('' + ");
+emitTerm(builder, value);
+return builder.append(")");
+})), Pair.pair("Float@_.toString", (function(value, builder, arguments_) {
+builder.append("('' + ");
+emitTerm(builder, value);
+return builder.append(")");
+}))]);
+}
+
+function escapeVariable(name) {
+return if_(reservedWords().has(name), (function() {
+return (name + "_");
+}), (function() {
+return name;
+}));
+}
+
+function escapeMethod(name) {
+return if_(reservedWords().has(name), (function() {
+return (name + "_");
+}), (function() {
+return name;
+}));
+}
+
+function escapeUpper(name) {
+return name;
+}
+
+function escapeString(value) {
+return ("\"" + value + "\"");
+}
+
+function reservedWords() {
+return newStringMap(map(["arguments", "break", "case", "catch", "class", "const", "continue", "debugger", "default", "delete", "do", "else", "export", "extends", "finally", "for", "function", "if", "import", "in", "instanceof", "new", "return", "super", "switch", "this", "throw", "try", "typeof", "var", "void", "while", "with", "yield", "enum", "implements", "interface", "let", "package", "private", "protected", "public", "static", "await"], (function(w) {
+return Pair.pair(w, true);
+})));
+}
+
+function baseName(name) {
+return name.replace(/[@].*/, '');
+}
+
+
+var Pair = {
+pair: function(first, second) {
+return {_: "pair", first: first, second: second};
+}
+};
+
+var Option = {
+none_k: {_: "none"},
+none: function() {
+return Option.none_k;
+},
+some: function(value) {
+return {_: "some", value: value};
+}
+};
+
+
+var Bool = {
+false_k: {_: "false"},
+false: function() {
+return Bool.false_k;
+},
+true_k: {_: "true"},
+true: function() {
+return Bool.true_k;
+}
+};
+
+
+
+
+
+
+
+
+function checkModule(typer, module) {
+typer.setModule(module);
+return Module.module(module.package_, module.file, module.alias, module.source, module.typeDefinitions, map(module.functionDefinitions, (function(d) {
+return typer.topScope((function() {
+return checkFunctionDefinitionInScope(typer, d);
+}));
+})));
+}
+
+function checkFunctionDefinitionInScope(typer, definition) {
+each(definition.signature.parameters, (function(p) {
+return typer.bindVariable(p.name, p.type);
+}));
+var body = checkBody(typer, definition.signature.returnType, definition.position, definition.body);
+return FunctionDefinition.functionDefinition(definition.position, definition.signature, body);
+}
+
+function checkBody(typer, expectedType, position, body) {
+return if_(body.length == 0, (function() {
+equalityConstraint(typer, position, expectedType, Type.constructor(position, "Void@_", []));
+return [];
+}), (function() {
+return typer.scope((function() {
+var initial = map(firsts(body), (function(s) {
+return checkStatement(typer, Type.variable(position, typer.fresh()), s);
+}));
+var return_ = orPanic(last(body));
+var typedReturn = (function(_match) { switch(_match._) {
+case "constructor": return (function(){
+var position2 = _match.position;
+var symbol2 = _match.symbol;
+var typeArguments2 = _match.typeArguments;
+return if_(symbol2 == "Void@_", (function() {
+return checkStatement(typer, Type.variable(position, typer.fresh()), return_);
+}), (function() {
+return checkStatement(typer, expectedType, return_);
+}));
+})();
+case "record": return (function(){
+var position2 = _match.position;
+var fields2 = _match.fields;
+return checkStatement(typer, expectedType, return_);
+})();
+case "parameter": return (function(){
+var position2 = _match.position;
+var name2 = _match.name;
+return checkStatement(typer, expectedType, return_);
+})();
+case "variable": return (function(){
+var position2 = _match.position;
+var id2 = _match.id;
+return checkStatement(typer, expectedType, return_);
+})();
+}})(typer.expand(expectedType));
+return initial.concat([typedReturn]);
+}));
+}));
+}
+
+function checkStatement(typer, expectedType, statement) {
+return (function(_match) { switch(_match._) {
+case "term": return (function(){
+var position = _match.position;
+var term = _match.term;
+var term2 = checkTerm(typer, expectedType, term);
+return Statement.term(position, term2);
+})();
+case "let": return (function(){
+var position = _match.position;
+var variable = _match.variable;
+var type = _match.type;
+var value = _match.value;
+equalityConstraint(typer, position, expectedType, Type.constructor(position, "Void@_", []));
+var type2 = or(type, Type.variable(position, typer.fresh()));
+var value2 = checkTerm(typer, type2, value);
+var expandedType = typer.expand(type2);
+typer.bindVariable(variable, expandedType);
+return Statement.let_(position, variable, Option.some(expandedType), value2);
+})();
+case "functions": return (function(){
+var definitions = _match.definitions;
+var position = orPanic(first(definitions)).position;
+each(definitions, (function(d) {
+return typer.bindFunction(d.signature.symbol, d);
+}));
+var typedDefinitions = map(definitions, (function(d) {
+return typer.scope((function() {
+return checkFunctionDefinitionInScope(typer, d);
+}));
+}));
+equalityConstraint(typer, position, expectedType, Type.constructor(position, "Void@_", []));
+return Statement.functions(typedDefinitions);
+})();
+case "assign": return (function(){
+var position = _match.position;
+var variable = _match.variable;
+var value = _match.value;
+equalityConstraint(typer, position, expectedType, Type.constructor(position, "Void@_", []));
+var value2 = checkTerm(typer, typer.variable(variable), value);
+return Statement.assign(position, variable, value2);
+})();
+case "increment": return (function(){
+var position = _match.position;
+var variable = _match.variable;
+var value = _match.value;
+equalityConstraint(typer, position, expectedType, Type.constructor(position, "Void@_", []));
+var value2 = checkTerm(typer, typer.variable(variable), value);
+return Statement.increment(position, variable, value2);
+})();
+case "decrement": return (function(){
+var position = _match.position;
+var variable = _match.variable;
+var value = _match.value;
+equalityConstraint(typer, position, expectedType, Type.constructor(position, "Void@_", []));
+var value2 = checkTerm(typer, typer.variable(variable), value);
+return Statement.decrement(position, variable, value2);
+})();
+case "ffi": return (function(){
+var position = _match.position;
+var language = _match.language;
+var code = _match.code;
+return statement;
+})();
+}})(statement);
+}
+
+function checkArguments(typer, expectedType, position, signature, arguments_) {
+var instantiation = newStringMap(map(signature.typeParameters, (function(p) {
+return Pair.pair(p, Type.variable(position, typer.fresh()));
+})));
+var parameterTypes = map(signature.parameters, (function(p) {
+return typer.instantiate(instantiation, p.type);
+}));
+var returnType = typer.instantiate(instantiation, signature.returnType);
+equalityConstraint(typer, position, expectedType, returnType);
+var unnamed = map(zip(parameterTypes, arguments_.unnamed), (function(p) {
+return checkTerm(typer, p.first, p.second);
+}));
+var namedParameters = map(signature.parameters.slice(arguments_.unnamed.length), (function(p) {
+return p.name;
+}));
+var named = map(zip(parameterTypes.slice(arguments_.unnamed.length), namedParameters), (function(p) {
+return (function(_match) { switch(_match._) {
+case "some": return (function(){
+var a = _match.value;
+return NamedArgument.namedArgument(a.order, p.second, checkTerm(typer, p.first, a.value));
+})();
+case "none": return (function(){
+return typer.error(position, ("Missing argument: " + p.second));
+})();
+}})(find(arguments_.named, (function(a) {
+return a.name == p.second;
+})));
+}));
+when(unnamed.length + named.length < parameterTypes.length, (function() {
+return typer.error(position, "Too few arguments");
+}));
+when(unnamed.length + named.length > parameterTypes.length, (function() {
+return typer.error(position, "Too many arguments");
+}));
+return Arguments.arguments_(unnamed, named);
+}
+
+function checkTerm(typer, expectedType, term) {
+return (function(_match) { switch(_match._) {
+case "binary": return (function(){
+var position = _match.position;
+var operator = _match.operator;
+var left = _match.left;
+var right = _match.right;
+var types = if_(operator == TokenType.plus() || operator == TokenType.minus() || operator == TokenType.star() || operator == TokenType.slash(), (function() {
+return Pair.pair(Type.constructor(position, "Int@_", []), Type.constructor(position, "Int@_", []));
+}), (function() {
+return Pair.pair(Type.variable(position, typer.fresh()), Type.constructor(position, "Bool@_", []));
+}));
+equalityConstraint(typer, position, expectedType, types.second);
+var typedLeft = checkTerm(typer, types.first, left);
+var typedRight = checkTerm(typer, types.first, right);
+return Term.binary(position, operator, typedLeft, typedRight);
+})();
+case "unary": return (function(){
+var position = _match.position;
+var operator = _match.operator;
+var value = _match.value;
+var types = if_(operator == TokenType.minus(), (function() {
+return Pair.pair(Type.constructor(position, "Int@_", []), Type.constructor(position, "Int@_", []));
+}), (function() {
+return Pair.pair(Type.constructor(position, "Bool@_", []), Type.constructor(position, "Bool@_", []));
+}));
+equalityConstraint(typer, position, expectedType, types.second);
+var typedValue = checkTerm(typer, types.first, value);
+return Term.unary(position, operator, typedValue);
+})();
+case "codeUnit": return (function(){
+var position = _match.position;
+var value = _match.value;
+equalityConstraint(typer, position, expectedType, Type.constructor(position, "Int@_", []));
+return term;
+})();
+case "text": return (function(){
+var position = _match.position;
+var value = _match.value;
+equalityConstraint(typer, position, expectedType, Type.constructor(position, "String@_", []));
+return term;
+})();
+case "textLiteral": return (function(){
+var position = _match.position;
+var parts = _match.parts;
+var typedParts = map(parts, (function(p) {
+return checkTerm(typer, Type.constructor(position, "String@_", []), p);
+}));
+equalityConstraint(typer, position, expectedType, Type.constructor(position, "String@_", []));
+return Term.textLiteral(position, typedParts);
+})();
+case "integer": return (function(){
+var position = _match.position;
+var value = _match.value;
+equalityConstraint(typer, position, expectedType, Type.constructor(position, "Int@_", []));
+return term;
+})();
+case "floating": return (function(){
+var position = _match.position;
+var value = _match.value;
+equalityConstraint(typer, position, expectedType, Type.constructor(position, "Float@_", []));
+return term;
+})();
+case "array": return (function(){
+var position = _match.position;
+var elements = _match.elements;
+var elementType = Type.variable(position, typer.fresh());
+equalityConstraint(typer, position, expectedType, Type.constructor(position, "Array@_", [elementType]));
+var typedElements = map(elements, (function(e) {
+return checkTerm(typer, elementType, e);
+}));
+return Term.array(position, typedElements);
+})();
+case "record": return (function(){
+var position = _match.position;
+var fields = _match.fields;
+var fieldTypes = map(fields, (function(f) {
+return Type.variable(position, typer.fresh());
+}));
+var typedFields = map(zip(fields, fieldTypes), (function(p) {
+var typedValue = checkTerm(typer, p.second, p.first.value);
+return Pair.pair(Field.field(p.first.position, p.first.label, typedValue), FieldType.fieldType(p.first.position, p.first.label, p.second));
+}));
+var recordType = Type.record(position, sortByString(map(typedFields, (function(p) {
+return p.second;
+})), (function(f) {
+return f.label;
+})));
+equalityConstraint(typer, position, expectedType, recordType);
+return Term.record(position, map(typedFields, (function(p) {
+return p.first;
+})));
+})();
+case "instance": return (function(){
+var position = _match.position;
+var symbol = _match.symbol;
+var thisName = _match.thisName;
+var methods = _match.methods;
+var typeDefinition = typer.type(symbol);
+var typeArguments = map(typeDefinition.typeParameters, (function(p) {
+return Type.variable(position, typer.fresh());
+}));
+var instantiation = newStringMap(zip(typeDefinition.typeParameters, typeArguments));
+var type = Type.constructor(position, symbol, typeArguments);
+equalityConstraint(typer, position, expectedType, type);
+var typedMethods = typer.scope((function() {
+(function(_match) { switch(_match._) {
+case "some": return (function(){
+var name = _match.value;
+return typer.bindVariable(name, type);
+})();
+case "none": return (function(){
+})();
+}})(thisName);
+return map(methods, (function(m) {
+var signature = (function(_match) { switch(_match._) {
+case "none": return (function(){
+return typer.error(position, ("Unknown method: " + m.name));
+})();
+case "some": return (function(){
+var s = _match.value;
+return s;
+})();
+}})(find(typeDefinition.methodSignatures, (function(s) {
+return s.symbol == m.name;
+})));
+return typer.scope((function() {
+var parameterTypes = map(signature.parameters, (function(p) {
+return typer.instantiate(instantiation, p.type);
+}));
+var returnType = typer.instantiate(instantiation, signature.returnType);
+each(zip(m.parameters, parameterTypes), (function(p) {
+return typer.bindVariable(p.first, p.second);
+}));
+var typedBody = checkBody(typer, returnType, m.position, m.body);
+return MethodImplementation.methodImplementation(m.position, m.name, m.parameters, typedBody);
+}));
+}));
+}));
+each(typeDefinition.methodSignatures, (function(s) {
+return (function(_match) { switch(_match._) {
+case "none": return (function(){
+return typer.error(position, ("Missing method: " + s.symbol));
+})();
+case "some": return (function(){
+var s = _match.value;
+})();
+}})(find(methods, (function(m) {
+return s.symbol == m.name;
+})));
+}));
+when(methods.length > typeDefinition.methodSignatures.length, (function() {
+return typer.error(position, "Duplicate method");
+}));
+return Term.instance(position, symbol, thisName, typedMethods);
+})();
+case "match": return (function(){
+var position = _match.position;
+var value = _match.value;
+var cases = _match.cases;
+var hintSymbol = _match.hintSymbol;
+var type = Type.variable(position, typer.fresh());
+var typedValue = checkTerm(typer, type, value);
+var signaturesAndHint = (function(_match) { switch(_match._) {
+case "variable": return (function(){
+var position2 = _match.position;
+var id2 = _match.id;
+return typer.error(position, "Match requires known object type");
+})();
+case "parameter": return (function(){
+var position2 = _match.position;
+var name2 = _match.name;
+return typer.error(position, ("Can't match on type parameter: " + typeToString(typer.expand(type))));
+})();
+case "record": return (function(){
+var position2 = _match.position;
+var fields2 = _match.fields;
+return typer.error(position, ("Can't match on record type: " + typeToString(typer.expand(type))));
+})();
+case "constructor": return (function(){
+var position2 = _match.position;
+var symbol2 = _match.symbol;
+var typeArguments2 = _match.typeArguments;
+var typeDefinition = typer.type(symbol2);
+when(!typeDefinition.isSum, (function() {
+return typer.error(position, ("Can't match on non-sum type: " + typeToString(typer.expand(type))));
+}));
+var signatures = map(typeDefinition.methodSignatures, (function(s) {
+when(find(cases, (function(c) {
+return c.body.name == s.symbol;
+})) == Option.none(), (function() {
+return typer.error(position, ("Missing case: " + s.symbol + " on type " + typeToString(typer.expand(type))));
+}));
+var instantiation = newStringMap(zip(typeDefinition.typeParameters, typeArguments2));
+var parameters = map(s.parameters, (function(p) {
+return Parameter.parameter(p.position, p.name, typer.instantiate(instantiation, p.type));
+}));
+var returnType = typer.instantiate(instantiation, s.returnType);
+return MethodSignature.methodSignature(s.position, s.symbol, s.typeParameters, parameters, returnType);
+}));
+each(cases, (function(c) {
+return (function(_match) { switch(_match._) {
+case "none": return (function(){
+return typer.error(position, ("Unknown case: " + c.body.name));
+})();
+case "some": return (function(){
+var s = _match.value;
+})();
+}})(find(typeDefinition.methodSignatures, (function(s) {
+return s.symbol == c.body.name;
+})));
+}));
+when(cases.length > typeDefinition.methodSignatures.length, (function() {
+return typer.error(position, "Duplicate case");
+}));
+return Pair.pair(signatures, symbol2);
+})();
+}})(typer.expand(type));
+var typedCases = map(cases, (function(c) {
+return (function(_match) { switch(_match._) {
+case "none": return (function(){
+return typer.error(position, ("No such case: " + c.body.name + " in type " + typeToString(typer.expand(type))));
+})();
+case "some": return (function(){
+var s = _match.value;
+var fieldNames = map(s.parameters, (function(p) {
+return p.name;
+}));
+var implementation = typer.scope((function() {
+each(zip(s.parameters, c.body.parameters), (function(p) {
+return typer.bindVariable(p.second, p.first.type);
+}));
+var statements = checkBody(typer, expectedType, position, c.body.body);
+return MethodImplementation.methodImplementation(c.body.position, c.body.name, c.body.parameters, statements);
+}));
+return MatchCase.matchCase(implementation, fieldNames);
+})();
+}})(find(signaturesAndHint.first, (function(s) {
+return c.body.name == s.symbol;
+})));
+}));
+return Term.match(position, typedValue, typedCases, signaturesAndHint.second);
+})();
+case "lambda": return (function(){
+var position = _match.position;
+var parameters = _match.parameters;
+var body = _match.body;
+var parameterTypes = map(parameters, (function(p) {
+return Type.variable(position, typer.fresh());
+}));
+var returnType = Type.variable(position, typer.fresh());
+var functionType = Type.constructor(position, ("F" + ('' + parameters.length) + "@_"), parameterTypes.concat([returnType]));
+equalityConstraint(typer, position, expectedType, functionType);
+var typedBody = typer.scope((function() {
+each(zip(parameters, parameterTypes), (function(p) {
+return typer.bindVariable(p.first, p.second);
+}));
+return checkBody(typer, returnType, position, body);
+}));
+return Term.lambda(position, parameters, typedBody);
+})();
+case "functionCall": return (function(){
+var position = _match.position;
+var methodName = _match.name;
+var arguments_ = _match.arguments_;
+var signature = (function(_match) { switch(_match._) {
+case "some": return (function(){
+var f = _match.value;
+return f.signature;
+})();
+case "none": return (function(){
+return typer.error(position, ("No such method: " + methodName));
+})();
+}})(typer.function_(methodName));
+var typedArguments = checkArguments(typer, expectedType, position, signature, arguments_);
+return Term.functionCall(position, methodName, typedArguments);
+})();
+case "staticCall": return (function(){
+var position = _match.position;
+var symbol = _match.symbol;
+var methodName = _match.name;
+var arguments_ = _match.arguments_;
+var signature = (function(_match) { switch(_match._) {
+case "some": return (function(){
+var f = _match.value;
+return f.signature;
+})();
+case "none": return (function(){
+var typeDefinition = typer.type(symbol);
+when(!typeDefinition.isSum, (function() {
+return typer.error(position, ("No such method: " + symbol + "." + methodName));
+}));
+return (function(_match) { switch(_match._) {
+case "none": return (function(){
+return typer.error(position, ("No such method: " + symbol + "." + methodName));
+})();
+case "some": return (function(){
+var s = _match.value;
+var typeArguments = map(typeDefinition.typeParameters, (function(p) {
+return Type.variable(position, typer.fresh());
+}));
+var instantiation = newStringMap(zip(typeDefinition.typeParameters, typeArguments));
+var parameters = map(s.parameters, (function(p) {
+return Parameter.parameter(p.position, p.name, typer.instantiate(instantiation, p.type));
+}));
+var returnType = Type.constructor(position, symbol, typeArguments);
+return MethodSignature.methodSignature(s.position, s.symbol, s.typeParameters, parameters, returnType);
+})();
+}})(find(typeDefinition.methodSignatures, (function(s) {
+return s.symbol == methodName;
+})));
+})();
+}})(typer.function_((symbol + "." + methodName)));
+var typedArguments = checkArguments(typer, expectedType, position, signature, arguments_);
+return Term.staticCall(position, symbol, methodName, typedArguments);
+})();
+case "methodCall": return (function(){
+var position = _match.position;
+var value = _match.value;
+var methodName = _match.name;
+var arguments_ = _match.arguments_;
+var hintSymbol = _match.hintSymbol;
+var type = Type.variable(position, typer.fresh());
+var typedValue = checkTerm(typer, type, value);
+var signatureAndHint = (function(_match) { switch(_match._) {
+case "variable": return (function(){
+var position2 = _match.position;
+var id2 = _match.id;
+return typer.error(position, ("Method call requires known object type: " + methodName));
+})();
+case "parameter": return (function(){
+var position2 = _match.position;
+var name2 = _match.name;
+return typer.error(position, ("No such method: " + methodName + " on type parameter " + name2));
+})();
+case "record": return (function(){
+var position2 = _match.position;
+var fields2 = _match.fields;
+var field = (function(_match) { switch(_match._) {
+case "none": return (function(){
+return typer.error(position, ("No such field: " + methodName + " in record " + typeToString(typer.expand(type))));
+})();
+case "some": return (function(){
+var f = _match.value;
+return f;
+})();
+}})(find(fields2, (function(f) {
+return f.label == methodName;
+})));
+return Pair.pair(MethodSignature.methodSignature(position2, field.label, [], [], field.type), "_field");
+})();
+case "constructor": return (function(){
+var position2 = _match.position;
+var symbol2 = _match.symbol;
+var typeArguments2 = _match.typeArguments;
+var typeDefinition = typer.type(symbol2);
+return if_(typeDefinition.isSum, (function() {
+when(typeDefinition.methodSignatures.length != 1, (function() {
+return typer.error(position, ("No such method: " + methodName + " on sum type " + symbol2));
+}));
+var s = typeDefinition.methodSignatures[0];
+var instantiation = newStringMap(zip(typeDefinition.typeParameters, typeArguments2));
+var parameters = map(s.parameters, (function(p) {
+return Parameter.parameter(p.position, p.name, typer.instantiate(instantiation, p.type));
+}));
+var field = (function(_match) { switch(_match._) {
+case "none": return (function(){
+return typer.error(position, ("No such field: " + methodName + " on object of type " + symbol2));
+})();
+case "some": return (function(){
+var f = _match.value;
+return f;
+})();
+}})(find(parameters, (function(p) {
+return p.name == methodName;
+})));
+return Pair.pair(MethodSignature.methodSignature(s.position, field.name, [], [], field.type), "_field");
+}), (function() {
+return (function(_match) { switch(_match._) {
+case "none": return (function(){
+return typer.error(position, ("No such method: " + methodName + " on object of type " + symbol2));
+})();
+case "some": return (function(){
+var s = _match.value;
+var instantiation = newStringMap(zip(typeDefinition.typeParameters, typeArguments2));
+var parameters = map(s.parameters, (function(p) {
+return Parameter.parameter(p.position, p.name, typer.instantiate(instantiation, p.type));
+}));
+var returnType = typer.instantiate(instantiation, s.returnType);
+return Pair.pair(MethodSignature.methodSignature(s.position, s.symbol, s.typeParameters, parameters, returnType), symbol2);
+})();
+}})(find(typeDefinition.methodSignatures, (function(s) {
+return s.symbol == methodName;
+})));
+}));
+})();
+}})(typer.expand(type));
+var typedArguments = checkArguments(typer, expectedType, position, signatureAndHint.first, arguments_);
+return Term.methodCall(position, typedValue, methodName, typedArguments, signatureAndHint.second);
+})();
+case "variable": return (function(){
+var position = _match.position;
+var symbol = _match.symbol;
+var type = typer.variable(symbol);
+equalityConstraint(typer, position, expectedType, type);
+return term;
+})();
+}})(term);
+}
+
+
+var Pair = {
+pair: function(first, second) {
+return {_: "pair", first: first, second: second};
+}
+};
+
+var Option = {
+none_k: {_: "none"},
+none: function() {
+return Option.none_k;
+},
+some: function(value) {
+return {_: "some", value: value};
+}
+};
+
+
+var Bool = {
+false_k: {_: "false"},
+false: function() {
+return Bool.false_k;
+},
+true_k: {_: "true"},
+true: function() {
+return Bool.true_k;
+}
+};
+
+
+
+
+
+
+
+
+
+function newFileSystem() {
+return require('fs');
+}
+
+function readDirectory(fs, directory, onSuccess, onError) {
+fs.readdir(directory, function(error, filenames) { if(error) onError(error); else onSuccess(filenames) });
+}
+
+function readTextFile(fs, filename, onSuccess, onError) {
+fs.readFile(filename, 'utf-8', function(error, text) { if(error) onError(error); else onSuccess(text) });
+}
+
+function writeTextFile(fs, filename, text, onSuccess, onError) {
+fs.writeFile(filename, text, function(error) { if(error) onError(error); else onSuccess() });
+}
+
+
+var Pair = {
+pair: function(first, second) {
+return {_: "pair", first: first, second: second};
+}
+};
+
+var Option = {
+none_k: {_: "none"},
+none: function() {
+return Option.none_k;
+},
+some: function(value) {
+return {_: "some", value: value};
+}
+};
+
+
+var Bool = {
+false_k: {_: "false"},
+false: function() {
+return Bool.false_k;
+},
+true_k: {_: "true"},
+true: function() {
+return Bool.true_k;
+}
+};
+
+
+
+
+
+
+
 
 function lexToken(cursor) {
 return orElse([(function() {
@@ -447,6 +1795,232 @@ function testLexer() {
 var result = lexTokens("while({x > 1}, { y += '\n' })");
 for(var i = 0; i < result.length; i++) console.log(result[i].token._);
 }
+
+
+var Pair = {
+pair: function(first, second) {
+return {_: "pair", first: first, second: second};
+}
+};
+
+var Option = {
+none_k: {_: "none"},
+none: function() {
+return Option.none_k;
+},
+some: function(value) {
+return {_: "some", value: value};
+}
+};
+
+
+var Bool = {
+false_k: {_: "false"},
+false: function() {
+return Bool.false_k;
+},
+true_k: {_: "true"},
+true: function() {
+return Bool.true_k;
+}
+};
+
+
+
+
+
+
+
+
+function compile(fs, moduleSources) {
+var parsedModules = map(moduleSources, (function(p) {
+var moduleName = p.first;
+console.log('Parsing ' + moduleName);
+var tokens = lexTokens(p.second);
+var pc = newPc(newTokenCursor(tokens, 0), p.second);
+return Pair.pair(p.first, parseModule(pc, "_current", "_Current", p.first, p.second));
+}));
+var resolver = newResolver(map(parsedModules, (function(p) {
+return p.second;
+})));
+var resolvedModules = map(parsedModules, (function(p) {
+var moduleName = p.first;
+console.log('Resolving ' + moduleName);
+return Pair.pair(p.first, resolveModule(resolver, p.second));
+}));
+var typer = newTyper(map(resolvedModules, (function(p) {
+return p.second;
+})));
+var typedModules = map(resolvedModules, (function(p) {
+var moduleName = p.first;
+console.log('Typing ' + moduleName);
+return Pair.pair(p.first, checkModule(typer, p.second));
+}));
+var builder = newStringBuilder();
+each(typedModules, (function(p) {
+var moduleName = p.first;
+console.log('Emitting ' + moduleName);
+return emitModule(builder, p.second);
+}));
+var emitted = builder.drain();
+return writeTextFile(fs, "compiler.js", (emitted + "\n\nmain();\n"), (function() {
+console.log('Wrote compiler.js')
+}), (function(error) {
+return panic(error);
+}));
+}
+
+function main() {
+var fs = newFileSystem();
+var moduleFiles = newArrayBuilder();
+return readDirectory(fs, "compiler", (function(files) {
+return each(files, (function(file) {
+var filename = ("compiler/" + file);
+return readTextFile(fs, filename, (function(text) {
+moduleFiles.push(Pair.pair(filename, text));
+return when(moduleFiles.size() == files.length, (function() {
+return compile(fs, moduleFiles.drain());
+}));
+}), (function(error) {
+return panic(error);
+}));
+}));
+}), (function(error) {
+return panic(error);
+}));
+}
+
+
+var Pair = {
+pair: function(first, second) {
+return {_: "pair", first: first, second: second};
+}
+};
+
+var Option = {
+none_k: {_: "none"},
+none: function() {
+return Option.none_k;
+},
+some: function(value) {
+return {_: "some", value: value};
+}
+};
+
+
+var Bool = {
+false_k: {_: "false"},
+false: function() {
+return Bool.false_k;
+},
+true_k: {_: "true"},
+true: function() {
+return Bool.true_k;
+}
+};
+
+
+
+
+
+
+
+
+
+function newPc(cursor, buffer) {
+var tokenTypeText = (function(tokenType) {
+return tokenType._;
+});
+var tokenText = (function(token) {
+return buffer.substring(token.from, token.to);
+});
+var positionText = (function(token) {
+var token2 = token;
+var position = newCharCursor(buffer).position(token.from);
+return ("at line " + ('' + position.line) + " column " + ('' + position.column));
+});
+return {
+position: function() {
+return cursor.invoke(0).from;
+},
+consume: function(tokenType) {
+var ahead = cursor.invoke(0);
+when(ahead.token != tokenType, (function() {
+return panic(("Expected " + tokenTypeText(tokenType) + ", got " + tokenText(ahead) + " " + positionText(ahead)));
+}));
+var text = tokenText(ahead);
+cursor.skip(1);
+return text;
+},
+lookahead: function(expected, cases) {
+var i = 0;
+var result = Option.none();
+while_((function() {
+return i < cases.length && result == Option.none();
+}), (function() {
+var case_ = cases[i];
+var j = 0;
+var match = true;
+while_((function() {
+return j < case_.first.length;
+}), (function() {
+match = match && case_.first[j] == cursor.invoke(j).token;
+j += 1;
+}));
+when(match, (function() {
+result = Option.some(case_.second());
+}));
+i += 1;
+}));
+return (function(_match) { switch(_match._) {
+case "none": return (function(){
+var ahead = cursor.invoke(0);
+return panic(("Expected " + expected + ", got " + tokenText(ahead) + " " + positionText(ahead)));
+})();
+case "some": return (function(){
+var value = _match.value;
+return value;
+})();
+}})(result);
+}
+};
+}
+
+
+var Pair = {
+pair: function(first, second) {
+return {_: "pair", first: first, second: second};
+}
+};
+
+var Option = {
+none_k: {_: "none"},
+none: function() {
+return Option.none_k;
+},
+some: function(value) {
+return {_: "some", value: value};
+}
+};
+
+
+var Bool = {
+false_k: {_: "false"},
+false: function() {
+return Bool.false_k;
+},
+true_k: {_: "true"},
+true: function() {
+return Bool.true_k;
+}
+};
+
+
+
+
+
+
+
 
 function parseCommaList(pc, parse, end) {
 var result = newArrayBuilder();
@@ -1208,692 +2782,41 @@ return pc.lookahead("line break", [Pair.pair([TokenType.outsideFile()], (functio
 return Module.module(package_, file, alias, source, typeDefinitions.drain(), functionDefinitions.drain());
 }
 
-function testAll(moduleSources) {
-var parsedModules = map(moduleSources, (function(p) {
-var moduleName = p.first;
-console.log('Parsing ' + moduleName);
-var tokens = lexTokens(p.second);
-var pc = newPc(newTokenCursor(tokens, 0), p.second);
-return Pair.pair(p.first, parseModule(pc, "_current", "_Current", p.first, p.second));
-}));
-console.dir(parsedModules);
-var resolver = newResolver(map(parsedModules, (function(p) {
-return p.second;
-})));
-var resolvedModules = map(parsedModules, (function(p) {
-var moduleName = p.first;
-console.log('Resolving ' + moduleName);
-return Pair.pair(p.first, resolveModule(resolver, p.second));
-}));
-console.dir(resolvedModules);
-var typer = newTyper(map(resolvedModules, (function(p) {
-return p.second;
-})));
-var typedModules = map(resolvedModules, (function(p) {
-var moduleName = p.first;
-console.log('Typing ' + moduleName);
-return Pair.pair(p.first, checkModule(typer, p.second));
-}));
-console.dir(typedModules);
-var builder = newStringBuilder();
-each(typedModules, (function(p) {
-var moduleName = p.first;
-console.log('Emitting ' + moduleName);
-return emitModule(builder, p.second);
-}));
-var emitted = builder.drain();
-console.log('------------------------ ' + emitted.length);
-if(window.compilesOfKeen == null) window.compilesOfKeen = 1; else window.compilesOfKeen += 1;
-if(window.compilesOfKeen < 3) { eval.call(window, emitted); window.doCompileKeenNow(); } else console.log(emitted);
+
+var Pair = {
+pair: function(first, second) {
+return {_: "pair", first: first, second: second};
 }
+};
+
+var Option = {
+none_k: {_: "none"},
+none: function() {
+return Option.none_k;
+},
+some: function(value) {
+return {_: "some", value: value};
+}
+};
 
 
-function newFileSystem() {
-return require('fs');
+var Bool = {
+false_k: {_: "false"},
+false: function() {
+return Bool.false_k;
+},
+true_k: {_: "true"},
+true: function() {
+return Bool.true_k;
 }
+};
 
-function readDirectory(fs, directory, onSuccess, onError) {
-fs.readdir(directory, function(error, filenames) { if(error) onError(error); else onSuccess(filenames) });
-}
 
-function readTextFile(fs, filename, onSuccess, onError) {
-fs.readFile(filename, 'utf-8', function(error, text) { if(error) onError(error); else onSuccess(text) });
-}
 
-function writeTextFile(fs, filename, text, onSuccess, onError) {
-fs.writeFile(filename, text, function(error) { if(error) onError(error); else onSuccess() });
-}
 
-function compile(fs, moduleSources) {
-var parsedModules = map(moduleSources, (function(p) {
-var moduleName = p.first;
-console.log('Parsing ' + moduleName);
-var tokens = lexTokens(p.second);
-var pc = newPc(newTokenCursor(tokens, 0), p.second);
-return Pair.pair(p.first, parseModule(pc, "_current", "_Current", p.first, p.second));
-}));
-var resolver = newResolver(map(parsedModules, (function(p) {
-return p.second;
-})));
-var resolvedModules = map(parsedModules, (function(p) {
-var moduleName = p.first;
-console.log('Resolving ' + moduleName);
-return Pair.pair(p.first, resolveModule(resolver, p.second));
-}));
-var typer = newTyper(map(resolvedModules, (function(p) {
-return p.second;
-})));
-var typedModules = map(resolvedModules, (function(p) {
-var moduleName = p.first;
-console.log('Typing ' + moduleName);
-return Pair.pair(p.first, checkModule(typer, p.second));
-}));
-var builder = newStringBuilder();
-each(typedModules, (function(p) {
-var moduleName = p.first;
-console.log('Emitting ' + moduleName);
-return emitModule(builder, p.second);
-}));
-var emitted = builder.drain();
-return writeTextFile(fs, "compiler.js", (emitted + "\n\nmain();\n"), (function() {
-console.log('Wrote compiler.js')
-}), (function(error) {
-return panic(error);
-}));
-}
 
-function main() {
-var fs = newFileSystem();
-var moduleFiles = newArrayBuilder();
-return readDirectory(fs, "compiler", (function(files) {
-return each(files, (function(file) {
-var filename = ("compiler/" + file);
-return readTextFile(fs, filename, (function(text) {
-moduleFiles.push(Pair.pair(filename, text));
-return when(moduleFiles.size() == files.length, (function() {
-return compile(fs, moduleFiles.drain());
-}));
-}), (function(error) {
-return panic(error);
-}));
-}));
-}), (function(error) {
-return panic(error);
-}));
-}
 
-function checkModule(typer, module) {
-typer.setModule(module);
-return Module.module(module.package_, module.file, module.alias, module.source, module.typeDefinitions, map(module.functionDefinitions, (function(d) {
-return typer.topScope((function() {
-return checkFunctionDefinitionInScope(typer, d);
-}));
-})));
-}
 
-function checkFunctionDefinitionInScope(typer, definition) {
-each(definition.signature.parameters, (function(p) {
-return typer.bindVariable(p.name, p.type);
-}));
-var body = checkBody(typer, definition.signature.returnType, definition.position, definition.body);
-return FunctionDefinition.functionDefinition(definition.position, definition.signature, body);
-}
-
-function checkBody(typer, expectedType, position, body) {
-return if_(body.length == 0, (function() {
-equalityConstraint(typer, position, expectedType, Type.constructor(position, "Void@_", []));
-return [];
-}), (function() {
-return typer.scope((function() {
-var initial = map(firsts(body), (function(s) {
-return checkStatement(typer, Type.variable(position, typer.fresh()), s);
-}));
-var return_ = orPanic(last(body));
-var typedReturn = (function(_match) { switch(_match._) {
-case "constructor": return (function(){
-var position2 = _match.position;
-var symbol2 = _match.symbol;
-var typeArguments2 = _match.typeArguments;
-return if_(symbol2 == "Void@_", (function() {
-return checkStatement(typer, Type.variable(position, typer.fresh()), return_);
-}), (function() {
-return checkStatement(typer, expectedType, return_);
-}));
-})();
-case "record": return (function(){
-var position2 = _match.position;
-var fields2 = _match.fields;
-return checkStatement(typer, expectedType, return_);
-})();
-case "parameter": return (function(){
-var position2 = _match.position;
-var name2 = _match.name;
-return checkStatement(typer, expectedType, return_);
-})();
-case "variable": return (function(){
-var position2 = _match.position;
-var id2 = _match.id;
-return checkStatement(typer, expectedType, return_);
-})();
-}})(typer.expand(expectedType));
-return initial.concat([typedReturn]);
-}));
-}));
-}
-
-function checkStatement(typer, expectedType, statement) {
-return (function(_match) { switch(_match._) {
-case "term": return (function(){
-var position = _match.position;
-var term = _match.term;
-var term2 = checkTerm(typer, expectedType, term);
-return Statement.term(position, term2);
-})();
-case "let": return (function(){
-var position = _match.position;
-var variable = _match.variable;
-var type = _match.type;
-var value = _match.value;
-equalityConstraint(typer, position, expectedType, Type.constructor(position, "Void@_", []));
-var type2 = or(type, Type.variable(position, typer.fresh()));
-var value2 = checkTerm(typer, type2, value);
-var expandedType = typer.expand(type2);
-typer.bindVariable(variable, expandedType);
-return Statement.let_(position, variable, Option.some(expandedType), value2);
-})();
-case "functions": return (function(){
-var definitions = _match.definitions;
-var position = orPanic(first(definitions)).position;
-each(definitions, (function(d) {
-return typer.bindFunction(d.signature.symbol, d);
-}));
-var typedDefinitions = map(definitions, (function(d) {
-return typer.scope((function() {
-return checkFunctionDefinitionInScope(typer, d);
-}));
-}));
-equalityConstraint(typer, position, expectedType, Type.constructor(position, "Void@_", []));
-return Statement.functions(typedDefinitions);
-})();
-case "assign": return (function(){
-var position = _match.position;
-var variable = _match.variable;
-var value = _match.value;
-equalityConstraint(typer, position, expectedType, Type.constructor(position, "Void@_", []));
-var value2 = checkTerm(typer, typer.variable(variable), value);
-return Statement.assign(position, variable, value2);
-})();
-case "increment": return (function(){
-var position = _match.position;
-var variable = _match.variable;
-var value = _match.value;
-equalityConstraint(typer, position, expectedType, Type.constructor(position, "Void@_", []));
-var value2 = checkTerm(typer, typer.variable(variable), value);
-return Statement.increment(position, variable, value2);
-})();
-case "decrement": return (function(){
-var position = _match.position;
-var variable = _match.variable;
-var value = _match.value;
-equalityConstraint(typer, position, expectedType, Type.constructor(position, "Void@_", []));
-var value2 = checkTerm(typer, typer.variable(variable), value);
-return Statement.decrement(position, variable, value2);
-})();
-case "ffi": return (function(){
-var position = _match.position;
-var language = _match.language;
-var code = _match.code;
-return statement;
-})();
-}})(statement);
-}
-
-function checkArguments(typer, expectedType, position, signature, arguments_) {
-var instantiation = newStringMap(map(signature.typeParameters, (function(p) {
-return Pair.pair(p, Type.variable(position, typer.fresh()));
-})));
-var parameterTypes = map(signature.parameters, (function(p) {
-return typer.instantiate(instantiation, p.type);
-}));
-var returnType = typer.instantiate(instantiation, signature.returnType);
-equalityConstraint(typer, position, expectedType, returnType);
-var unnamed = map(zip(parameterTypes, arguments_.unnamed), (function(p) {
-return checkTerm(typer, p.first, p.second);
-}));
-var namedParameters = map(signature.parameters.slice(arguments_.unnamed.length), (function(p) {
-return p.name;
-}));
-var named = map(zip(parameterTypes.slice(arguments_.unnamed.length), namedParameters), (function(p) {
-return (function(_match) { switch(_match._) {
-case "some": return (function(){
-var a = _match.value;
-return NamedArgument.namedArgument(a.order, p.second, checkTerm(typer, p.first, a.value));
-})();
-case "none": return (function(){
-return typer.error(position, ("Missing argument: " + p.second));
-})();
-}})(find(arguments_.named, (function(a) {
-return a.name == p.second;
-})));
-}));
-when(unnamed.length + named.length < parameterTypes.length, (function() {
-return typer.error(position, "Too few arguments");
-}));
-when(unnamed.length + named.length > parameterTypes.length, (function() {
-return typer.error(position, "Too many arguments");
-}));
-return Arguments.arguments_(unnamed, named);
-}
-
-function checkTerm(typer, expectedType, term) {
-return (function(_match) { switch(_match._) {
-case "binary": return (function(){
-var position = _match.position;
-var operator = _match.operator;
-var left = _match.left;
-var right = _match.right;
-var types = if_(operator == TokenType.plus() || operator == TokenType.minus() || operator == TokenType.star() || operator == TokenType.slash(), (function() {
-return Pair.pair(Type.constructor(position, "Int@_", []), Type.constructor(position, "Int@_", []));
-}), (function() {
-return Pair.pair(Type.variable(position, typer.fresh()), Type.constructor(position, "Bool@_", []));
-}));
-equalityConstraint(typer, position, expectedType, types.second);
-var typedLeft = checkTerm(typer, types.first, left);
-var typedRight = checkTerm(typer, types.first, right);
-return Term.binary(position, operator, typedLeft, typedRight);
-})();
-case "unary": return (function(){
-var position = _match.position;
-var operator = _match.operator;
-var value = _match.value;
-var types = if_(operator == TokenType.minus(), (function() {
-return Pair.pair(Type.constructor(position, "Int@_", []), Type.constructor(position, "Int@_", []));
-}), (function() {
-return Pair.pair(Type.constructor(position, "Bool@_", []), Type.constructor(position, "Bool@_", []));
-}));
-equalityConstraint(typer, position, expectedType, types.second);
-var typedValue = checkTerm(typer, types.first, value);
-return Term.unary(position, operator, typedValue);
-})();
-case "codeUnit": return (function(){
-var position = _match.position;
-var value = _match.value;
-equalityConstraint(typer, position, expectedType, Type.constructor(position, "Int@_", []));
-return term;
-})();
-case "text": return (function(){
-var position = _match.position;
-var value = _match.value;
-equalityConstraint(typer, position, expectedType, Type.constructor(position, "String@_", []));
-return term;
-})();
-case "textLiteral": return (function(){
-var position = _match.position;
-var parts = _match.parts;
-var typedParts = map(parts, (function(p) {
-return checkTerm(typer, Type.constructor(position, "String@_", []), p);
-}));
-equalityConstraint(typer, position, expectedType, Type.constructor(position, "String@_", []));
-return Term.textLiteral(position, typedParts);
-})();
-case "integer": return (function(){
-var position = _match.position;
-var value = _match.value;
-equalityConstraint(typer, position, expectedType, Type.constructor(position, "Int@_", []));
-return term;
-})();
-case "floating": return (function(){
-var position = _match.position;
-var value = _match.value;
-equalityConstraint(typer, position, expectedType, Type.constructor(position, "Float@_", []));
-return term;
-})();
-case "array": return (function(){
-var position = _match.position;
-var elements = _match.elements;
-var elementType = Type.variable(position, typer.fresh());
-equalityConstraint(typer, position, expectedType, Type.constructor(position, "Array@_", [elementType]));
-var typedElements = map(elements, (function(e) {
-return checkTerm(typer, elementType, e);
-}));
-return Term.array(position, typedElements);
-})();
-case "record": return (function(){
-var position = _match.position;
-var fields = _match.fields;
-var fieldTypes = map(fields, (function(f) {
-return Type.variable(position, typer.fresh());
-}));
-var typedFields = map(zip(fields, fieldTypes), (function(p) {
-var typedValue = checkTerm(typer, p.second, p.first.value);
-return Pair.pair(Field.field(p.first.position, p.first.label, typedValue), FieldType.fieldType(p.first.position, p.first.label, p.second));
-}));
-var recordType = Type.record(position, sortByString(map(typedFields, (function(p) {
-return p.second;
-})), (function(f) {
-return f.label;
-})));
-equalityConstraint(typer, position, expectedType, recordType);
-return Term.record(position, map(typedFields, (function(p) {
-return p.first;
-})));
-})();
-case "instance": return (function(){
-var position = _match.position;
-var symbol = _match.symbol;
-var thisName = _match.thisName;
-var methods = _match.methods;
-var typeDefinition = typer.type(symbol);
-var typeArguments = map(typeDefinition.typeParameters, (function(p) {
-return Type.variable(position, typer.fresh());
-}));
-var instantiation = newStringMap(zip(typeDefinition.typeParameters, typeArguments));
-var type = Type.constructor(position, symbol, typeArguments);
-equalityConstraint(typer, position, expectedType, type);
-var typedMethods = typer.scope((function() {
-(function(_match) { switch(_match._) {
-case "some": return (function(){
-var name = _match.value;
-return typer.bindVariable(name, type);
-})();
-case "none": return (function(){
-})();
-}})(thisName);
-return map(methods, (function(m) {
-var signature = (function(_match) { switch(_match._) {
-case "none": return (function(){
-return typer.error(position, ("Unknown method: " + m.name));
-})();
-case "some": return (function(){
-var s = _match.value;
-return s;
-})();
-}})(find(typeDefinition.methodSignatures, (function(s) {
-return s.symbol == m.name;
-})));
-return typer.scope((function() {
-var parameterTypes = map(signature.parameters, (function(p) {
-return typer.instantiate(instantiation, p.type);
-}));
-var returnType = typer.instantiate(instantiation, signature.returnType);
-each(zip(m.parameters, parameterTypes), (function(p) {
-return typer.bindVariable(p.first, p.second);
-}));
-var typedBody = checkBody(typer, returnType, m.position, m.body);
-return MethodImplementation.methodImplementation(m.position, m.name, m.parameters, typedBody);
-}));
-}));
-}));
-each(typeDefinition.methodSignatures, (function(s) {
-return (function(_match) { switch(_match._) {
-case "none": return (function(){
-return typer.error(position, ("Missing method: " + s.symbol));
-})();
-case "some": return (function(){
-var s = _match.value;
-})();
-}})(find(methods, (function(m) {
-return s.symbol == m.name;
-})));
-}));
-when(methods.length > typeDefinition.methodSignatures.length, (function() {
-return typer.error(position, "Duplicate method");
-}));
-return Term.instance(position, symbol, thisName, typedMethods);
-})();
-case "match": return (function(){
-var position = _match.position;
-var value = _match.value;
-var cases = _match.cases;
-var hintSymbol = _match.hintSymbol;
-var type = Type.variable(position, typer.fresh());
-var typedValue = checkTerm(typer, type, value);
-var signaturesAndHint = (function(_match) { switch(_match._) {
-case "variable": return (function(){
-var position2 = _match.position;
-var id2 = _match.id;
-return typer.error(position, "Match requires known object type");
-})();
-case "parameter": return (function(){
-var position2 = _match.position;
-var name2 = _match.name;
-return typer.error(position, ("Can't match on type parameter: " + typeToString(typer.expand(type))));
-})();
-case "record": return (function(){
-var position2 = _match.position;
-var fields2 = _match.fields;
-return typer.error(position, ("Can't match on record type: " + typeToString(typer.expand(type))));
-})();
-case "constructor": return (function(){
-var position2 = _match.position;
-var symbol2 = _match.symbol;
-var typeArguments2 = _match.typeArguments;
-var typeDefinition = typer.type(symbol2);
-when(!typeDefinition.isSum, (function() {
-return typer.error(position, ("Can't match on non-sum type: " + typeToString(typer.expand(type))));
-}));
-var signatures = map(typeDefinition.methodSignatures, (function(s) {
-when(find(cases, (function(c) {
-return c.body.name == s.symbol;
-})) == Option.none(), (function() {
-return typer.error(position, ("Missing case: " + s.symbol + " on type " + typeToString(typer.expand(type))));
-}));
-var instantiation = newStringMap(zip(typeDefinition.typeParameters, typeArguments2));
-var parameters = map(s.parameters, (function(p) {
-return Parameter.parameter(p.position, p.name, typer.instantiate(instantiation, p.type));
-}));
-var returnType = typer.instantiate(instantiation, s.returnType);
-return MethodSignature.methodSignature(s.position, s.symbol, s.typeParameters, parameters, returnType);
-}));
-each(cases, (function(c) {
-return (function(_match) { switch(_match._) {
-case "none": return (function(){
-return typer.error(position, ("Unknown case: " + c.body.name));
-})();
-case "some": return (function(){
-var s = _match.value;
-})();
-}})(find(typeDefinition.methodSignatures, (function(s) {
-return s.symbol == c.body.name;
-})));
-}));
-when(cases.length > typeDefinition.methodSignatures.length, (function() {
-return typer.error(position, "Duplicate case");
-}));
-return Pair.pair(signatures, symbol2);
-})();
-}})(typer.expand(type));
-var typedCases = map(cases, (function(c) {
-return (function(_match) { switch(_match._) {
-case "none": return (function(){
-return typer.error(position, ("No such case: " + c.body.name + " in type " + typeToString(typer.expand(type))));
-})();
-case "some": return (function(){
-var s = _match.value;
-var fieldNames = map(s.parameters, (function(p) {
-return p.name;
-}));
-var implementation = typer.scope((function() {
-each(zip(s.parameters, c.body.parameters), (function(p) {
-return typer.bindVariable(p.second, p.first.type);
-}));
-var statements = checkBody(typer, expectedType, position, c.body.body);
-return MethodImplementation.methodImplementation(c.body.position, c.body.name, c.body.parameters, statements);
-}));
-return MatchCase.matchCase(implementation, fieldNames);
-})();
-}})(find(signaturesAndHint.first, (function(s) {
-return c.body.name == s.symbol;
-})));
-}));
-return Term.match(position, typedValue, typedCases, signaturesAndHint.second);
-})();
-case "lambda": return (function(){
-var position = _match.position;
-var parameters = _match.parameters;
-var body = _match.body;
-var parameterTypes = map(parameters, (function(p) {
-return Type.variable(position, typer.fresh());
-}));
-var returnType = Type.variable(position, typer.fresh());
-var functionType = Type.constructor(position, ("F" + ('' + parameters.length) + "@_"), parameterTypes.concat([returnType]));
-equalityConstraint(typer, position, expectedType, functionType);
-var typedBody = typer.scope((function() {
-each(zip(parameters, parameterTypes), (function(p) {
-return typer.bindVariable(p.first, p.second);
-}));
-return checkBody(typer, returnType, position, body);
-}));
-return Term.lambda(position, parameters, typedBody);
-})();
-case "functionCall": return (function(){
-var position = _match.position;
-var methodName = _match.name;
-var arguments_ = _match.arguments_;
-var signature = (function(_match) { switch(_match._) {
-case "some": return (function(){
-var f = _match.value;
-return f.signature;
-})();
-case "none": return (function(){
-return typer.error(position, ("No such method: " + methodName));
-})();
-}})(typer.function_(methodName));
-var typedArguments = checkArguments(typer, expectedType, position, signature, arguments_);
-return Term.functionCall(position, methodName, typedArguments);
-})();
-case "staticCall": return (function(){
-var position = _match.position;
-var symbol = _match.symbol;
-var methodName = _match.name;
-var arguments_ = _match.arguments_;
-var signature = (function(_match) { switch(_match._) {
-case "some": return (function(){
-var f = _match.value;
-return f.signature;
-})();
-case "none": return (function(){
-var typeDefinition = typer.type(symbol);
-when(!typeDefinition.isSum, (function() {
-return typer.error(position, ("No such method: " + symbol + "." + methodName));
-}));
-return (function(_match) { switch(_match._) {
-case "none": return (function(){
-return typer.error(position, ("No such method: " + symbol + "." + methodName));
-})();
-case "some": return (function(){
-var s = _match.value;
-var typeArguments = map(typeDefinition.typeParameters, (function(p) {
-return Type.variable(position, typer.fresh());
-}));
-var instantiation = newStringMap(zip(typeDefinition.typeParameters, typeArguments));
-var parameters = map(s.parameters, (function(p) {
-return Parameter.parameter(p.position, p.name, typer.instantiate(instantiation, p.type));
-}));
-var returnType = Type.constructor(position, symbol, typeArguments);
-return MethodSignature.methodSignature(s.position, s.symbol, s.typeParameters, parameters, returnType);
-})();
-}})(find(typeDefinition.methodSignatures, (function(s) {
-return s.symbol == methodName;
-})));
-})();
-}})(typer.function_((symbol + "." + methodName)));
-var typedArguments = checkArguments(typer, expectedType, position, signature, arguments_);
-return Term.staticCall(position, symbol, methodName, typedArguments);
-})();
-case "methodCall": return (function(){
-var position = _match.position;
-var value = _match.value;
-var methodName = _match.name;
-var arguments_ = _match.arguments_;
-var hintSymbol = _match.hintSymbol;
-var type = Type.variable(position, typer.fresh());
-var typedValue = checkTerm(typer, type, value);
-var signatureAndHint = (function(_match) { switch(_match._) {
-case "variable": return (function(){
-var position2 = _match.position;
-var id2 = _match.id;
-return typer.error(position, ("Method call requires known object type: " + methodName));
-})();
-case "parameter": return (function(){
-var position2 = _match.position;
-var name2 = _match.name;
-return typer.error(position, ("No such method: " + methodName + " on type parameter " + name2));
-})();
-case "record": return (function(){
-var position2 = _match.position;
-var fields2 = _match.fields;
-var field = (function(_match) { switch(_match._) {
-case "none": return (function(){
-return typer.error(position, ("No such field: " + methodName + " in record " + typeToString(typer.expand(type))));
-})();
-case "some": return (function(){
-var f = _match.value;
-return f;
-})();
-}})(find(fields2, (function(f) {
-return f.label == methodName;
-})));
-return Pair.pair(MethodSignature.methodSignature(position2, field.label, [], [], field.type), "_field");
-})();
-case "constructor": return (function(){
-var position2 = _match.position;
-var symbol2 = _match.symbol;
-var typeArguments2 = _match.typeArguments;
-var typeDefinition = typer.type(symbol2);
-return if_(typeDefinition.isSum, (function() {
-when(typeDefinition.methodSignatures.length != 1, (function() {
-return typer.error(position, ("No such method: " + methodName + " on sum type " + symbol2));
-}));
-var s = typeDefinition.methodSignatures[0];
-var instantiation = newStringMap(zip(typeDefinition.typeParameters, typeArguments2));
-var parameters = map(s.parameters, (function(p) {
-return Parameter.parameter(p.position, p.name, typer.instantiate(instantiation, p.type));
-}));
-var field = (function(_match) { switch(_match._) {
-case "none": return (function(){
-return typer.error(position, ("No such field: " + methodName + " on object of type " + symbol2));
-})();
-case "some": return (function(){
-var f = _match.value;
-return f;
-})();
-}})(find(parameters, (function(p) {
-return p.name == methodName;
-})));
-return Pair.pair(MethodSignature.methodSignature(s.position, field.name, [], [], field.type), "_field");
-}), (function() {
-return (function(_match) { switch(_match._) {
-case "none": return (function(){
-return typer.error(position, ("No such method: " + methodName + " on object of type " + symbol2));
-})();
-case "some": return (function(){
-var s = _match.value;
-var instantiation = newStringMap(zip(typeDefinition.typeParameters, typeArguments2));
-var parameters = map(s.parameters, (function(p) {
-return Parameter.parameter(p.position, p.name, typer.instantiate(instantiation, p.type));
-}));
-var returnType = typer.instantiate(instantiation, s.returnType);
-return Pair.pair(MethodSignature.methodSignature(s.position, s.symbol, s.typeParameters, parameters, returnType), symbol2);
-})();
-}})(find(typeDefinition.methodSignatures, (function(s) {
-return s.symbol == methodName;
-})));
-}));
-})();
-}})(typer.expand(type));
-var typedArguments = checkArguments(typer, expectedType, position, signatureAndHint.first, arguments_);
-return Term.methodCall(position, typedValue, methodName, typedArguments, signatureAndHint.second);
-})();
-case "variable": return (function(){
-var position = _match.position;
-var symbol = _match.symbol;
-var type = typer.variable(symbol);
-equalityConstraint(typer, position, expectedType, type);
-return term;
-})();
-}})(term);
-}
 
 
 var Pair = {
@@ -2084,85 +3007,40 @@ return array.slice().sort(function(a, b) { return selector(a) - selector(b); });
 }
 
 
-function newPc(cursor, buffer) {
-var tokenTypeText = (function(tokenType) {
-return tokenType._;
-});
-var tokenText = (function(token) {
-return buffer.substring(token.from, token.to);
-});
-var positionText = (function(token) {
-var token2 = token;
-var position = newCharCursor(buffer).position(token.from);
-return ("at line " + ('' + position.line) + " column " + ('' + position.column));
-});
-return {
-position: function() {
-return cursor.invoke(0).from;
-},
-consume: function(tokenType) {
-var ahead = cursor.invoke(0);
-when(ahead.token != tokenType, (function() {
-return panic(("Expected " + tokenTypeText(tokenType) + ", got " + tokenText(ahead) + " " + positionText(ahead)));
-}));
-var text = tokenText(ahead);
-cursor.skip(1);
-return text;
-},
-lookahead: function(expected, cases) {
-var i = 0;
-var result = Option.none();
-while_((function() {
-return i < cases.length && result == Option.none();
-}), (function() {
-var case_ = cases[i];
-var j = 0;
-var match = true;
-while_((function() {
-return j < case_.first.length;
-}), (function() {
-match = match && case_.first[j] == cursor.invoke(j).token;
-j += 1;
-}));
-when(match, (function() {
-result = Option.some(case_.second());
-}));
-i += 1;
-}));
-return (function(_match) { switch(_match._) {
-case "none": return (function(){
-var ahead = cursor.invoke(0);
-return panic(("Expected " + expected + ", got " + tokenText(ahead) + " " + positionText(ahead)));
-})();
-case "some": return (function(){
-var value = _match.value;
-return value;
-})();
-}})(result);
+var Pair = {
+pair: function(first, second) {
+return {_: "pair", first: first, second: second};
 }
 };
-}
 
-
-function newStringBuilder() {
-var string = "";
-return {
-drain: function() {
-var result = string;
-string = "";
-return result;
+var Option = {
+none_k: {_: "none"},
+none: function() {
+return Option.none_k;
 },
-toString: function() {
-return string;
-},
-append: function(text) {
-string = (string + text);
-},
-size: function() {
-return string.length;
+some: function(value) {
+return {_: "some", value: value};
 }
 };
+
+
+var Bool = {
+false_k: {_: "false"},
+false: function() {
+return Bool.false_k;
+},
+true_k: {_: "true"},
+true: function() {
+return Bool.true_k;
 }
+};
+
+
+
+
+
+
+
 
 
 function resolveModule(resolver, module) {
@@ -2805,544 +3683,98 @@ source = text;
 };
 }
 
-function emitModule(builder, module) {
-each(module.typeDefinitions, (function(d) {
-emitTypeDefinition(builder, d);
-return builder.append("\n");
-}));
-return each(module.functionDefinitions, (function(d) {
-emitFunctionDefinition(builder, d);
-return builder.append("\n");
-}));
+
+var Pair = {
+pair: function(first, second) {
+return {_: "pair", first: first, second: second};
+}
+};
+
+var Option = {
+none_k: {_: "none"},
+none: function() {
+return Option.none_k;
+},
+some: function(value) {
+return {_: "some", value: value};
+}
+};
+
+
+var Bool = {
+false_k: {_: "false"},
+false: function() {
+return Bool.false_k;
+},
+true_k: {_: "true"},
+true: function() {
+return Bool.true_k;
+}
+};
+
+
+
+
+
+
+
+
+
+function newStringBuilder() {
+var string = "";
+return {
+drain: function() {
+var result = string;
+string = "";
+return result;
+},
+toString: function() {
+return string;
+},
+append: function(text) {
+string = (string + text);
+},
+size: function() {
+return string.length;
+}
+};
 }
 
-function emitTypeDefinition(builder, definition) {
-return when(definition.isSum, (function() {
-var name = baseName(definition.symbol);
-builder.append(("var " + escapeUpper(name) + " = {\n"));
-var first = true;
-each(definition.methodSignatures, (function(s) {
-when(!first, (function() {
-return builder.append(",\n");
-}));
-first = false;
-when(s.parameters.length == 0, (function() {
-return builder.append((escapeMethod(s.symbol) + "_k: {_: " + escapeString(s.symbol) + "},\n"));
-}));
-builder.append((escapeMethod(s.symbol) + ": function("));
-builder.append(join(map(s.parameters, (function(p) {
-return escapeVariable(p.name);
-})), ", "));
-builder.append(") {\n");
-if_(s.parameters.length == 0, (function() {
-return builder.append(("return " + escapeUpper(name) + "." + escapeMethod(s.symbol) + "_k;\n"));
-}), (function() {
-builder.append(("return {_: " + escapeString(s.symbol)));
-builder.append(join(map(s.parameters, (function(p) {
-return (", " + escapeMethod(p.name) + ": " + escapeVariable(p.name));
-})), ""));
-return builder.append("};\n");
-}));
-return builder.append("}");
-}));
-return builder.append("\n};\n");
-}));
-}
 
-function emitFunctionDefinition(builder, definition) {
-var name = baseName(definition.signature.symbol);
-var parameters = join(map(definition.signature.parameters, (function(p) {
-return escapeVariable(p.name);
-})), ", ");
-builder.append(("function " + escapeMethod(name) + "(" + parameters + ") {\n"));
-emitBody(builder, definition.body);
-return builder.append("}\n");
+var Pair = {
+pair: function(first, second) {
+return {_: "pair", first: first, second: second};
 }
+};
 
-function emitBody(builder, body) {
-var firsts = body.slice(0, body.length - 1);
-var lasts = body.slice(body.length - 1);
-each(firsts, (function(s) {
-return emitStatement(builder, s, false);
-}));
-return each(lasts, (function(s) {
-return emitStatement(builder, s, true);
-}));
+var Option = {
+none_k: {_: "none"},
+none: function() {
+return Option.none_k;
+},
+some: function(value) {
+return {_: "some", value: value};
 }
+};
 
-function emitStatement(builder, statement, return_) {
-return (function(_match) { switch(_match._) {
-case "term": return (function(){
-var position = _match.position;
-var term = _match.term;
-when(return_, (function() {
-return builder.append("return ");
-}));
-emitTerm(builder, term);
-return builder.append(";\n");
-})();
-case "let": return (function(){
-var position = _match.position;
-var variable = _match.variable;
-var type = _match.type;
-var value = _match.value;
-builder.append(("var " + escapeVariable(variable) + " = "));
-emitTerm(builder, value);
-return builder.append(";\n");
-})();
-case "functions": return (function(){
-var definitions = _match.definitions;
-return each(definitions, (function(d) {
-return emitFunctionDefinition(builder, d);
-}));
-})();
-case "assign": return (function(){
-var position = _match.position;
-var variable = _match.variable;
-var value = _match.value;
-builder.append((escapeVariable(variable) + " = "));
-emitTerm(builder, value);
-return builder.append(";\n");
-})();
-case "increment": return (function(){
-var position = _match.position;
-var variable = _match.variable;
-var value = _match.value;
-builder.append((escapeVariable(variable) + " += "));
-emitTerm(builder, value);
-return builder.append(";\n");
-})();
-case "decrement": return (function(){
-var position = _match.position;
-var variable = _match.variable;
-var value = _match.value;
-builder.append((escapeVariable(variable) + " -= "));
-emitTerm(builder, value);
-return builder.append(";\n");
-})();
-case "ffi": return (function(){
-var position = _match.position;
-var language = _match.language;
-var code = _match.code;
-builder.append(code);
-return builder.append("\n");
-})();
-}})(statement);
-}
 
-function emitArguments(builder, arguments_) {
-var first = true;
-each(arguments_.unnamed, (function(a) {
-when(!first, (function() {
-return builder.append(", ");
-}));
-first = false;
-return emitTerm(builder, a);
-}));
-/* TODO: Respect original evaluation order */
-var named = sortByInt(arguments_.named, (function(a) {
-return a.order;
-}));
-return each(named, (function(a) {
-when(!first, (function() {
-return builder.append(", ");
-}));
-first = false;
-return emitTerm(builder, a.value);
-}));
+var Bool = {
+false_k: {_: "false"},
+false: function() {
+return Bool.false_k;
+},
+true_k: {_: "true"},
+true: function() {
+return Bool.true_k;
 }
+};
 
-function emitTerm(builder, term) {
-return (function(_match) { switch(_match._) {
-case "binary": return (function(){
-var position = _match.position;
-var operator = _match.operator;
-var left = _match.left;
-var right = _match.right;
-emitTerm(builder, left);
-builder.append(" ");
-var done = false;
-when(operator == TokenType.star(), (function() {
-builder.append("*");
-done = true;
-}));
-when(operator == TokenType.slash(), (function() {
-builder.append("/");
-done = true;
-}));
-when(operator == TokenType.plus(), (function() {
-builder.append("+");
-done = true;
-}));
-when(operator == TokenType.minus(), (function() {
-builder.append("-");
-done = true;
-}));
-when(operator == TokenType.equal(), (function() {
-builder.append("==");
-done = true;
-}));
-when(operator == TokenType.notEqual(), (function() {
-builder.append("!=");
-done = true;
-}));
-when(operator == TokenType.less(), (function() {
-builder.append("<");
-done = true;
-}));
-when(operator == TokenType.lessEqual(), (function() {
-builder.append("<=");
-done = true;
-}));
-when(operator == TokenType.greater(), (function() {
-builder.append(">");
-done = true;
-}));
-when(operator == TokenType.greaterEqual(), (function() {
-builder.append(">=");
-done = true;
-}));
-when(operator == TokenType.and(), (function() {
-builder.append("&&");
-done = true;
-}));
-when(operator == TokenType.or(), (function() {
-builder.append("||");
-done = true;
-}));
-when(!done, (function() {
-return panic("Unknown binary operator");
-}));
-builder.append(" ");
-return emitTerm(builder, right);
-})();
-case "unary": return (function(){
-var position = _match.position;
-var operator = _match.operator;
-var value = _match.value;
-var done = false;
-when(operator == TokenType.minus(), (function() {
-builder.append("-");
-done = true;
-}));
-when(operator == TokenType.exclamation(), (function() {
-builder.append("!");
-done = true;
-}));
-when(!done, (function() {
-return panic("Unknown unary operator");
-}));
-return emitTerm(builder, value);
-})();
-case "codeUnit": return (function(){
-var position = _match.position;
-var value = _match.value;
-return builder.append(('' + value));
-})();
-case "text": return (function(){
-var position = _match.position;
-var value = _match.value;
-return builder.append(escapeString(value));
-})();
-case "textLiteral": return (function(){
-var position = _match.position;
-var parts = _match.parts;
-var first = true;
-when(parts.length > 1, (function() {
-return builder.append("(");
-}));
-each(parts, (function(p) {
-when(!first, (function() {
-return builder.append(" + ");
-}));
-first = false;
-return emitTerm(builder, p);
-}));
-return when(parts.length > 1, (function() {
-return builder.append(")");
-}));
-})();
-case "integer": return (function(){
-var position = _match.position;
-var value = _match.value;
-return builder.append(value);
-})();
-case "floating": return (function(){
-var position = _match.position;
-var value = _match.value;
-return builder.append(value);
-})();
-case "array": return (function(){
-var position = _match.position;
-var elements = _match.elements;
-var first = true;
-builder.append("[");
-each(elements, (function(e) {
-when(!first, (function() {
-return builder.append(", ");
-}));
-first = false;
-return emitTerm(builder, e);
-}));
-return builder.append("]");
-})();
-case "record": return (function(){
-var position = _match.position;
-var fields = _match.fields;
-var first = true;
-builder.append("{");
-each(fields, (function(f) {
-when(!first, (function() {
-return builder.append(", ");
-}));
-first = false;
-builder.append((escapeMethod(f.label) + ": "));
-return emitTerm(builder, f.value);
-}));
-return builder.append("}");
-})();
-case "instance": return (function(){
-var position = _match.position;
-var symbol = _match.symbol;
-var thisName = _match.thisName;
-var methods = _match.methods;
-when(symbol == "F0@_" || symbol == "F1@_" || symbol == "F2@_" || symbol == "F3@_", (function() {
-return panic("Can't create explicit instance of lambda function F*@_");
-}));
-builder.append("{\n");
-each(indexed(methods), (function(m) {
-builder.append(escapeMethod(m.second.name));
-builder.append(": ");
-builder.append("function(");
-builder.append(join(m.second.parameters, ", "));
-builder.append(") {\n");
-(function(_match) { switch(_match._) {
-case "some": return (function(){
-var x = _match.value;
-return builder.append(("var " + escapeVariable(x) + " = this;\n"));
-})();
-case "none": return (function(){
-})();
-}})(thisName);
-emitBody(builder, m.second.body);
-builder.append("}");
-when(m.first < methods.length - 1, (function() {
-return builder.append(",");
-}));
-return builder.append("\n");
-}));
-return builder.append("}");
-})();
-case "match": return (function(){
-var position = _match.position;
-var value = _match.value;
-var cases = _match.cases;
-var hintSymbol = _match.hintSymbol;
-return if_(hintSymbol == "Bool@_", (function() {
-builder.append("(");
-emitTerm(builder, value);
-builder.append(" ? (function() {\n");
-emitBody(builder, orPanic(find(cases, (function(c) {
-return c.body.name == "true";
-}))).body.body);
-builder.append("})() : (function() {\n");
-emitBody(builder, orPanic(find(cases, (function(c) {
-return c.body.name == "false";
-}))).body.body);
-return builder.append("})())");
-}), (function() {
-builder.append("(function(_match) { switch(_match._) {\n");
-each(cases, (function(c) {
-builder.append(("case " + escapeString(c.body.name) + ": return (function(){\n"));
-each(indexed(c.body.parameters), (function(p) {
-return builder.append(("var " + escapeVariable(p.second) + " = _match." + escapeMethod(c.fieldNames[p.first]) + ";\n"));
-}));
-emitBody(builder, c.body.body);
-return builder.append("})();\n");
-}));
-builder.append("}})(");
-emitTerm(builder, value);
-return builder.append(")");
-}));
-})();
-case "lambda": return (function(){
-var position = _match.position;
-var parameters = _match.parameters;
-var body = _match.body;
-var ps = join(map(parameters, (function(p) {
-return escapeVariable(p);
-})), ", ");
-builder.append(("(function(" + ps + ") {\n"));
-emitBody(builder, body);
-return builder.append("})");
-})();
-case "functionCall": return (function(){
-var position = _match.position;
-var methodName = _match.name;
-var arguments_ = _match.arguments_;
-var name = baseName(methodName);
-builder.append(escapeMethod(name));
-builder.append("(");
-emitArguments(builder, arguments_);
-return builder.append(")");
-})();
-case "staticCall": return (function(){
-var position = _match.position;
-var symbol = _match.symbol;
-var methodName = _match.name;
-var arguments_ = _match.arguments_;
-return if_(symbol == "Bool@_", (function() {
-return builder.append(methodName);
-}), (function() {
-var name = baseName(symbol);
-builder.append((escapeUpper(name) + "." + escapeMethod(methodName)));
-builder.append("(");
-emitArguments(builder, arguments_);
-return builder.append(")");
-}));
-})();
-case "methodCall": return (function(){
-var position = _match.position;
-var value = _match.value;
-var methodName = _match.name;
-var arguments_ = _match.arguments_;
-var hintSymbol = _match.hintSymbol;
-return if_(hintSymbol == "_field", (function() {
-emitTerm(builder, value);
-return builder.append(("." + escapeMethod(methodName)));
-}), (function() {
-return (function(_match) { switch(_match._) {
-case "some": return (function(){
-var f = _match.value;
-return f(value, builder, arguments_);
-})();
-case "none": return (function(){
-emitTerm(builder, value);
-builder.append(("." + escapeMethod(methodName)));
-builder.append("(");
-emitArguments(builder, arguments_);
-return builder.append(")");
-})();
-}})(specialMethods().get((hintSymbol + "." + methodName)));
-}));
-})();
-case "variable": return (function(){
-var position = _match.position;
-var symbol = _match.symbol;
-return builder.append(escapeVariable(symbol));
-})();
-}})(term);
-}
 
-function specialMethods() {
-return newStringMap([Pair.pair("Array@_.invoke", (function(value, builder, arguments_) {
-emitTerm(builder, value);
-builder.append("[");
-emitArguments(builder, arguments_);
-return builder.append("]");
-})), Pair.pair("Array@_.size", (function(value, builder, arguments_) {
-emitTerm(builder, value);
-return builder.append(".length");
-})), Pair.pair("Array@_.take", (function(value, builder, arguments_) {
-emitTerm(builder, value);
-builder.append(".slice(0, ");
-emitArguments(builder, arguments_);
-return builder.append(")");
-})), Pair.pair("Array@_.drop", (function(value, builder, arguments_) {
-emitTerm(builder, value);
-builder.append(".slice(");
-emitArguments(builder, arguments_);
-return builder.append(")");
-})), Pair.pair("String@_.invoke", (function(value, builder, arguments_) {
-emitTerm(builder, value);
-builder.append(".charCodeAt(");
-emitArguments(builder, arguments_);
-return builder.append(")");
-})), Pair.pair("String@_.size", (function(value, builder, arguments_) {
-emitTerm(builder, value);
-return builder.append(".length");
-})), Pair.pair("String@_.take", (function(value, builder, arguments_) {
-emitTerm(builder, value);
-builder.append(".substr(0, ");
-emitArguments(builder, arguments_);
-return builder.append(")");
-})), Pair.pair("String@_.drop", (function(value, builder, arguments_) {
-emitTerm(builder, value);
-builder.append(".substr(");
-emitArguments(builder, arguments_);
-return builder.append(")");
-})), Pair.pair("String@_.toUpper", (function(value, builder, arguments_) {
-emitTerm(builder, value);
-return builder.append(".toUpperCase()");
-})), Pair.pair("String@_.toLower", (function(value, builder, arguments_) {
-emitTerm(builder, value);
-return builder.append(".toLowerCase()");
-})), Pair.pair("F0@_.invoke", (function(value, builder, arguments_) {
-emitTerm(builder, value);
-return builder.append("()");
-})), Pair.pair("F1@_.invoke", (function(value, builder, arguments_) {
-emitTerm(builder, value);
-builder.append("(");
-emitArguments(builder, arguments_);
-return builder.append(")");
-})), Pair.pair("F2@_.invoke", (function(value, builder, arguments_) {
-emitTerm(builder, value);
-builder.append("(");
-emitArguments(builder, arguments_);
-return builder.append(")");
-})), Pair.pair("F3@_.invoke", (function(value, builder, arguments_) {
-emitTerm(builder, value);
-builder.append("(");
-emitArguments(builder, arguments_);
-return builder.append(")");
-})), Pair.pair("Bool@_.toString", (function(value, builder, arguments_) {
-builder.append("('' + ");
-emitTerm(builder, value);
-return builder.append(")");
-})), Pair.pair("Int@_.toString", (function(value, builder, arguments_) {
-builder.append("('' + ");
-emitTerm(builder, value);
-return builder.append(")");
-})), Pair.pair("Float@_.toString", (function(value, builder, arguments_) {
-builder.append("('' + ");
-emitTerm(builder, value);
-return builder.append(")");
-}))]);
-}
 
-function escapeVariable(name) {
-return if_(reservedWords().has(name), (function() {
-return (name + "_");
-}), (function() {
-return name;
-}));
-}
 
-function escapeMethod(name) {
-return if_(reservedWords().has(name), (function() {
-return (name + "_");
-}), (function() {
-return name;
-}));
-}
 
-function escapeUpper(name) {
-return name;
-}
 
-function escapeString(value) {
-return ("\"" + value + "\"");
-}
 
-function reservedWords() {
-return newStringMap(map(["arguments", "break", "case", "catch", "class", "const", "continue", "debugger", "default", "delete", "do", "else", "export", "extends", "finally", "for", "function", "if", "import", "in", "instanceof", "new", "return", "super", "switch", "this", "throw", "try", "typeof", "var", "void", "while", "with", "yield", "enum", "implements", "interface", "let", "package", "private", "protected", "public", "static", "await"], (function(w) {
-return Pair.pair(w, true);
-})));
-}
-
-function baseName(name) {
-return name.replace(/[@].*/, '');
-}
 
 
 
@@ -3408,6 +3840,42 @@ return builder.set(p.first, p.second);
 }));
 return builder;
 }
+
+
+var Pair = {
+pair: function(first, second) {
+return {_: "pair", first: first, second: second};
+}
+};
+
+var Option = {
+none_k: {_: "none"},
+none: function() {
+return Option.none_k;
+},
+some: function(value) {
+return {_: "some", value: value};
+}
+};
+
+
+var Bool = {
+false_k: {_: "false"},
+false: function() {
+return Bool.false_k;
+},
+true_k: {_: "true"},
+true: function() {
+return Bool.true_k;
+}
+};
+
+
+
+
+
+
+
 
 var Term = {
 binary: function(position, operator, left, right) {
@@ -3564,6 +4032,318 @@ module: function(package_, file, alias, source, typeDefinitions, functionDefinit
 return {_: "module", package_: package_, file: file, alias: alias, source: source, typeDefinitions: typeDefinitions, functionDefinitions: functionDefinitions};
 }
 };
+
+
+var Pair = {
+pair: function(first, second) {
+return {_: "pair", first: first, second: second};
+}
+};
+
+var Option = {
+none_k: {_: "none"},
+none: function() {
+return Option.none_k;
+},
+some: function(value) {
+return {_: "some", value: value};
+}
+};
+
+
+var Bool = {
+false_k: {_: "false"},
+false: function() {
+return Bool.false_k;
+},
+true_k: {_: "true"},
+true: function() {
+return Bool.true_k;
+}
+};
+
+
+
+
+
+
+
+
+var Token = {
+token: function(token, from, to) {
+return {_: "token", token: token, from: from, to: to};
+}
+};
+
+var TokenType = {
+leftThinArrow_k: {_: "leftThinArrow"},
+leftThinArrow: function() {
+return TokenType.leftThinArrow_k;
+},
+rightThinArrow_k: {_: "rightThinArrow"},
+rightThinArrow: function() {
+return TokenType.rightThinArrow_k;
+},
+rightThickArrow_k: {_: "rightThickArrow"},
+rightThickArrow: function() {
+return TokenType.rightThickArrow_k;
+},
+leftPipe_k: {_: "leftPipe"},
+leftPipe: function() {
+return TokenType.leftPipe_k;
+},
+rightPipe_k: {_: "rightPipe"},
+rightPipe: function() {
+return TokenType.rightPipe_k;
+},
+atSign_k: {_: "atSign"},
+atSign: function() {
+return TokenType.atSign_k;
+},
+colon_k: {_: "colon"},
+colon: function() {
+return TokenType.colon_k;
+},
+comma_k: {_: "comma"},
+comma: function() {
+return TokenType.comma_k;
+},
+dot_k: {_: "dot"},
+dot: function() {
+return TokenType.dot_k;
+},
+underscore_k: {_: "underscore"},
+underscore: function() {
+return TokenType.underscore_k;
+},
+assign_k: {_: "assign"},
+assign: function() {
+return TokenType.assign_k;
+},
+increment_k: {_: "increment"},
+increment: function() {
+return TokenType.increment_k;
+},
+decrement_k: {_: "decrement"},
+decrement: function() {
+return TokenType.decrement_k;
+},
+plus_k: {_: "plus"},
+plus: function() {
+return TokenType.plus_k;
+},
+minus_k: {_: "minus"},
+minus: function() {
+return TokenType.minus_k;
+},
+star_k: {_: "star"},
+star: function() {
+return TokenType.star_k;
+},
+slash_k: {_: "slash"},
+slash: function() {
+return TokenType.slash_k;
+},
+equal_k: {_: "equal"},
+equal: function() {
+return TokenType.equal_k;
+},
+notEqual_k: {_: "notEqual"},
+notEqual: function() {
+return TokenType.notEqual_k;
+},
+less_k: {_: "less"},
+less: function() {
+return TokenType.less_k;
+},
+lessEqual_k: {_: "lessEqual"},
+lessEqual: function() {
+return TokenType.lessEqual_k;
+},
+greater_k: {_: "greater"},
+greater: function() {
+return TokenType.greater_k;
+},
+greaterEqual_k: {_: "greaterEqual"},
+greaterEqual: function() {
+return TokenType.greaterEqual_k;
+},
+and_k: {_: "and"},
+and: function() {
+return TokenType.and_k;
+},
+or_k: {_: "or"},
+or: function() {
+return TokenType.or_k;
+},
+exclamation_k: {_: "exclamation"},
+exclamation: function() {
+return TokenType.exclamation_k;
+},
+question_k: {_: "question"},
+question: function() {
+return TokenType.question_k;
+},
+leftRound_k: {_: "leftRound"},
+leftRound: function() {
+return TokenType.leftRound_k;
+},
+rightRound_k: {_: "rightRound"},
+rightRound: function() {
+return TokenType.rightRound_k;
+},
+leftSquare_k: {_: "leftSquare"},
+leftSquare: function() {
+return TokenType.leftSquare_k;
+},
+rightSquare_k: {_: "rightSquare"},
+rightSquare: function() {
+return TokenType.rightSquare_k;
+},
+leftCurly_k: {_: "leftCurly"},
+leftCurly: function() {
+return TokenType.leftCurly_k;
+},
+rightCurly_k: {_: "rightCurly"},
+rightCurly: function() {
+return TokenType.rightCurly_k;
+},
+lower_k: {_: "lower"},
+lower: function() {
+return TokenType.lower_k;
+},
+upper_k: {_: "upper"},
+upper: function() {
+return TokenType.upper_k;
+},
+codeUnit_k: {_: "codeUnit"},
+codeUnit: function() {
+return TokenType.codeUnit_k;
+},
+text_k: {_: "text"},
+text: function() {
+return TokenType.text_k;
+},
+textStart_k: {_: "textStart"},
+textStart: function() {
+return TokenType.textStart_k;
+},
+textMiddle_k: {_: "textMiddle"},
+textMiddle: function() {
+return TokenType.textMiddle_k;
+},
+textEnd_k: {_: "textEnd"},
+textEnd: function() {
+return TokenType.textEnd_k;
+},
+numeral_k: {_: "numeral"},
+numeral: function() {
+return TokenType.numeral_k;
+},
+floating_k: {_: "floating"},
+floating: function() {
+return TokenType.floating_k;
+},
+separator_k: {_: "separator"},
+separator: function() {
+return TokenType.separator_k;
+},
+outsideFile_k: {_: "outsideFile"},
+outsideFile: function() {
+return TokenType.outsideFile_k;
+}
+};
+
+
+var Pair = {
+pair: function(first, second) {
+return {_: "pair", first: first, second: second};
+}
+};
+
+var Option = {
+none_k: {_: "none"},
+none: function() {
+return Option.none_k;
+},
+some: function(value) {
+return {_: "some", value: value};
+}
+};
+
+
+var Bool = {
+false_k: {_: "false"},
+false: function() {
+return Bool.false_k;
+},
+true_k: {_: "true"},
+true: function() {
+return Bool.true_k;
+}
+};
+
+
+
+
+
+
+
+
+
+function newTokenCursor(tokens, offset) {
+return {
+invoke: function(ahead) {
+var this_ = this;
+return tokens[offset + ahead];
+},
+skip: function(ahead) {
+var this_ = this;
+offset += ahead;
+},
+skipWith: function(result, ahead) {
+var this_ = this;
+this_.skip(ahead);
+return result;
+}
+};
+}
+
+
+var Pair = {
+pair: function(first, second) {
+return {_: "pair", first: first, second: second};
+}
+};
+
+var Option = {
+none_k: {_: "none"},
+none: function() {
+return Option.none_k;
+},
+some: function(value) {
+return {_: "some", value: value};
+}
+};
+
+
+var Bool = {
+false_k: {_: "false"},
+false: function() {
+return Bool.false_k;
+},
+true_k: {_: "true"},
+true: function() {
+return Bool.true_k;
+}
+};
+
+
+
+
+
+
+
 
 
 function newTyper(modules) {
@@ -3939,215 +4719,11 @@ var void_ = Type.constructor(0, "Void@_", []);
 var int = Type.constructor(0, "Int@_", []);
 var bool = Type.constructor(0, "Bool@_", []);
 var string = Type.constructor(0, "String@_", []);
-var typeDefinitions = [TypeDefinition.typeDefinition(0, "Void@_", [], false, []), TypeDefinition.typeDefinition(0, "Pair@_", ["a", "b"], true, [MethodSignature.methodSignature(0, "none", [], [], void_), MethodSignature.methodSignature(0, "some", [], [Parameter.parameter(0, "first", Type.parameter(0, "a")), Parameter.parameter(0, "second", Type.parameter(0, "b"))], void_)]), TypeDefinition.typeDefinition(0, "Option@_", ["a"], true, [MethodSignature.methodSignature(0, "none", [], [], void_), MethodSignature.methodSignature(0, "some", [], [Parameter.parameter(0, "value", Type.parameter(0, "a"))], void_)]), TypeDefinition.typeDefinition(0, "String@_", [], false, [MethodSignature.methodSignature(0, "invoke", [], [Parameter.parameter(0, "index", int)], int), MethodSignature.methodSignature(0, "size", [], [], int), MethodSignature.methodSignature(0, "take", [], [Parameter.parameter(0, "count", int)], string), MethodSignature.methodSignature(0, "drop", [], [Parameter.parameter(0, "count", int)], string), MethodSignature.methodSignature(0, "toLower", [], [], string), MethodSignature.methodSignature(0, "toUpper", [], [], string)]), TypeDefinition.typeDefinition(0, "Bool@_", [], true, [MethodSignature.methodSignature(0, "false", [], [], void_), MethodSignature.methodSignature(0, "true", [], [], void_)]), TypeDefinition.typeDefinition(0, "Int@_", [], false, [MethodSignature.methodSignature(0, "toString", [], [], string)]), TypeDefinition.typeDefinition(0, "Float@_", [], false, [MethodSignature.methodSignature(0, "toString", [], [], string)]), TypeDefinition.typeDefinition(0, "Array@_", ["a"], false, [MethodSignature.methodSignature(0, "invoke", [], [Parameter.parameter(0, "index", int)], Type.parameter(0, "a")), MethodSignature.methodSignature(0, "size", [], [], int), MethodSignature.methodSignature(0, "take", [], [Parameter.parameter(0, "count", int)], Type.constructor(0, "Array@_", [Type.parameter(0, "a")])), MethodSignature.methodSignature(0, "drop", [], [Parameter.parameter(0, "count", int)], Type.constructor(0, "Array@_", [Type.parameter(0, "a")])), MethodSignature.methodSignature(0, "concat", [], [Parameter.parameter(0, "array", Type.constructor(0, "Array@_", [Type.parameter(0, "a")]))], Type.constructor(0, "Array@_", [Type.parameter(0, "a")]))]), TypeDefinition.typeDefinition(0, "F0@_", ["r"], false, [MethodSignature.methodSignature(0, "invoke", [], [], Type.parameter(0, "r"))]), TypeDefinition.typeDefinition(0, "F1@_", ["p1", "r"], false, [MethodSignature.methodSignature(0, "invoke", [], [Parameter.parameter(0, "a1", Type.parameter(0, "p1"))], Type.parameter(0, "r"))]), TypeDefinition.typeDefinition(0, "F2@_", ["p1", "p2", "r"], false, [MethodSignature.methodSignature(0, "invoke", [], [Parameter.parameter(0, "a1", Type.parameter(0, "p1")), Parameter.parameter(0, "a2", Type.parameter(0, "p2"))], Type.parameter(0, "r"))]), TypeDefinition.typeDefinition(0, "F3@_", ["p1", "p2", "p3", "r"], false, [MethodSignature.methodSignature(0, "invoke", [], [Parameter.parameter(0, "a1", Type.parameter(0, "p1")), Parameter.parameter(0, "a2", Type.parameter(0, "p2")), Parameter.parameter(0, "a3", Type.parameter(0, "p3"))], Type.parameter(0, "r"))])];
+var typeDefinitions = [TypeDefinition.typeDefinition(0, "Void@_", [], false, []), TypeDefinition.typeDefinition(0, "Pair@_", ["a", "b"], true, [MethodSignature.methodSignature(0, "pair", [], [Parameter.parameter(0, "first", Type.parameter(0, "a")), Parameter.parameter(0, "second", Type.parameter(0, "b"))], void_)]), TypeDefinition.typeDefinition(0, "Option@_", ["a"], true, [MethodSignature.methodSignature(0, "none", [], [], void_), MethodSignature.methodSignature(0, "some", [], [Parameter.parameter(0, "value", Type.parameter(0, "a"))], void_)]), TypeDefinition.typeDefinition(0, "String@_", [], false, [MethodSignature.methodSignature(0, "invoke", [], [Parameter.parameter(0, "index", int)], int), MethodSignature.methodSignature(0, "size", [], [], int), MethodSignature.methodSignature(0, "take", [], [Parameter.parameter(0, "count", int)], string), MethodSignature.methodSignature(0, "drop", [], [Parameter.parameter(0, "count", int)], string), MethodSignature.methodSignature(0, "toLower", [], [], string), MethodSignature.methodSignature(0, "toUpper", [], [], string)]), TypeDefinition.typeDefinition(0, "Bool@_", [], true, [MethodSignature.methodSignature(0, "false", [], [], void_), MethodSignature.methodSignature(0, "true", [], [], void_)]), TypeDefinition.typeDefinition(0, "Int@_", [], false, [MethodSignature.methodSignature(0, "toString", [], [], string)]), TypeDefinition.typeDefinition(0, "Float@_", [], false, [MethodSignature.methodSignature(0, "toString", [], [], string)]), TypeDefinition.typeDefinition(0, "Array@_", ["a"], false, [MethodSignature.methodSignature(0, "invoke", [], [Parameter.parameter(0, "index", int)], Type.parameter(0, "a")), MethodSignature.methodSignature(0, "size", [], [], int), MethodSignature.methodSignature(0, "take", [], [Parameter.parameter(0, "count", int)], Type.constructor(0, "Array@_", [Type.parameter(0, "a")])), MethodSignature.methodSignature(0, "drop", [], [Parameter.parameter(0, "count", int)], Type.constructor(0, "Array@_", [Type.parameter(0, "a")])), MethodSignature.methodSignature(0, "concat", [], [Parameter.parameter(0, "array", Type.constructor(0, "Array@_", [Type.parameter(0, "a")]))], Type.constructor(0, "Array@_", [Type.parameter(0, "a")]))]), TypeDefinition.typeDefinition(0, "F0@_", ["r"], false, [MethodSignature.methodSignature(0, "invoke", [], [], Type.parameter(0, "r"))]), TypeDefinition.typeDefinition(0, "F1@_", ["p1", "r"], false, [MethodSignature.methodSignature(0, "invoke", [], [Parameter.parameter(0, "a1", Type.parameter(0, "p1"))], Type.parameter(0, "r"))]), TypeDefinition.typeDefinition(0, "F2@_", ["p1", "p2", "r"], false, [MethodSignature.methodSignature(0, "invoke", [], [Parameter.parameter(0, "a1", Type.parameter(0, "p1")), Parameter.parameter(0, "a2", Type.parameter(0, "p2"))], Type.parameter(0, "r"))]), TypeDefinition.typeDefinition(0, "F3@_", ["p1", "p2", "p3", "r"], false, [MethodSignature.methodSignature(0, "invoke", [], [Parameter.parameter(0, "a1", Type.parameter(0, "p1")), Parameter.parameter(0, "a2", Type.parameter(0, "p2")), Parameter.parameter(0, "a3", Type.parameter(0, "p3"))], Type.parameter(0, "r"))])];
 return map(typeDefinitions, (function(d) {
 return Pair.pair(d.symbol, d);
 }));
 }
-
-
-function newTokenCursor(tokens, offset) {
-return {
-invoke: function(ahead) {
-var this_ = this;
-return tokens[offset + ahead];
-},
-skip: function(ahead) {
-var this_ = this;
-offset += ahead;
-},
-skipWith: function(result, ahead) {
-var this_ = this;
-this_.skip(ahead);
-return result;
-}
-};
-}
-
-var Token = {
-token: function(token, from, to) {
-return {_: "token", token: token, from: from, to: to};
-}
-};
-
-var TokenType = {
-leftThinArrow_k: {_: "leftThinArrow"},
-leftThinArrow: function() {
-return TokenType.leftThinArrow_k;
-},
-rightThinArrow_k: {_: "rightThinArrow"},
-rightThinArrow: function() {
-return TokenType.rightThinArrow_k;
-},
-rightThickArrow_k: {_: "rightThickArrow"},
-rightThickArrow: function() {
-return TokenType.rightThickArrow_k;
-},
-leftPipe_k: {_: "leftPipe"},
-leftPipe: function() {
-return TokenType.leftPipe_k;
-},
-rightPipe_k: {_: "rightPipe"},
-rightPipe: function() {
-return TokenType.rightPipe_k;
-},
-atSign_k: {_: "atSign"},
-atSign: function() {
-return TokenType.atSign_k;
-},
-colon_k: {_: "colon"},
-colon: function() {
-return TokenType.colon_k;
-},
-comma_k: {_: "comma"},
-comma: function() {
-return TokenType.comma_k;
-},
-dot_k: {_: "dot"},
-dot: function() {
-return TokenType.dot_k;
-},
-underscore_k: {_: "underscore"},
-underscore: function() {
-return TokenType.underscore_k;
-},
-assign_k: {_: "assign"},
-assign: function() {
-return TokenType.assign_k;
-},
-increment_k: {_: "increment"},
-increment: function() {
-return TokenType.increment_k;
-},
-decrement_k: {_: "decrement"},
-decrement: function() {
-return TokenType.decrement_k;
-},
-plus_k: {_: "plus"},
-plus: function() {
-return TokenType.plus_k;
-},
-minus_k: {_: "minus"},
-minus: function() {
-return TokenType.minus_k;
-},
-star_k: {_: "star"},
-star: function() {
-return TokenType.star_k;
-},
-slash_k: {_: "slash"},
-slash: function() {
-return TokenType.slash_k;
-},
-equal_k: {_: "equal"},
-equal: function() {
-return TokenType.equal_k;
-},
-notEqual_k: {_: "notEqual"},
-notEqual: function() {
-return TokenType.notEqual_k;
-},
-less_k: {_: "less"},
-less: function() {
-return TokenType.less_k;
-},
-lessEqual_k: {_: "lessEqual"},
-lessEqual: function() {
-return TokenType.lessEqual_k;
-},
-greater_k: {_: "greater"},
-greater: function() {
-return TokenType.greater_k;
-},
-greaterEqual_k: {_: "greaterEqual"},
-greaterEqual: function() {
-return TokenType.greaterEqual_k;
-},
-and_k: {_: "and"},
-and: function() {
-return TokenType.and_k;
-},
-or_k: {_: "or"},
-or: function() {
-return TokenType.or_k;
-},
-exclamation_k: {_: "exclamation"},
-exclamation: function() {
-return TokenType.exclamation_k;
-},
-question_k: {_: "question"},
-question: function() {
-return TokenType.question_k;
-},
-leftRound_k: {_: "leftRound"},
-leftRound: function() {
-return TokenType.leftRound_k;
-},
-rightRound_k: {_: "rightRound"},
-rightRound: function() {
-return TokenType.rightRound_k;
-},
-leftSquare_k: {_: "leftSquare"},
-leftSquare: function() {
-return TokenType.leftSquare_k;
-},
-rightSquare_k: {_: "rightSquare"},
-rightSquare: function() {
-return TokenType.rightSquare_k;
-},
-leftCurly_k: {_: "leftCurly"},
-leftCurly: function() {
-return TokenType.leftCurly_k;
-},
-rightCurly_k: {_: "rightCurly"},
-rightCurly: function() {
-return TokenType.rightCurly_k;
-},
-lower_k: {_: "lower"},
-lower: function() {
-return TokenType.lower_k;
-},
-upper_k: {_: "upper"},
-upper: function() {
-return TokenType.upper_k;
-},
-codeUnit_k: {_: "codeUnit"},
-codeUnit: function() {
-return TokenType.codeUnit_k;
-},
-text_k: {_: "text"},
-text: function() {
-return TokenType.text_k;
-},
-textStart_k: {_: "textStart"},
-textStart: function() {
-return TokenType.textStart_k;
-},
-textMiddle_k: {_: "textMiddle"},
-textMiddle: function() {
-return TokenType.textMiddle_k;
-},
-textEnd_k: {_: "textEnd"},
-textEnd: function() {
-return TokenType.textEnd_k;
-},
-numeral_k: {_: "numeral"},
-numeral: function() {
-return TokenType.numeral_k;
-},
-floating_k: {_: "floating"},
-floating: function() {
-return TokenType.floating_k;
-},
-separator_k: {_: "separator"},
-separator: function() {
-return TokenType.separator_k;
-},
-outsideFile_k: {_: "outsideFile"},
-outsideFile: function() {
-return TokenType.outsideFile_k;
-}
-};
 
 
 
