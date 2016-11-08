@@ -1,0 +1,47 @@
+compile(fs : FileSystem, moduleSources : Array[Pair[String, String]]) {
+    parsedModules := map(moduleSources, p => {
+        moduleName := p.first
+        js"console.log('Parsing ' + moduleName);"
+        tokens := lexTokens(p.second)
+        pc := newPc(newTokenCursor(tokens, 0), p.second)
+        Pair(p.first, parseModule(pc, "_current", "_Current", p.first, p.second))
+    })
+    resolver := newResolver(map(parsedModules, p => p.second))
+    resolvedModules := map(parsedModules, p => {
+        moduleName := p.first
+        js"console.log('Resolving ' + moduleName);"
+        Pair(p.first, resolveModule(resolver, p.second))
+    })
+    typer := newTyper(map(resolvedModules, p => p.second))
+    typedModules := map(resolvedModules, p => {
+        moduleName := p.first
+        js"console.log('Typing ' + moduleName);"
+        Pair(p.first, checkModule(typer, p.second))
+    })
+    builder := newStringBuilder()
+    each(typedModules, p => {
+        moduleName := p.first
+        js"console.log('Emitting ' + moduleName);"
+        emitModule(builder, p.second)
+    })
+    emitted := builder.drain
+    writeTextFile(fs, "compiler.js", "\(emitted)\n\nmain();\n", () => {
+        js"console.log('Wrote compiler.js')"
+    }, error => panic(error))
+}
+
+main() {
+    fs := newFileSystem()
+    moduleFiles := newArrayBuilder()
+    readDirectory(fs, "compiler", files => {
+        each(files, file => {
+            filename := "compiler/\(file)"
+            readTextFile(fs, filename, text => {
+                moduleFiles.push(Pair(filename, text))
+                when(moduleFiles.size == files.size, {
+                    compile(fs, moduleFiles.drain)
+                })
+            }, error => panic(error))
+        })
+    }, error => panic(error))
+}

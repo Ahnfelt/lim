@@ -1,0 +1,17 @@
+FileSystem {}
+
+newFileSystem() : FileSystem {
+    js"return require('fs');"
+}
+
+readDirectory(fs : FileSystem, directory : String, onSuccess : Array[String] => Void, onError : String => Void) : Void {
+    js"fs.readdir(directory, function(error, filenames) { if(error) onError(error); else onSuccess(filenames) });"
+}
+
+readTextFile(fs : FileSystem, filename : String, onSuccess : String => Void, onError : String => Void) : Void {
+    js"fs.readFile(filename, 'utf-8', function(error, text) { if(error) onError(error); else onSuccess(text) });"
+}
+
+writeTextFile(fs : FileSystem, filename : String, text : String, onSuccess : () => Void, onError : String => Void) : Void {
+    js"fs.writeFile(filename, text, function(error) { if(error) onError(error); else onSuccess() });"
+}
