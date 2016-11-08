@@ -47,7 +47,7 @@
                 function compile() {
                     if(moduleFiles.length != moduleSources.length) return;
                     var go = testAll;
-                    testAll = null; // To ensure we won't call the same version of the compile again
+                    testAll = null; // To ensure we won't call the same version of the compiler again
                     go(moduleSources);
                 }
 
