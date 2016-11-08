@@ -39,7 +39,8 @@ main() {
             readTextFile(fs, filename, text => {
                 moduleFiles.push(Pair(filename, text))
                 when(moduleFiles.size == files.size, {
-                    compile(fs, moduleFiles.drain)
+                    sortedFiles := sortByString(moduleFiles.drain, p => p.first)
+                    compile(fs, sortedFiles)
                 })
             }, error => panic(error))
         })
