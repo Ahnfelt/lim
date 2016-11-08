@@ -1,6 +1,5 @@
 emitModule(builder : StringBuilder, module : Module) {
-    prelude := map(preludeTypeDefinitions(), p => p.second)
-    each(prelude.concat(module.typeDefinitions), d => {
+    each(module.typeDefinitions, d => {
         emitTypeDefinition(builder, d)
         builder.append("\n")
     })

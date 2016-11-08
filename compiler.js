@@ -93,42 +93,6 @@ return array.length;
 };
 }
 
-
-var Pair = {
-pair: function(first, second) {
-return {_: "pair", first: first, second: second};
-}
-};
-
-var Option = {
-none_k: {_: "none"},
-none: function() {
-return Option.none_k;
-},
-some: function(value) {
-return {_: "some", value: value};
-}
-};
-
-
-var Bool = {
-false_k: {_: "false"},
-false: function() {
-return Bool.false_k;
-},
-true_k: {_: "true"},
-true: function() {
-return Bool.true_k;
-}
-};
-
-
-
-
-
-
-
-
 var Position = {
 position: function(line, column, buffer, offset) {
 return {_: "position", line: line, column: column, buffer: buffer, offset: offset};
@@ -235,42 +199,6 @@ function positionText(cursor, offset) {
 var position = cursor.position(offset);
 return ("at line " + ('' + position.line) + " column " + ('' + position.column));
 }
-
-
-var Pair = {
-pair: function(first, second) {
-return {_: "pair", first: first, second: second};
-}
-};
-
-var Option = {
-none_k: {_: "none"},
-none: function() {
-return Option.none_k;
-},
-some: function(value) {
-return {_: "some", value: value};
-}
-};
-
-
-var Bool = {
-false_k: {_: "false"},
-false: function() {
-return Bool.false_k;
-},
-true_k: {_: "true"},
-true: function() {
-return Bool.true_k;
-}
-};
-
-
-
-
-
-
-
 
 function checkModule(typer, module) {
 typer.setModule(module);
@@ -845,47 +773,8 @@ return term;
 }})(term);
 }
 
-
-var Pair = {
-pair: function(first, second) {
-return {_: "pair", first: first, second: second};
-}
-};
-
-var Option = {
-none_k: {_: "none"},
-none: function() {
-return Option.none_k;
-},
-some: function(value) {
-return {_: "some", value: value};
-}
-};
-
-
-var Bool = {
-false_k: {_: "false"},
-false: function() {
-return Bool.false_k;
-},
-true_k: {_: "true"},
-true: function() {
-return Bool.true_k;
-}
-};
-
-
-
-
-
-
-
-
 function emitModule(builder, module) {
-var prelude = map(preludeTypeDefinitions(), (function(p) {
-return p.second;
-}));
-each(prelude.concat(module.typeDefinitions), (function(d) {
+each(module.typeDefinitions, (function(d) {
 emitTypeDefinition(builder, d);
 return builder.append("\n");
 }));
@@ -1424,42 +1313,6 @@ return name.replace(/[@].*/, '');
 }
 
 
-var Pair = {
-pair: function(first, second) {
-return {_: "pair", first: first, second: second};
-}
-};
-
-var Option = {
-none_k: {_: "none"},
-none: function() {
-return Option.none_k;
-},
-some: function(value) {
-return {_: "some", value: value};
-}
-};
-
-
-var Bool = {
-false_k: {_: "false"},
-false: function() {
-return Bool.false_k;
-},
-true_k: {_: "true"},
-true: function() {
-return Bool.true_k;
-}
-};
-
-
-
-
-
-
-
-
-
 function newFileSystem() {
 return require('fs');
 }
@@ -1475,42 +1328,6 @@ fs.readFile(filename, 'utf-8', function(error, text) { if(error) onError(error);
 function writeTextFile(fs, filename, text, onSuccess, onError) {
 fs.writeFile(filename, text, function(error) { if(error) onError(error); else onSuccess() });
 }
-
-
-var Pair = {
-pair: function(first, second) {
-return {_: "pair", first: first, second: second};
-}
-};
-
-var Option = {
-none_k: {_: "none"},
-none: function() {
-return Option.none_k;
-},
-some: function(value) {
-return {_: "some", value: value};
-}
-};
-
-
-var Bool = {
-false_k: {_: "false"},
-false: function() {
-return Bool.false_k;
-},
-true_k: {_: "true"},
-true: function() {
-return Bool.true_k;
-}
-};
-
-
-
-
-
-
-
 
 function lexToken(cursor) {
 return orElse([(function() {
@@ -1796,42 +1613,6 @@ var result = lexTokens("while({x > 1}, { y += '\n' })");
 for(var i = 0; i < result.length; i++) console.log(result[i].token._);
 }
 
-
-var Pair = {
-pair: function(first, second) {
-return {_: "pair", first: first, second: second};
-}
-};
-
-var Option = {
-none_k: {_: "none"},
-none: function() {
-return Option.none_k;
-},
-some: function(value) {
-return {_: "some", value: value};
-}
-};
-
-
-var Bool = {
-false_k: {_: "false"},
-false: function() {
-return Bool.false_k;
-},
-true_k: {_: "true"},
-true: function() {
-return Bool.true_k;
-}
-};
-
-
-
-
-
-
-
-
 function compile(fs, moduleSources) {
 var parsedModules = map(moduleSources, (function(p) {
 var moduleName = p.first;
@@ -1857,6 +1638,10 @@ console.log('Typing ' + moduleName);
 return Pair.pair(p.first, checkModule(typer, p.second));
 }));
 var builder = newStringBuilder();
+console.log('Emitting built-in types');
+emitModule(builder, Module.module("_prelude", "_prelude", "_prelude", "", map(preludeTypeDefinitions(), (function(p) {
+return p.second;
+})), []));
 each(typedModules, (function(p) {
 var moduleName = p.first;
 console.log('Emitting ' + moduleName);
@@ -1892,42 +1677,6 @@ return panic(error);
 return panic(error);
 }));
 }
-
-
-var Pair = {
-pair: function(first, second) {
-return {_: "pair", first: first, second: second};
-}
-};
-
-var Option = {
-none_k: {_: "none"},
-none: function() {
-return Option.none_k;
-},
-some: function(value) {
-return {_: "some", value: value};
-}
-};
-
-
-var Bool = {
-false_k: {_: "false"},
-false: function() {
-return Bool.false_k;
-},
-true_k: {_: "true"},
-true: function() {
-return Bool.true_k;
-}
-};
-
-
-
-
-
-
-
 
 function parseCommaList(pc, parse, end) {
 var result = newArrayBuilder();
@@ -2690,42 +2439,6 @@ return Module.module(package_, file, alias, source, typeDefinitions.drain(), fun
 }
 
 
-var Pair = {
-pair: function(first, second) {
-return {_: "pair", first: first, second: second};
-}
-};
-
-var Option = {
-none_k: {_: "none"},
-none: function() {
-return Option.none_k;
-},
-some: function(value) {
-return {_: "some", value: value};
-}
-};
-
-
-var Bool = {
-false_k: {_: "false"},
-false: function() {
-return Bool.false_k;
-},
-true_k: {_: "true"},
-true: function() {
-return Bool.true_k;
-}
-};
-
-
-
-
-
-
-
-
-
 function newPc(cursor, buffer) {
 var tokenTypeText = (function(tokenType) {
 return tokenType._;
@@ -2784,42 +2497,6 @@ return value;
 }
 };
 }
-
-
-var Pair = {
-pair: function(first, second) {
-return {_: "pair", first: first, second: second};
-}
-};
-
-var Option = {
-none_k: {_: "none"},
-none: function() {
-return Option.none_k;
-},
-some: function(value) {
-return {_: "some", value: value};
-}
-};
-
-
-var Bool = {
-false_k: {_: "false"},
-false: function() {
-return Bool.false_k;
-},
-true_k: {_: "true"},
-true: function() {
-return Bool.true_k;
-}
-};
-
-
-
-
-
-
-
 
 
 var Pair = {
@@ -3008,42 +2685,6 @@ return array.slice().sort(function(a, b) { return selector(a).localeCompare(sele
 function sortByInt(array, selector) {
 return array.slice().sort(function(a, b) { return selector(a) - selector(b); });
 }
-
-
-var Pair = {
-pair: function(first, second) {
-return {_: "pair", first: first, second: second};
-}
-};
-
-var Option = {
-none_k: {_: "none"},
-none: function() {
-return Option.none_k;
-},
-some: function(value) {
-return {_: "some", value: value};
-}
-};
-
-
-var Bool = {
-false_k: {_: "false"},
-false: function() {
-return Bool.false_k;
-},
-true_k: {_: "true"},
-true: function() {
-return Bool.true_k;
-}
-};
-
-
-
-
-
-
-
 
 
 function resolveModule(resolver, module) {
@@ -3687,42 +3328,6 @@ source = text;
 }
 
 
-var Pair = {
-pair: function(first, second) {
-return {_: "pair", first: first, second: second};
-}
-};
-
-var Option = {
-none_k: {_: "none"},
-none: function() {
-return Option.none_k;
-},
-some: function(value) {
-return {_: "some", value: value};
-}
-};
-
-
-var Bool = {
-false_k: {_: "false"},
-false: function() {
-return Bool.false_k;
-},
-true_k: {_: "true"},
-true: function() {
-return Bool.true_k;
-}
-};
-
-
-
-
-
-
-
-
-
 function newStringBuilder() {
 var string = "";
 return {
@@ -3742,42 +3347,6 @@ return string.length;
 }
 };
 }
-
-
-var Pair = {
-pair: function(first, second) {
-return {_: "pair", first: first, second: second};
-}
-};
-
-var Option = {
-none_k: {_: "none"},
-none: function() {
-return Option.none_k;
-},
-some: function(value) {
-return {_: "some", value: value};
-}
-};
-
-
-var Bool = {
-false_k: {_: "false"},
-false: function() {
-return Bool.false_k;
-},
-true_k: {_: "true"},
-true: function() {
-return Bool.true_k;
-}
-};
-
-
-
-
-
-
-
 
 
 
@@ -3843,42 +3412,6 @@ return builder.set(p.first, p.second);
 }));
 return builder;
 }
-
-
-var Pair = {
-pair: function(first, second) {
-return {_: "pair", first: first, second: second};
-}
-};
-
-var Option = {
-none_k: {_: "none"},
-none: function() {
-return Option.none_k;
-},
-some: function(value) {
-return {_: "some", value: value};
-}
-};
-
-
-var Bool = {
-false_k: {_: "false"},
-false: function() {
-return Bool.false_k;
-},
-true_k: {_: "true"},
-true: function() {
-return Bool.true_k;
-}
-};
-
-
-
-
-
-
-
 
 var Term = {
 binary: function(position, operator, left, right) {
@@ -4035,42 +3568,6 @@ module: function(package_, file, alias, source, typeDefinitions, functionDefinit
 return {_: "module", package_: package_, file: file, alias: alias, source: source, typeDefinitions: typeDefinitions, functionDefinitions: functionDefinitions};
 }
 };
-
-
-var Pair = {
-pair: function(first, second) {
-return {_: "pair", first: first, second: second};
-}
-};
-
-var Option = {
-none_k: {_: "none"},
-none: function() {
-return Option.none_k;
-},
-some: function(value) {
-return {_: "some", value: value};
-}
-};
-
-
-var Bool = {
-false_k: {_: "false"},
-false: function() {
-return Bool.false_k;
-},
-true_k: {_: "true"},
-true: function() {
-return Bool.true_k;
-}
-};
-
-
-
-
-
-
-
 
 var Token = {
 token: function(token, from, to) {
@@ -4258,42 +3755,6 @@ return TokenType.outsideFile_k;
 };
 
 
-var Pair = {
-pair: function(first, second) {
-return {_: "pair", first: first, second: second};
-}
-};
-
-var Option = {
-none_k: {_: "none"},
-none: function() {
-return Option.none_k;
-},
-some: function(value) {
-return {_: "some", value: value};
-}
-};
-
-
-var Bool = {
-false_k: {_: "false"},
-false: function() {
-return Bool.false_k;
-},
-true_k: {_: "true"},
-true: function() {
-return Bool.true_k;
-}
-};
-
-
-
-
-
-
-
-
-
 function newTokenCursor(tokens, offset) {
 return {
 invoke: function(ahead) {
@@ -4311,42 +3772,6 @@ return result;
 }
 };
 }
-
-
-var Pair = {
-pair: function(first, second) {
-return {_: "pair", first: first, second: second};
-}
-};
-
-var Option = {
-none_k: {_: "none"},
-none: function() {
-return Option.none_k;
-},
-some: function(value) {
-return {_: "some", value: value};
-}
-};
-
-
-var Bool = {
-false_k: {_: "false"},
-false: function() {
-return Bool.false_k;
-},
-true_k: {_: "true"},
-true: function() {
-return Bool.true_k;
-}
-};
-
-
-
-
-
-
-
 
 
 function newTyper(modules) {
