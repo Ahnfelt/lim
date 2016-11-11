@@ -1,0 +1,7 @@
+{
+    "account": "ahnfelt",
+    "repository": "lim",
+    "dependencies": [
+        {"module": "Prelude", "import": ["if", "when", "each", "while"], "account": "ahnfelt", "repository": "lim-bootstrap-prelude"}
+    ]
+}

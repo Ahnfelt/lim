@@ -42,9 +42,12 @@ compile(fs : FileSystem, moduleSources : Array[Pair[String, String]]) {
 main() {
     fs := newFileSystem()
     moduleFiles := newArrayBuilder()
-    readDirectory(fs, "compiler", files => {
+    findPackageDependencyOrder(fs, ".", packageFiles => {
+        js"console.dir(packageFiles, { depth: null });"
+    }, error => panic(error))
+    readDirectory(fs, "lim", files => {
         each(files, file => {
-            filename := "compiler/\(file)"
+            filename := "lim/\(file)"
             readTextFile(fs, filename, text => {
                 moduleFiles.push(Pair(filename, text))
                 when(moduleFiles.size == files.size, {

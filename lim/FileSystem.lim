@@ -15,3 +15,7 @@ readTextFile(fs : FileSystem, filename : String, onSuccess : String => Void, onE
 writeTextFile(fs : FileSystem, filename : String, text : String, onSuccess : () => Void, onError : String => Void) : Void {
     js"fs.writeFile(filename, text, function(error) { if(error) onError(error); else onSuccess() });"
 }
+
+normalizeFilePath(filePath : String) : String {
+    js"return require('path').normalize(filePath);"
+}

@@ -1,0 +1,98 @@
+JsonPackage(account : String, repository : String, version : String, dependencies : Array[JsonPackageDependency])
+JsonPackageDependency(module : String, import : Array[String], account : String, repository : String, version : String)
+
+Package(account : Option[String], repository : String, version : Option[String], dependencies : Array[PackageDependency])
+PackageDependency(module : Option[String], import : Array[String], account : Option[String], repository : String, version : Option[String])
+
+PackageFiles(package : Package, path : String, files : Array[Pair[String, String]])
+
+PackageResolver(fileSystem : FileSystem, through : StringMapBuilder[Bool], packages : StringMapBuilder[PackageFiles], order : StringMapBuilder[Int])
+
+jsonOption[a](value : a) : Option[a] {
+    js"return value != null ? Option.some(value) : Option.none();"
+}
+
+jsonToJsonPackage(jsonText : String) : JsonPackage {
+    js"return JSON.parse(jsonText);"
+}
+
+jsonDependenciesToDependencies(jsonDependencies : Array[JsonPackageDependency]) : Array[PackageDependency] {
+    map(jsonDependencies, json => {
+        PackageDependency(
+            module = jsonOption(json.module),
+            import = jsonOption(json.import) ? { some(import) { import } ; none { [] } },
+            account = jsonOption(json.account),
+            repository = orPanic(jsonOption(json.repository), "Dependency field required: repository"),
+            version = jsonOption(json.version)
+        )
+    })
+}
+
+jsonPackageToPackage(json : JsonPackage) : Package {
+    Package(
+        account = jsonOption(json.account),
+        repository = orPanic(jsonOption(json.repository), "Field required: repository"),
+        version = jsonOption(json.version),
+        dependencies = jsonOption(json.dependencies) ? { some(jsonDependencies) { jsonDependenciesToDependencies(jsonDependencies) } ; none { [] } }
+    )
+}
+
+doFindPackageFiles(fs : FileSystem, package : Package, path : String, onSuccess : PackageFiles => Void, onError : String => Void) {
+    directory := "\(path)/lim"
+    moduleFiles := newArrayBuilder()
+    readDirectory(fs, directory, files => {
+        when(files.size == 0, { onSuccess(PackageFiles(package, path, [])) })
+        each(files, file => {
+            filename := "\(path)/lim/\(file)"
+            readTextFile(fs, filename, text => {
+                moduleFiles.push(Pair(filename, text))
+                when(moduleFiles.size == files.size, {
+                    sortedFiles := sortByString(moduleFiles.drain, p => p.first)
+                    onSuccess(PackageFiles(package, path, sortedFiles))
+                })
+            }, onError)
+        })
+    }, onError)
+}
+
+doFindPackageDependencyOrder(resolver : PackageResolver, depth : Int, path : String, onSuccess : () => Void, onError : String => Void) {
+    packagePath := "\(path)/lim.json"
+    readTextFile(resolver.fileSystem, packagePath, text => {
+        jsonPackage := jsonToJsonPackage(text)
+        package := jsonPackageToPackage(jsonPackage)
+        accountPrefix := or(package.account, "")
+        name := "\(accountPrefix)/\(package.repository)"
+        if(resolver.through.has(name), {
+            onError("Cyclic dependency: \(name)")
+        }, {
+            resolver.through.set(name, Bool.true)
+            order := or(resolver.order.get(name), 0)
+            when(depth > order, { resolver.order.set(name, depth) })
+            doFindPackageFiles(resolver.fileSystem, package, path, packageFiles => {
+                resolver.packages.set(name, packageFiles)
+                processedDependencies := 0
+                onDependencySuccess() {
+                    when(processedDependencies == package.dependencies.size, {
+                        resolver.through.remove(name)
+                        onSuccess()
+                    })
+                    processedDependencies += 1
+                }
+                onDependencySuccess()
+                each(package.dependencies, d => {
+                    newPath := normalizeFilePath("\(path)/../\(d.repository)")
+                    doFindPackageDependencyOrder(resolver, depth + 1, newPath, () => onDependencySuccess(), onError)
+                })
+            }, onError)
+        })
+    }, onError)
+}
+
+findPackageDependencyOrder(fs : FileSystem, path : String, onSuccess : Array[PackageFiles] => Void, onError : String => Void) {
+    resolver := PackageResolver(fs, newStringMapBuilder([]), newStringMapBuilder([]), newStringMapBuilder([]))
+    doFindPackageDependencyOrder(resolver, 1, path, {
+        order := sortByInt(resolver.order.toArray, o => -o.second)
+        packages := map(order, o => resolver.packages.invoke(o.first))
+        onSuccess(packages)
+    }, onError)
+}
