@@ -1816,17 +1816,17 @@ return resolver.order.set(name, depth);
 return doFindPackageFiles(resolver.fileSystem, package_, path, (function(packageFiles) {
 resolver.packages.set(name, packageFiles);
 var processedDependencies = 0;
-function onDependencySuccess() {
+function checkIfDone() {
 when(processedDependencies == package_.dependencies.length, (function() {
 resolver.through.remove(name);
 return onSuccess();
 }));
 processedDependencies += 1;
 }
-onDependencySuccess();
+checkIfDone();
 return each(package_.dependencies, (function(d) {
 var newPath = normalizeFilePath((path + "/../" + d.repository));
-return doFindPackageDependencyOrder(resolver, depth + 1, newPath, onDependencySuccess, onError);
+return doFindPackageDependencyOrder(resolver, depth + 1, newPath, checkIfDone, onError);
 }));
 }), onError);
 }));
