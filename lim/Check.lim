@@ -118,19 +118,36 @@ checkArguments(typer : Typer, expectedType : Type, position : Int, signature : M
 checkTerm(typer : Typer, expectedType : Type, term : Term) : Term {
     term ? {
         binary(position, operator, left, right) {
-            types := if(
+            operandType := Type.variable(position, typer.fresh)
+            typedLeft := checkTerm(typer, operandType, left)
+            typedRight := checkTerm(typer, operandType, right)
+            returnType := if(
                 operator == TokenType.plus ||
                 operator == TokenType.minus ||
                 operator == TokenType.star ||
                 operator == TokenType.slash,
             {
-                Pair(Type.constructor(position, "Int@_", []), Type.constructor(position, "Int@_", []))
+                typer.expand(operandType) ? {
+                    constructor(position2, symbol2, typeArguments2) {
+                        when(symbol2 != "Int@_" && symbol2 != "Float@_" && symbol2 != "String@_", {
+                            typer.error(position, "Expected Int, Float or String, got \(typeToString(operandType))")
+                        })
+                    }
+                    record(position2, fields2) {
+                        typer.error(position, "Expected Int, Float or String, got \(typeToString(operandType))")
+                    }
+                    parameter(position2, symbol2) {
+                        typer.error(position, "Expected Int, Float or String, got \(typeToString(operandType))")
+                    }
+                    variable(position2, id2) {
+                        typer.error(position, "Expected Int, Float or String, got \(typeToString(operandType))")
+                    }
+                }
+                operandType
             }, {
-                Pair(Type.variable(position, typer.fresh), Type.constructor(position, "Bool@_", []))
+                Type.constructor(position, "Bool@_", [])
             })
-            equalityConstraint(typer, position, expectedType, types.second)
-            typedLeft := checkTerm(typer, types.first, left)
-            typedRight := checkTerm(typer, types.first, right)
+            equalityConstraint(typer, position, expectedType, returnType)
             Term.binary(position, operator, typedLeft, typedRight)
         }
         unary(position, operator, value) {

@@ -57,7 +57,7 @@ doFindPackageFiles(fs : FileSystem, package : Package, path : String, onSuccess 
 
 doFindPackageDependencyOrder(resolver : PackageResolver, depth : Int, path : String, onSuccess : () => Void, onError : String => Void) {
 
-    packagePath := "\(path)/lim.json"
+    packagePath := path + "/lim.json"
 
     readTextFile(resolver.fileSystem, packagePath, text => {
 
@@ -65,11 +65,11 @@ doFindPackageDependencyOrder(resolver : PackageResolver, depth : Int, path : Str
         package := jsonPackageToPackage(jsonPackage)
 
         accountPrefix := or(package.account, "")
-        name := "\(accountPrefix)/\(package.repository)"
+        name := accountPrefix + "/" + package.repository
 
         if(resolver.through.has(name), {
 
-            onError("Cyclic dependency: \(name)")
+            onError("Cyclic dependency: " + name)
 
         }, {
 
@@ -93,7 +93,7 @@ doFindPackageDependencyOrder(resolver : PackageResolver, depth : Int, path : Str
                 checkIfDone()
 
                 each(package.dependencies, d => {
-                    newPath := normalizeFilePath("\(path)/../\(d.repository)")
+                    newPath := normalizeFilePath(path + "/../" + d.repository)
                     doFindPackageDependencyOrder(resolver, depth + 1, newPath, checkIfDone, onError)
                 })
 

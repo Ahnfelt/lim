@@ -370,14 +370,40 @@ var position = _match.position;
 var operator = _match.operator;
 var left = _match.left;
 var right = _match.right;
-var types = if_(operator == TokenType.plus() || operator == TokenType.minus() || operator == TokenType.star() || operator == TokenType.slash(), (function() {
-return Pair.pair(Type.constructor(position, "Int@_", []), Type.constructor(position, "Int@_", []));
-}), (function() {
-return Pair.pair(Type.variable(position, typer.fresh()), Type.constructor(position, "Bool@_", []));
+var operandType = Type.variable(position, typer.fresh());
+var typedLeft = checkTerm(typer, operandType, left);
+var typedRight = checkTerm(typer, operandType, right);
+var returnType = if_(operator == TokenType.plus() || operator == TokenType.minus() || operator == TokenType.star() || operator == TokenType.slash(), (function() {
+(function(_match) { switch(_match._) {
+case "constructor": return (function(){
+var position2 = _match.position;
+var symbol2 = _match.symbol;
+var typeArguments2 = _match.typeArguments;
+return when(symbol2 != "Int@_" && symbol2 != "Float@_" && symbol2 != "String@_", (function() {
+return typer.error(position, ("Expected Int, Float or String, got " + typeToString(operandType)));
 }));
-equalityConstraint(typer, position, expectedType, types.second);
-var typedLeft = checkTerm(typer, types.first, left);
-var typedRight = checkTerm(typer, types.first, right);
+})();
+case "record": return (function(){
+var position2 = _match.position;
+var fields2 = _match.fields;
+return typer.error(position, ("Expected Int, Float or String, got " + typeToString(operandType)));
+})();
+case "parameter": return (function(){
+var position2 = _match.position;
+var symbol2 = _match.name;
+return typer.error(position, ("Expected Int, Float or String, got " + typeToString(operandType)));
+})();
+case "variable": return (function(){
+var position2 = _match.position;
+var id2 = _match.id;
+return typer.error(position, ("Expected Int, Float or String, got " + typeToString(operandType)));
+})();
+}})(typer.expand(operandType));
+return operandType;
+}), (function() {
+return Type.constructor(position, "Bool@_", []);
+}));
+equalityConstraint(typer, position, expectedType, returnType);
 return Term.binary(position, operator, typedLeft, typedRight);
 })();
 case "unary": return (function(){
@@ -1799,14 +1825,14 @@ return onSuccess(PackageFiles.packageFiles(package_, path, sortedFiles));
 }
 
 function doFindPackageDependencyOrder(resolver, depth, path, onSuccess, onError) {
-var packagePath = (path + "/lim.json");
+var packagePath = path + "/lim.json";
 return readTextFile(resolver.fileSystem, packagePath, (function(text) {
 var jsonPackage = jsonToJsonPackage(text);
 var package_ = jsonPackageToPackage(jsonPackage);
 var accountPrefix = or(package_.account, "");
-var name = (accountPrefix + "/" + package_.repository);
+var name = accountPrefix + "/" + package_.repository;
 return if_(resolver.through.has(name), (function() {
-return onError(("Cyclic dependency: " + name));
+return onError("Cyclic dependency: " + name);
 }), (function() {
 resolver.through.set(name, true);
 var order = or(resolver.order.get(name), 0);
@@ -1825,7 +1851,7 @@ processedDependencies += 1;
 }
 checkIfDone();
 return each(package_.dependencies, (function(d) {
-var newPath = normalizeFilePath((path + "/../" + d.repository));
+var newPath = normalizeFilePath(path + "/../" + d.repository);
 return doFindPackageDependencyOrder(resolver, depth + 1, newPath, checkIfDone, onError);
 }));
 }), onError);
