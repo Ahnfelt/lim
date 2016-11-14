@@ -94,7 +94,7 @@ doFindPackageDependencyOrder(resolver : PackageResolver, depth : Int, path : Str
 
                 each(package.dependencies, d => {
                     newPath := normalizeFilePath("\(path)/../\(d.repository)")
-                    doFindPackageDependencyOrder(resolver, depth + 1, newPath, () => onDependencySuccess(), onError)
+                    doFindPackageDependencyOrder(resolver, depth + 1, newPath, onDependencySuccess, onError)
                 })
 
             }, onError)

@@ -358,7 +358,17 @@ checkTerm(typer : Typer, expectedType : Type, term : Term) : Term {
             Term.methodCall(position, typedValue, methodName, typedArguments, signatureAndHint.second)
         }
         variable(position, symbol) {
-            type := typer.variable(symbol)
+            type := if(typer.hasVariable(symbol), { typer.variable(symbol) }, {
+                typer.function(symbol) ? {
+                    none { typer.error(position, "No such variable: \(symbol)") }
+                    some(d) {
+                        instantiation := newStringMap(zip(d.signature.typeParameters, map(d.signature.typeParameters, t => Type.variable(position, typer.fresh))))
+                        parameters := map(d.signature.parameters, p => typer.instantiate(instantiation, p.type))
+                        returnType := typer.instantiate(instantiation, d.signature.returnType)
+                        Type.constructor(position, "F\(parameters.size.toString)@_", parameters.concat([returnType]))
+                    }
+                }
+            })
             equalityConstraint(typer, position, expectedType, type)
             term
         }

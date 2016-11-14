@@ -5,6 +5,7 @@ Typer {
     variable(name : String) : Type
     function(name : String) : Option[FunctionDefinition]
     bindFunction(name : String, definition : FunctionDefinition)
+    hasVariable(name : String) : Bool
     bindVariable(name : String, type : Type)
     bindTypeVariable(position : Int, id : Int, type : Type)
     occursCheck(position : Int, id : Int, outerType : Type, type : Type)
@@ -45,6 +46,9 @@ newTyper(modules : Array[Module]) : Typer {
         }
         variable(name) {
             variables(name)
+        }
+        hasVariable(name) {
+            variables.has(name)
         }
         bindVariable(name, type) {
             variables.set(name, type)

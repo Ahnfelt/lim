@@ -210,7 +210,7 @@ resolveTerm(resolver : Resolver, term : Term) : Term {
                 none {
                     resolver.function(position, symbol) ? {
                         some(functionName) {
-                            Term.functionCall(position, functionName, Arguments([], []))
+                            Term.variable(position, functionName)
                         }
                         none {
                             resolver.error(position, "No such variable: \(symbol)")

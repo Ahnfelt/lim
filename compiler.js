@@ -766,7 +766,26 @@ return Term.methodCall(position, typedValue, methodName, typedArguments, signatu
 case "variable": return (function(){
 var position = _match.position;
 var symbol = _match.symbol;
-var type = typer.variable(symbol);
+var type = if_(typer.hasVariable(symbol), (function() {
+return typer.variable(symbol);
+}), (function() {
+return (function(_match) { switch(_match._) {
+case "none": return (function(){
+return typer.error(position, ("No such variable: " + symbol));
+})();
+case "some": return (function(){
+var d = _match.value;
+var instantiation = newStringMap(zip(d.signature.typeParameters, map(d.signature.typeParameters, (function(t) {
+return Type.variable(position, typer.fresh());
+}))));
+var parameters = map(d.signature.parameters, (function(p) {
+return typer.instantiate(instantiation, p.type);
+}));
+var returnType = typer.instantiate(instantiation, d.signature.returnType);
+return Type.constructor(position, ("F" + ('' + parameters.length) + "@_"), parameters.concat([returnType]));
+})();
+}})(typer.function_(symbol));
+}));
 equalityConstraint(typer, position, expectedType, type);
 return term;
 })();
@@ -1807,9 +1826,7 @@ processedDependencies += 1;
 onDependencySuccess();
 return each(package_.dependencies, (function(d) {
 var newPath = normalizeFilePath((path + "/../" + d.repository));
-return doFindPackageDependencyOrder(resolver, depth + 1, newPath, (function() {
-return onDependencySuccess();
-}), onError);
+return doFindPackageDependencyOrder(resolver, depth + 1, newPath, onDependencySuccess, onError);
 }));
 }), onError);
 }));
@@ -3274,7 +3291,7 @@ case "none": return (function(){
 return (function(_match) { switch(_match._) {
 case "some": return (function(){
 var functionName = _match.value;
-return Term.functionCall(position, functionName, Arguments.arguments_([], []));
+return Term.variable(position, functionName);
 })();
 case "none": return (function(){
 return resolver.error(position, ("No such variable: " + symbol));
@@ -3968,6 +3985,10 @@ return functions.get(name);
 variable: function(name) {
 var typer = this;
 return variables.invoke(name);
+},
+hasVariable: function(name) {
+var typer = this;
+return variables.has(name);
 },
 bindVariable: function(name, type) {
 var typer = this;
