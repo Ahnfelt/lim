@@ -56,21 +56,32 @@ doFindPackageFiles(fs : FileSystem, package : Package, path : String, onSuccess 
 }
 
 doFindPackageDependencyOrder(resolver : PackageResolver, depth : Int, path : String, onSuccess : () => Void, onError : String => Void) {
+
     packagePath := "\(path)/lim.json"
+
     readTextFile(resolver.fileSystem, packagePath, text => {
+
         jsonPackage := jsonToJsonPackage(text)
         package := jsonPackageToPackage(jsonPackage)
+
         accountPrefix := or(package.account, "")
         name := "\(accountPrefix)/\(package.repository)"
+
         if(resolver.through.has(name), {
+
             onError("Cyclic dependency: \(name)")
+
         }, {
+
             resolver.through.set(name, Bool.true)
             order := or(resolver.order.get(name), 0)
             when(depth > order, { resolver.order.set(name, depth) })
+
             doFindPackageFiles(resolver.fileSystem, package, path, packageFiles => {
+
                 resolver.packages.set(name, packageFiles)
                 processedDependencies := 0
+
                 onDependencySuccess() {
                     when(processedDependencies == package.dependencies.size, {
                         resolver.through.remove(name)
@@ -78,12 +89,16 @@ doFindPackageDependencyOrder(resolver : PackageResolver, depth : Int, path : Str
                     })
                     processedDependencies += 1
                 }
+
                 onDependencySuccess()
+
                 each(package.dependencies, d => {
                     newPath := normalizeFilePath("\(path)/../\(d.repository)")
                     doFindPackageDependencyOrder(resolver, depth + 1, newPath, () => onDependencySuccess(), onError)
                 })
+
             }, onError)
+
         })
     }, onError)
 }
