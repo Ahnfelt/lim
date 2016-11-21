@@ -373,7 +373,7 @@ specialMethods() : StringMap[(Term, StringBuilder, Arguments) => Void] {
             emitTerm(builder, value)
             builder.append(".catch(function(p) { return Promise.resolve((")
             emitArguments(builder, arguments)
-            builder.append(", void 0)) })")
+            builder.append(")(p)) })")
         })
     ])
 }
