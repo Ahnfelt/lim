@@ -35,6 +35,7 @@ return Bool.true_k;
 
 
 
+
 function newArrayBuilder() {
 var array = [];
 return {
@@ -1320,6 +1321,16 @@ return builder.append(")");
 builder.append("('' + ");
 emitTerm(builder, value);
 return builder.append(")");
+})), Pair.pair("Promise@_.map", (function(value, builder, arguments_) {
+emitTerm(builder, value);
+builder.append(".then(p => Promise.resolve((");
+emitArguments(builder, arguments_);
+return builder.append(")(p)))");
+})), Pair.pair("Promise@_.catch", (function(value, builder, arguments_) {
+emitTerm(builder, value);
+builder.append(".catch(");
+emitArguments(builder, arguments_);
+return builder.append(")");
 }))]);
 }
 
@@ -1362,16 +1373,22 @@ function newFileSystem() {
 return require('fs');
 }
 
-function readDirectory(fs, directory, onSuccess, onError) {
+function readDirectory(fs, directory) {
+return newPromise((function(onSuccess, onError) {
 fs.readdir(directory, function(error, filenames) { if(error) onError(error); else onSuccess(filenames) });
+}));
 }
 
-function readTextFile(fs, filename, onSuccess, onError) {
+function readTextFile(fs, filename) {
+return newPromise((function(onSuccess, onError) {
 fs.readFile(filename, 'utf-8', function(error, text) { if(error) onError(error); else onSuccess(text) });
+}));
 }
 
-function writeTextFile(fs, filename, text, onSuccess, onError) {
-fs.writeFile(filename, text, function(error) { if(error) onError(error); else onSuccess() });
+function writeTextFile(fs, filename, text) {
+return newPromise((function(onSuccess, onError) {
+fs.writeFile(filename, text, function(error) { if(error) onError(error); else onSuccess(void 0) });
+}));
 }
 
 function normalizeFilePath(filePath) {
@@ -1697,33 +1714,28 @@ console.log('Emitting ' + moduleName);
 return emitModule(builder, p.second);
 }));
 var emitted = builder.drain();
-return writeTextFile(fs, "compiler.js", (emitted + "\n\nmain();\n"), (function() {
+return writeTextFile(fs, "compiler.js", (emitted + "\n\nmain();\n")).then((function(v) {
 console.log('Wrote compiler.js')
-}), (function(error) {
-return panic(error);
+return promiseVoid();
 }));
 }
 
 function main() {
 var fs = newFileSystem();
-var moduleFiles = newArrayBuilder();
-return readDirectory(fs, "lim", (function(files) {
-return each(files, (function(file) {
+return readDirectory(fs, "lim").then((function(files) {
+return promiseAll(map(files, (function(file) {
 var filename = ("lim/" + file);
-return readTextFile(fs, filename, (function(text) {
-moduleFiles.push(Pair.pair(filename, text));
-return when(moduleFiles.size() == files.length, (function() {
-var sortedFiles = sortByString(moduleFiles.drain(), (function(p) {
+return readTextFile(fs, filename).then((function(p) {
+return promiseResolve(Pair.pair(file, p));
+}));
+})));
+})).then((function(files) {
+var sortedFiles = sortByString(files, (function(p) {
 return p.first;
 }));
 return compile(fs, sortedFiles);
-}));
-}), (function(error) {
-return panic(error);
-}));
-}));
-}), (function(error) {
-return panic(error);
+})).catch((function(error) {
+console.log(error);
 }));
 }
 
@@ -2735,6 +2747,34 @@ function sortByInt(array, selector) {
 return array.slice().sort(function(a, b) { return selector(a) - selector(b); });
 }
 
+function newPromise(executor) {
+return new Promise(executor);
+}
+
+function promiseVoid() {
+return Promise.resolve(void 0);
+}
+
+function promiseResolve(value) {
+return Promise.resolve(value);
+}
+
+function promiseReject(reason) {
+return Promise.reject(reason);
+}
+
+function promiseBoth(left, right) {
+return Promise.all([left, right]).then(function(p) { return Pair.pair(p.left, p.right) });
+}
+
+function promiseAll(promises) {
+return Promise.all(promises);
+}
+
+function promiseRace(promises) {
+return Promise.race(promises);
+}
+
 
 function resolveModule(resolver, module) {
 resolver.setSource(module.source);
@@ -3189,7 +3229,7 @@ var source = "";
 var error = (function(e, p) {
 return panic((e + " " + positionText(newCharCursor(source), p)));
 });
-var preludeTypes = ["Void", "Bool", "String", "Int", "Float", "Array", "Option", "Pair", "F0", "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9"];
+var preludeTypes = ["Void", "Bool", "String", "Int", "Float", "Array", "Option", "Pair", "F0", "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "Promise"];
 var modulePreludeTypes = map(preludeTypes, (function(t) {
 return ("_." + t);
 }));
@@ -4200,7 +4240,7 @@ var void_ = Type.constructor(0, "Void@_", []);
 var int = Type.constructor(0, "Int@_", []);
 var bool = Type.constructor(0, "Bool@_", []);
 var string = Type.constructor(0, "String@_", []);
-var typeDefinitions = [TypeDefinition.typeDefinition(0, "Void@_", [], false, []), TypeDefinition.typeDefinition(0, "Pair@_", ["a", "b"], true, [MethodSignature.methodSignature(0, "pair", [], [Parameter.parameter(0, "first", Type.parameter(0, "a")), Parameter.parameter(0, "second", Type.parameter(0, "b"))], void_)]), TypeDefinition.typeDefinition(0, "Option@_", ["a"], true, [MethodSignature.methodSignature(0, "none", [], [], void_), MethodSignature.methodSignature(0, "some", [], [Parameter.parameter(0, "value", Type.parameter(0, "a"))], void_)]), TypeDefinition.typeDefinition(0, "String@_", [], false, [MethodSignature.methodSignature(0, "invoke", [], [Parameter.parameter(0, "index", int)], int), MethodSignature.methodSignature(0, "size", [], [], int), MethodSignature.methodSignature(0, "take", [], [Parameter.parameter(0, "count", int)], string), MethodSignature.methodSignature(0, "drop", [], [Parameter.parameter(0, "count", int)], string), MethodSignature.methodSignature(0, "toLower", [], [], string), MethodSignature.methodSignature(0, "toUpper", [], [], string)]), TypeDefinition.typeDefinition(0, "Bool@_", [], true, [MethodSignature.methodSignature(0, "false", [], [], void_), MethodSignature.methodSignature(0, "true", [], [], void_)]), TypeDefinition.typeDefinition(0, "Int@_", [], false, [MethodSignature.methodSignature(0, "toString", [], [], string)]), TypeDefinition.typeDefinition(0, "Float@_", [], false, [MethodSignature.methodSignature(0, "toString", [], [], string)]), TypeDefinition.typeDefinition(0, "Array@_", ["a"], false, [MethodSignature.methodSignature(0, "invoke", [], [Parameter.parameter(0, "index", int)], Type.parameter(0, "a")), MethodSignature.methodSignature(0, "size", [], [], int), MethodSignature.methodSignature(0, "take", [], [Parameter.parameter(0, "count", int)], Type.constructor(0, "Array@_", [Type.parameter(0, "a")])), MethodSignature.methodSignature(0, "drop", [], [Parameter.parameter(0, "count", int)], Type.constructor(0, "Array@_", [Type.parameter(0, "a")])), MethodSignature.methodSignature(0, "concat", [], [Parameter.parameter(0, "array", Type.constructor(0, "Array@_", [Type.parameter(0, "a")]))], Type.constructor(0, "Array@_", [Type.parameter(0, "a")]))]), TypeDefinition.typeDefinition(0, "F0@_", ["r"], false, [MethodSignature.methodSignature(0, "invoke", [], [], Type.parameter(0, "r"))]), TypeDefinition.typeDefinition(0, "F1@_", ["p1", "r"], false, [MethodSignature.methodSignature(0, "invoke", [], [Parameter.parameter(0, "a1", Type.parameter(0, "p1"))], Type.parameter(0, "r"))]), TypeDefinition.typeDefinition(0, "F2@_", ["p1", "p2", "r"], false, [MethodSignature.methodSignature(0, "invoke", [], [Parameter.parameter(0, "a1", Type.parameter(0, "p1")), Parameter.parameter(0, "a2", Type.parameter(0, "p2"))], Type.parameter(0, "r"))]), TypeDefinition.typeDefinition(0, "F3@_", ["p1", "p2", "p3", "r"], false, [MethodSignature.methodSignature(0, "invoke", [], [Parameter.parameter(0, "a1", Type.parameter(0, "p1")), Parameter.parameter(0, "a2", Type.parameter(0, "p2")), Parameter.parameter(0, "a3", Type.parameter(0, "p3"))], Type.parameter(0, "r"))])];
+var typeDefinitions = [TypeDefinition.typeDefinition(0, "Void@_", [], false, []), TypeDefinition.typeDefinition(0, "Pair@_", ["a", "b"], true, [MethodSignature.methodSignature(0, "pair", [], [Parameter.parameter(0, "first", Type.parameter(0, "a")), Parameter.parameter(0, "second", Type.parameter(0, "b"))], void_)]), TypeDefinition.typeDefinition(0, "Option@_", ["a"], true, [MethodSignature.methodSignature(0, "none", [], [], void_), MethodSignature.methodSignature(0, "some", [], [Parameter.parameter(0, "value", Type.parameter(0, "a"))], void_)]), TypeDefinition.typeDefinition(0, "String@_", [], false, [MethodSignature.methodSignature(0, "invoke", [], [Parameter.parameter(0, "index", int)], int), MethodSignature.methodSignature(0, "size", [], [], int), MethodSignature.methodSignature(0, "take", [], [Parameter.parameter(0, "count", int)], string), MethodSignature.methodSignature(0, "drop", [], [Parameter.parameter(0, "count", int)], string), MethodSignature.methodSignature(0, "toLower", [], [], string), MethodSignature.methodSignature(0, "toUpper", [], [], string)]), TypeDefinition.typeDefinition(0, "Bool@_", [], true, [MethodSignature.methodSignature(0, "false", [], [], void_), MethodSignature.methodSignature(0, "true", [], [], void_)]), TypeDefinition.typeDefinition(0, "Int@_", [], false, [MethodSignature.methodSignature(0, "toString", [], [], string)]), TypeDefinition.typeDefinition(0, "Float@_", [], false, [MethodSignature.methodSignature(0, "toString", [], [], string)]), TypeDefinition.typeDefinition(0, "Array@_", ["a"], false, [MethodSignature.methodSignature(0, "invoke", [], [Parameter.parameter(0, "index", int)], Type.parameter(0, "a")), MethodSignature.methodSignature(0, "size", [], [], int), MethodSignature.methodSignature(0, "take", [], [Parameter.parameter(0, "count", int)], Type.constructor(0, "Array@_", [Type.parameter(0, "a")])), MethodSignature.methodSignature(0, "drop", [], [Parameter.parameter(0, "count", int)], Type.constructor(0, "Array@_", [Type.parameter(0, "a")])), MethodSignature.methodSignature(0, "concat", [], [Parameter.parameter(0, "array", Type.constructor(0, "Array@_", [Type.parameter(0, "a")]))], Type.constructor(0, "Array@_", [Type.parameter(0, "a")]))]), TypeDefinition.typeDefinition(0, "F0@_", ["r"], false, [MethodSignature.methodSignature(0, "invoke", [], [], Type.parameter(0, "r"))]), TypeDefinition.typeDefinition(0, "F1@_", ["p1", "r"], false, [MethodSignature.methodSignature(0, "invoke", [], [Parameter.parameter(0, "a1", Type.parameter(0, "p1"))], Type.parameter(0, "r"))]), TypeDefinition.typeDefinition(0, "F2@_", ["p1", "p2", "r"], false, [MethodSignature.methodSignature(0, "invoke", [], [Parameter.parameter(0, "a1", Type.parameter(0, "p1")), Parameter.parameter(0, "a2", Type.parameter(0, "p2"))], Type.parameter(0, "r"))]), TypeDefinition.typeDefinition(0, "F3@_", ["p1", "p2", "p3", "r"], false, [MethodSignature.methodSignature(0, "invoke", [], [Parameter.parameter(0, "a1", Type.parameter(0, "p1")), Parameter.parameter(0, "a2", Type.parameter(0, "p2")), Parameter.parameter(0, "a3", Type.parameter(0, "p3"))], Type.parameter(0, "r"))]), TypeDefinition.typeDefinition(0, "Promise@_", ["a"], false, [MethodSignature.methodSignature(0, "map", ["b"], [Parameter.parameter(0, "body", Type.constructor(0, "F1@_", [Type.parameter(0, "a"), Type.parameter(0, "b")]))], Type.constructor(0, "Promise@_", [Type.parameter(0, "b")])), MethodSignature.methodSignature(0, "then", ["b"], [Parameter.parameter(0, "onFulfilled", Type.constructor(0, "F1@_", [Type.parameter(0, "a"), Type.constructor(0, "Promise@_", [Type.parameter(0, "b")])]))], Type.constructor(0, "Promise@_", [Type.parameter(0, "b")])), MethodSignature.methodSignature(0, "catch", ["b", "r"], [Parameter.parameter(0, "onRejected", Type.constructor(0, "F1@_", [Type.parameter(0, "r"), Type.constructor(0, "Promise@_", [Type.parameter(0, "b")])]))], Type.constructor(0, "Promise@_", [Type.parameter(0, "b")]))])];
 return map(typeDefinitions, (function(d) {
 return Pair.pair(d.symbol, d);
 }));

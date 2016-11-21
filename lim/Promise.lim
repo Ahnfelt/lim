@@ -1,0 +1,27 @@
+newPromise[a, b](executor : (a => Void, b => Void) => Void) : Promise[a] {
+    js"return new Promise(executor);"
+}
+
+promiseVoid() : Promise[Void] {
+    js"return Promise.resolve(void 0);"
+}
+
+promiseResolve[a](value : a) : Promise[a] {
+    js"return Promise.resolve(value);"
+}
+
+promiseReject[a, b](reason : b) : Promise[a] {
+    js"return Promise.reject(reason);"
+}
+
+promiseBoth[a, b](left : Promise[a], right : Promise[b]) : Promise[Pair[a, b]] {
+    js"return Promise.all([left, right]).then(function(p) { return Pair.pair(p.left, p.right) });"
+}
+
+promiseAll[a](promises : Array[Promise[a]]) : Promise[Array[a]] {
+    js"return Promise.all(promises);"
+}
+
+promiseRace[a](promises : Array[Promise[a]]) : Promise[a] {
+    js"return Promise.race(promises);"
+}

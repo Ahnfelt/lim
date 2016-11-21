@@ -1,4 +1,4 @@
-compile(fs : FileSystem, moduleSources : Array[Pair[String, String]]) {
+compile(fs : FileSystem, moduleSources : Array[Pair[String, String]]) : Promise[Void] {
     parsedModules := map(moduleSources, p => {
         moduleName := p.first
         js"console.log('Parsing ' + moduleName);"
@@ -34,24 +34,23 @@ compile(fs : FileSystem, moduleSources : Array[Pair[String, String]]) {
         emitModule(builder, p.second)
     })
     emitted := builder.drain
-    writeTextFile(fs, "compiler.js", "\(emitted)\n\nmain();\n", () => {
+    writeTextFile(fs, "compiler.js", "\(emitted)\n\nmain();\n").then(v => {
         js"console.log('Wrote compiler.js')"
-    }, error => panic(error))
+        promiseVoid()
+    })
 }
 
 main() {
     fs := newFileSystem()
-    moduleFiles := newArrayBuilder()
-    readDirectory(fs, "lim", files => {
-        each(files, file => {
+    readDirectory(fs, "lim").then(files => {
+        promiseAll(map(files, file => {
             filename := "lim/\(file)"
-            readTextFile(fs, filename, text => {
-                moduleFiles.push(Pair(filename, text))
-                when(moduleFiles.size == files.size, {
-                    sortedFiles := sortByString(moduleFiles.drain, p => p.first)
-                    compile(fs, sortedFiles)
-                })
-            }, error => panic(error))
-        })
-    }, error => panic(error))
+            readTextFile(fs, filename).then(p => promiseResolve(Pair(file, p)))
+        }))
+    }).then(files => {
+        sortedFiles := sortByString(files, p => p.first)
+        compile(fs, sortedFiles)
+    }).catch(error => {
+        js"console.log(error);"
+    })
 }

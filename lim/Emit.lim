@@ -356,6 +356,18 @@ specialMethods() : StringMap[(Term, StringBuilder, Arguments) => Void] {
             builder.append("('' + ")
             emitTerm(builder, value)
             builder.append(")")
+        }),
+        Pair("Promise@_.map", (value, builder, arguments) => {
+            emitTerm(builder, value)
+            builder.append(".then(p => Promise.resolve((")
+            emitArguments(builder, arguments)
+            builder.append(")(p)))")
+        }),
+        Pair("Promise@_.catch", (value, builder, arguments) => {
+            emitTerm(builder, value)
+            builder.append(".catch(")
+            emitArguments(builder, arguments)
+            builder.append(")")
         })
     ])
 }

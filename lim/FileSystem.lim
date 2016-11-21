@@ -4,16 +4,22 @@ newFileSystem() : FileSystem {
     js"return require('fs');"
 }
 
-readDirectory(fs : FileSystem, directory : String, onSuccess : Array[String] => Void, onError : String => Void) : Void {
-    js"fs.readdir(directory, function(error, filenames) { if(error) onError(error); else onSuccess(filenames) });"
+readDirectory(fs : FileSystem, directory : String) : Promise[Array[String]] {
+    newPromise((onSuccess, onError) => {
+        js"fs.readdir(directory, function(error, filenames) { if(error) onError(error); else onSuccess(filenames) });"
+    })
 }
 
-readTextFile(fs : FileSystem, filename : String, onSuccess : String => Void, onError : String => Void) : Void {
-    js"fs.readFile(filename, 'utf-8', function(error, text) { if(error) onError(error); else onSuccess(text) });"
+readTextFile(fs : FileSystem, filename : String) : Promise[String] {
+    newPromise((onSuccess, onError) => {
+        js"fs.readFile(filename, 'utf-8', function(error, text) { if(error) onError(error); else onSuccess(text) });"
+    })
 }
 
-writeTextFile(fs : FileSystem, filename : String, text : String, onSuccess : () => Void, onError : String => Void) : Void {
-    js"fs.writeFile(filename, text, function(error) { if(error) onError(error); else onSuccess() });"
+writeTextFile(fs : FileSystem, filename : String, text : String) : Promise[Void] {
+    newPromise((onSuccess, onError) => {
+        js"fs.writeFile(filename, text, function(error) { if(error) onError(error); else onSuccess(void 0) });"
+    })
 }
 
 normalizeFilePath(filePath : String) : String {
