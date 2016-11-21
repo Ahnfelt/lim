@@ -34,9 +34,8 @@ compile(fs : FileSystem, moduleSources : Array[Pair[String, String]]) : Promise[
         emitModule(builder, p.second)
     })
     emitted := builder.drain
-    writeTextFile(fs, "compiler.js", "\(emitted)\n\nmain();\n").then(v => {
+    writeTextFile(fs, "compiler.js", "\(emitted)\n\nmain();\n").map(v => {
         js"console.log('Wrote compiler.js')"
-        promiseVoid()
     })
 }
 
@@ -45,7 +44,7 @@ main() {
     readDirectory(fs, "lim").then(files => {
         promiseAll(map(files, file => {
             filename := "lim/\(file)"
-            readTextFile(fs, filename).then(p => promiseResolve(Pair(file, p)))
+            readTextFile(fs, filename).map(p => Pair(file, p))
         }))
     }).then(files => {
         sortedFiles := sortByString(files, p => p.first)

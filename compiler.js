@@ -1714,10 +1714,9 @@ console.log('Emitting ' + moduleName);
 return emitModule(builder, p.second);
 }));
 var emitted = builder.drain();
-return writeTextFile(fs, "compiler.js", (emitted + "\n\nmain();\n")).then((function(v) {
+return writeTextFile(fs, "compiler.js", (emitted + "\n\nmain();\n")).then(p => Promise.resolve(((function(v) {
 console.log('Wrote compiler.js')
-return promiseVoid();
-}));
+}))(p)));
 }
 
 function main() {
@@ -1725,9 +1724,9 @@ var fs = newFileSystem();
 return readDirectory(fs, "lim").then((function(files) {
 return promiseAll(map(files, (function(file) {
 var filename = ("lim/" + file);
-return readTextFile(fs, filename).then((function(p) {
-return promiseResolve(Pair.pair(file, p));
-}));
+return readTextFile(fs, filename).then(p => Promise.resolve(((function(p) {
+return Pair.pair(file, p);
+}))(p)));
 })));
 })).then((function(files) {
 var sortedFiles = sortByString(files, (function(p) {
