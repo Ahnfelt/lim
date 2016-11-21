@@ -247,7 +247,8 @@ preludeTypeDefinitions() : Array[Pair[String, TypeDefinition]] {
         TypeDefinition(0, "Promise@_", ["a"], Bool.false, [
             MethodSignature(0, "map", ["b"], [Parameter(0, "body", Type.constructor(0, "F1@_", [Type.parameter(0, "a"), Type.parameter(0, "b")]))], Type.constructor(0, "Promise@_", [Type.parameter(0, "b")])),
             MethodSignature(0, "then", ["b"], [Parameter(0, "onFulfilled", Type.constructor(0, "F1@_", [Type.parameter(0, "a"), Type.constructor(0, "Promise@_", [Type.parameter(0, "b")])]))], Type.constructor(0, "Promise@_", [Type.parameter(0, "b")])),
-            MethodSignature(0, "catch", ["b", "r"], [Parameter(0, "onRejected", Type.constructor(0, "F1@_", [Type.parameter(0, "r"), Type.constructor(0, "Promise@_", [Type.parameter(0, "b")])]))], Type.constructor(0, "Promise@_", [Type.parameter(0, "b")]))
+            MethodSignature(0, "catch", ["b", "r"], [Parameter(0, "onRejected", Type.constructor(0, "F1@_", [Type.parameter(0, "r"), Type.constructor(0, "Promise@_", [Type.parameter(0, "b")])]))], Type.constructor(0, "Promise@_", [Type.parameter(0, "b")])),
+            MethodSignature(0, "else", ["r"], [Parameter(0, "onRejected", Type.constructor(0, "F1@_", [Type.parameter(0, "r"), Type.constructor(0, "Void@_", [])]))], Type.constructor(0, "Void@_", []))
         ])
     ]
     map(typeDefinitions, d => Pair(d.symbol, d))

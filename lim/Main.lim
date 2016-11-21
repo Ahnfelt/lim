@@ -49,7 +49,7 @@ loadAndCompile() {
     }).then(files => {
         sortedFiles := sortByString(files, p => p.first)
         compile(fs, sortedFiles)
-    }).catch(error => {
+    }).else(error => {
         js"console.log(error);"
     })
 }
