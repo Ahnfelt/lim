@@ -1,10 +1,10 @@
-compile(fs : FileSystem, moduleSources : Array[Pair[String, String]]) : Promise[Void] {
+compile(fs : FileSystem, moduleSources : Array[[filename : String, text : String]]) : Promise[Void] {
     parsedModules := map(moduleSources, p => {
-        moduleName := p.first
+        moduleName := p.filename
         js"console.log('Parsing ' + moduleName);"
-        tokens := lexTokens(p.second)
-        pc := newPc(newTokenCursor(tokens, 0), p.second)
-        Pair(p.first, parseModule(pc, "_current", "_Current", p.first, p.second))
+        tokens := lexTokens(p.text)
+        pc := newPc(newTokenCursor(tokens, 0), p.text)
+        Pair(p.filename, parseModule(pc, "_current", "_Current", p.filename, p.text))
     })
     resolver := newResolver(map(parsedModules, p => p.second))
     resolvedModules := map(parsedModules, p => {
@@ -44,10 +44,10 @@ loadAndCompile() {
     readDirectory(fs, "lim").then(files => {
         promiseAll(map(files, file => {
             filename := "lim/\(file)"
-            readTextFile(fs, filename).map(p => Pair(file, p))
+            readTextFile(fs, filename).map(text => [filename = file, text = text])
         }))
     }).then(files => {
-        sortedFiles := sortByString(files, p => p.first)
+        sortedFiles := sortByString(files, p => p.filename)
         compile(fs, sortedFiles)
     }).else(error => {
         js"console.log(error);"

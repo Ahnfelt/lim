@@ -1687,11 +1687,11 @@ for(var i = 0; i < result.length; i++) console.log(result[i].token._);
 
 function compile(fs, moduleSources) {
 var parsedModules = map(moduleSources, (function(p) {
-var moduleName = p.first;
+var moduleName = p.filename;
 console.log('Parsing ' + moduleName);
-var tokens = lexTokens(p.second);
-var pc = newPc(newTokenCursor(tokens, 0), p.second);
-return Pair.pair(p.first, parseModule(pc, "_current", "_Current", p.first, p.second));
+var tokens = lexTokens(p.text);
+var pc = newPc(newTokenCursor(tokens, 0), p.text);
+return Pair.pair(p.filename, parseModule(pc, "_current", "_Current", p.filename, p.text));
 }));
 var resolver = newResolver(map(parsedModules, (function(p) {
 return p.second;
@@ -1730,13 +1730,13 @@ var fs = newFileSystem();
 return readDirectory(fs, "lim").then((function(files) {
 return promiseAll(map(files, (function(file) {
 var filename = ("lim/" + file);
-return readTextFile(fs, filename).then(function(p) { return Promise.resolve(((function(p) {
-return Pair.pair(file, p);
+return readTextFile(fs, filename).then(function(p) { return Promise.resolve(((function(text) {
+return {filename: file, text: text};
 }))(p)) });
 })));
 })).then((function(files) {
 var sortedFiles = sortByString(files, (function(p) {
-return p.first;
+return p.filename;
 }));
 return compile(fs, sortedFiles);
 })).catch(function(p) { return Promise.resolve(((function(error) {
