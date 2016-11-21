@@ -110,8 +110,9 @@ checkArguments(typer : Typer, expectedType : Type, position : Int, signature : M
             }
         }
     })
-    when(unnamed.size + named.size < parameterTypes.size, { typer.error(position, "Too few arguments") })
-    when(unnamed.size + named.size > parameterTypes.size, { typer.error(position, "Too many arguments") })
+    totalArguments := arguments.unnamed.size + arguments.named.size
+    when(totalArguments < parameterTypes.size, { typer.error(position, "Too few arguments") })
+    when(totalArguments > parameterTypes.size, { typer.error(position, "Too many arguments") })
     Arguments(unnamed, named)
 }
 

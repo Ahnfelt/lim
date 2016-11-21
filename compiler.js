@@ -355,10 +355,11 @@ return typer.error(position, ("Missing argument: " + p.second));
 return a.name == p.second;
 })));
 }));
-when(unnamed.length + named.length < parameterTypes.length, (function() {
+var totalArguments = arguments_.unnamed.length + arguments_.named.length;
+when(totalArguments < parameterTypes.length, (function() {
 return typer.error(position, "Too few arguments");
 }));
-when(unnamed.length + named.length > parameterTypes.length, (function() {
+when(totalArguments > parameterTypes.length, (function() {
 return typer.error(position, "Too many arguments");
 }));
 return Arguments.arguments_(unnamed, named);
@@ -1719,7 +1720,7 @@ console.log('Wrote compiler.js')
 }))(p)));
 }
 
-function main() {
+function loadAndCompile() {
 var fs = newFileSystem();
 return readDirectory(fs, "lim").then((function(files) {
 return promiseAll(map(files, (function(file) {
@@ -1736,6 +1737,11 @@ return compile(fs, sortedFiles);
 })).catch((function(error) {
 console.log(error);
 }));
+}
+
+function main() {
+process.on('unhandledRejection', function (err, p) { console.error('Unhandled promise rejection: ' + err) })
+return loadAndCompile();
 }
 
 function parseCommaList(pc, parse, end) {
