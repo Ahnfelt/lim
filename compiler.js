@@ -1691,23 +1691,21 @@ var moduleName = p.filename;
 console.log('Parsing ' + moduleName);
 var tokens = lexTokens(p.text);
 var pc = newPc(newTokenCursor(tokens, 0), p.text);
-return Pair.pair(p.filename, parseModule(pc, "_current", "_Current", p.filename, p.text));
+return {filename: p.filename, module: parseModule(pc, "_current", "_Current", p.filename, p.text)};
 }));
 var resolver = newResolver(map(parsedModules, (function(p) {
-return p.second;
+return p.module;
 })));
 var resolvedModules = map(parsedModules, (function(p) {
-var moduleName = p.first;
-console.log('Resolving ' + moduleName);
-return Pair.pair(p.first, resolveModule(resolver, p.second));
+console.log('Resolving ' + p.filename);
+return {filename: p.filename, module: resolveModule(resolver, p.module)};
 }));
 var typer = newTyper(map(resolvedModules, (function(p) {
-return p.second;
+return p.module;
 })));
 var typedModules = map(resolvedModules, (function(p) {
-var moduleName = p.first;
-console.log('Typing ' + moduleName);
-return Pair.pair(p.first, checkModule(typer, p.second));
+console.log('Typing ' + p.filename);
+return {filename: p.filename, module: checkModule(typer, p.module)};
 }));
 var builder = newStringBuilder();
 console.log('Emitting built-in types');
@@ -1715,9 +1713,8 @@ emitModule(builder, Module.module("_prelude", "_prelude", "_prelude", "", map(pr
 return p.second;
 })), []));
 each(typedModules, (function(p) {
-var moduleName = p.first;
-console.log('Emitting ' + moduleName);
-return emitModule(builder, p.second);
+console.log('Emitting ' + p.filename);
+return emitModule(builder, p.module);
 }));
 var emitted = builder.drain();
 return writeTextFile(fs, "compiler.js", (emitted + "\n\nmain();\n")).then(function(p) { return Promise.resolve(((function(v) {

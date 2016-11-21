@@ -4,19 +4,17 @@ compile(fs : FileSystem, moduleSources : Array[[filename : String, text : String
         js"console.log('Parsing ' + moduleName);"
         tokens := lexTokens(p.text)
         pc := newPc(newTokenCursor(tokens, 0), p.text)
-        Pair(p.filename, parseModule(pc, "_current", "_Current", p.filename, p.text))
+        [filename = p.filename, module = parseModule(pc, "_current", "_Current", p.filename, p.text)]
     })
-    resolver := newResolver(map(parsedModules, p => p.second))
+    resolver := newResolver(map(parsedModules, p => p.module))
     resolvedModules := map(parsedModules, p => {
-        moduleName := p.first
-        js"console.log('Resolving ' + moduleName);"
-        Pair(p.first, resolveModule(resolver, p.second))
+        js"console.log('Resolving ' + p.filename);"
+        [filename = p.filename, module = resolveModule(resolver, p.module)]
     })
-    typer := newTyper(map(resolvedModules, p => p.second))
+    typer := newTyper(map(resolvedModules, p => p.module))
     typedModules := map(resolvedModules, p => {
-        moduleName := p.first
-        js"console.log('Typing ' + moduleName);"
-        Pair(p.first, checkModule(typer, p.second))
+        js"console.log('Typing ' + p.filename);"
+        [filename = p.filename, module = checkModule(typer, p.module)]
     })
     builder := newStringBuilder()
     js"console.log('Emitting built-in types');"
@@ -29,9 +27,8 @@ compile(fs : FileSystem, moduleSources : Array[[filename : String, text : String
         functionDefinitions = []
     ))
     each(typedModules, p => {
-        moduleName := p.first
-        js"console.log('Emitting ' + moduleName);"
-        emitModule(builder, p.second)
+        js"console.log('Emitting ' + p.filename);"
+        emitModule(builder, p.module)
     })
     emitted := builder.drain
     writeTextFile(fs, "compiler.js", "\(emitted)\n\nmain();\n").map(v => {
