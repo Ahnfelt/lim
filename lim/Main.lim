@@ -50,6 +50,7 @@ loadAndCompile() {
         js"console.log(error);"
     })
 }
+
 main() {
     js"process.on('unhandledRejection', function (err, p) { console.error('Unhandled promise rejection: ' + err) })"
     loadAndCompile()
