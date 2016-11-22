@@ -245,10 +245,30 @@ preludeTypeDefinitions() : Array[Pair[String, TypeDefinition]] {
             MethodSignature(0, "invoke", [], [Parameter(0, "a1", Type.parameter(0, "p1")), Parameter(0, "a2", Type.parameter(0, "p2")), Parameter(0, "a3", Type.parameter(0, "p3"))], Type.parameter(0, "r"))
         ]),
         TypeDefinition(0, "Promise@_", ["a"], Bool.false, [
-            MethodSignature(0, "map", ["b"], [Parameter(0, "body", Type.constructor(0, "F1@_", [Type.parameter(0, "a"), Type.parameter(0, "b")]))], Type.constructor(0, "Promise@_", [Type.parameter(0, "b")])),
-            MethodSignature(0, "then", ["b"], [Parameter(0, "onFulfilled", Type.constructor(0, "F1@_", [Type.parameter(0, "a"), Type.constructor(0, "Promise@_", [Type.parameter(0, "b")])]))], Type.constructor(0, "Promise@_", [Type.parameter(0, "b")])),
-            MethodSignature(0, "catch", ["b", "r"], [Parameter(0, "onRejected", Type.constructor(0, "F1@_", [Type.parameter(0, "r"), Type.constructor(0, "Promise@_", [Type.parameter(0, "b")])]))], Type.constructor(0, "Promise@_", [Type.parameter(0, "b")])),
-            MethodSignature(0, "else", ["b", "r"], [Parameter(0, "onRejected", Type.constructor(0, "F1@_", [Type.parameter(0, "r"), Type.parameter(0, "b")]))], Type.constructor(0, "Promise@_", [Type.parameter(0, "b")]))
+            MethodSignature(0, "map", ["b"],
+                [Parameter(0, "body",
+                    Type.constructor(0, "F1@_", [Type.parameter(0, "a"), Type.parameter(0, "b")])
+                )],
+                Type.constructor(0, "Promise@_", [Type.parameter(0, "b")])
+            ),
+            MethodSignature(0, "flatMap", ["b"],
+                [Parameter(0, "body",
+                    Type.constructor(0, "F1@_", [Type.parameter(0, "a"), Type.constructor(0, "Promise@_", [Type.parameter(0, "b")])])
+                )],
+                Type.constructor(0, "Promise@_", [Type.parameter(0, "b")])
+            ),
+            MethodSignature(0, "catchMap", ["r", "b"],
+                [Parameter(0, "body",
+                    Type.constructor(0, "F1@_", [Type.parameter(0, "r"), Type.parameter(0, "b")])
+                )],
+                Type.constructor(0, "Promise@_", [Type.parameter(0, "b")])
+            ),
+            MethodSignature(0, "catchFlatMap", ["r", "b"],
+                [Parameter(0, "body",
+                    Type.constructor(0, "F1@_", [Type.parameter(0, "r"), Type.constructor(0, "Promise@_", [Type.parameter(0, "b")])])
+                )],
+                Type.constructor(0, "Promise@_", [Type.parameter(0, "b")])
+            )
         ])
     ]
     map(typeDefinitions, d => Pair(d.symbol, d))

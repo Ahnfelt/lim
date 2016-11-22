@@ -38,15 +38,15 @@ compile(fs : FileSystem, moduleSources : Array[[filename : String, text : String
 
 loadAndCompile() {
     fs := newFileSystem()
-    readDirectory(fs, "lim").then(files => {
+    readDirectory(fs, "lim").flatMap(files => {
         promiseAll(map(files, file => {
             filename := "lim/\(file)"
             readTextFile(fs, filename).map(text => [filename = file, text = text])
         }))
-    }).then(files => {
+    }).flatMap(files => {
         sortedFiles := sortByString(files, p => p.filename)
         compile(fs, sortedFiles)
-    }).else(error => {
+    }).catchMap(error => {
         js"console.log(error);"
     })
 }

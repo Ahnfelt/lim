@@ -363,17 +363,23 @@ specialMethods() : StringMap[(Term, StringBuilder, Arguments) => Void] {
             emitArguments(builder, arguments)
             builder.append(")(p)) })")
         }),
-        Pair("Promise@_.catch", (value, builder, arguments) => {
+        Pair("Promise@_.flatMap", (value, builder, arguments) => {
             emitTerm(builder, value)
-            builder.append(".catch(")
+            builder.append(".then(")
             emitArguments(builder, arguments)
             builder.append(")")
         }),
-        Pair("Promise@_.else", (value, builder, arguments) => {
+        Pair("Promise@_.catchMap", (value, builder, arguments) => {
             emitTerm(builder, value)
             builder.append(".catch(function(p) { return Promise.resolve((")
             emitArguments(builder, arguments)
             builder.append(")(p)) })")
+        }),
+        Pair("Promise@_.catchFlatMap", (value, builder, arguments) => {
+            emitTerm(builder, value)
+            builder.append(".catch(")
+            emitArguments(builder, arguments)
+            builder.append(")")
         })
     ])
 }
