@@ -271,5 +271,6 @@ preludeTypeDefinitions() : Array[Pair[String, TypeDefinition]] {
             )
         ])
     ]
+    js"/* Promises are not quite right since JS looks into promises and checks for a .then method, and flattens it 'automatically' (thanks...). */"
     map(typeDefinitions, d => Pair(d.symbol, d))
 }
