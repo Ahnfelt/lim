@@ -269,7 +269,7 @@ preludeTypeDefinitions() : Array[Pair[String, TypeDefinition]] {
                 )],
                 Type.constructor(0, "Promise@_", [Type.parameter(0, "b")])
             ),
-            MethodSignature(0, "bothMap", ["r", "b"],
+            MethodSignature(0, "thenMap", ["r", "b"],
                 [Parameter(0, "onFulfilled",
                     Type.constructor(0, "F1@_", [Type.parameter(0, "a"), Type.parameter(0, "b")])
                 ),
@@ -278,7 +278,7 @@ preludeTypeDefinitions() : Array[Pair[String, TypeDefinition]] {
                 )],
                 Type.constructor(0, "Promise@_", [Type.parameter(0, "b")])
             ),
-            MethodSignature(0, "bothFlatMap", ["r", "b"],
+            MethodSignature(0, "thenFlatMap", ["r", "b"],
                 [Parameter(0, "onFulfilled",
                     Type.constructor(0, "F1@_", [Type.parameter(0, "a"), Type.constructor(0, "Promise@_", [Type.parameter(0, "b")])])
                 ),

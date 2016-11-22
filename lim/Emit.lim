@@ -382,13 +382,13 @@ specialMethods() : StringMap[(Term, StringBuilder, Arguments) => Void] {
             emitArguments(builder, arguments)
             builder.append(")")
         }),
-        Pair("Promise@_.bothMap", (value, builder, arguments) => {
+        Pair("Promise@_.thenMap", (value, builder, arguments) => {
             emitTerm(builder, value)
             builder.append(".then(")
             emitArguments(builder, arguments)
             builder.append(")")
         }),
-        Pair("Promise@_.bothFlatMap", (value, builder, arguments) => {
+        Pair("Promise@_.thenFlatMap", (value, builder, arguments) => {
             emitTerm(builder, value)
             builder.append(".then(")
             emitArguments(builder, arguments)
