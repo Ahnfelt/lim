@@ -360,9 +360,9 @@ specialMethods() : StringMap[(Term, StringBuilder, Arguments) => Void] {
         Pair("Promise@_.map", (value, builder, arguments) => {
             js"/* TODO: Promise.resolve special cases on things with a .then method, so this is wrong when body returns a promise. */"
             emitTerm(builder, value)
-            builder.append(".then(function(p) { return Promise.resolve((")
+            builder.append(".then(")
             emitArguments(builder, arguments)
-            builder.append(")(p)) })")
+            builder.append(")")
         }),
         Pair("Promise@_.flatMap", (value, builder, arguments) => {
             emitTerm(builder, value)
@@ -372,16 +372,28 @@ specialMethods() : StringMap[(Term, StringBuilder, Arguments) => Void] {
         }),
         Pair("Promise@_.catchMap", (value, builder, arguments) => {
             emitTerm(builder, value)
-            builder.append(".catch(function(p) { return Promise.resolve((")
+            builder.append(".catch(")
             emitArguments(builder, arguments)
-            builder.append(")(p)) })")
+            builder.append(")")
         }),
         Pair("Promise@_.catchFlatMap", (value, builder, arguments) => {
             emitTerm(builder, value)
             builder.append(".catch(")
             emitArguments(builder, arguments)
             builder.append(")")
-        })
+        }),
+        Pair("Promise@_.bothMap", (value, builder, arguments) => {
+            emitTerm(builder, value)
+            builder.append(".then(")
+            emitArguments(builder, arguments)
+            builder.append(")")
+        }),
+        Pair("Promise@_.bothFlatMap", (value, builder, arguments) => {
+            emitTerm(builder, value)
+            builder.append(".then(")
+            emitArguments(builder, arguments)
+            builder.append(")")
+        }),
     ])
 }
 

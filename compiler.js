@@ -1325,9 +1325,9 @@ return builder.append(")");
 })), Pair.pair("Promise@_.map", (function(value, builder, arguments_) {
 /* TODO: Promise.resolve special cases on things with a .then method, so this is wrong when body returns a promise. */
 emitTerm(builder, value);
-builder.append(".then(function(p) { return Promise.resolve((");
+builder.append(".then(");
 emitArguments(builder, arguments_);
-return builder.append(")(p)) })");
+return builder.append(")");
 })), Pair.pair("Promise@_.flatMap", (function(value, builder, arguments_) {
 emitTerm(builder, value);
 builder.append(".then(");
@@ -1335,12 +1335,22 @@ emitArguments(builder, arguments_);
 return builder.append(")");
 })), Pair.pair("Promise@_.catchMap", (function(value, builder, arguments_) {
 emitTerm(builder, value);
-builder.append(".catch(function(p) { return Promise.resolve((");
+builder.append(".catch(");
 emitArguments(builder, arguments_);
-return builder.append(")(p)) })");
+return builder.append(")");
 })), Pair.pair("Promise@_.catchFlatMap", (function(value, builder, arguments_) {
 emitTerm(builder, value);
 builder.append(".catch(");
+emitArguments(builder, arguments_);
+return builder.append(")");
+})), Pair.pair("Promise@_.bothMap", (function(value, builder, arguments_) {
+emitTerm(builder, value);
+builder.append(".then(");
+emitArguments(builder, arguments_);
+return builder.append(")");
+})), Pair.pair("Promise@_.bothFlatMap", (function(value, builder, arguments_) {
+emitTerm(builder, value);
+builder.append(".then(");
 emitArguments(builder, arguments_);
 return builder.append(")");
 }))]);
@@ -1723,9 +1733,9 @@ console.log('Emitting ' + p.filename);
 return emitModule(builder, p.module);
 }));
 var emitted = builder.drain();
-return writeTextFile(fs, "compiler.js", (emitted + "\n\nmain();\n")).then(function(p) { return Promise.resolve(((function(v) {
+return writeTextFile(fs, "compiler.js", (emitted + "\n\nmain();\n")).then((function(v) {
 console.log('Wrote compiler.js')
-}))(p)) });
+}));
 }
 
 function loadAndCompile() {
@@ -1733,18 +1743,18 @@ var fs = newFileSystem();
 return readDirectory(fs, "lim").then((function(files) {
 return promiseAll(map(files, (function(file) {
 var filename = ("lim/" + file);
-return readTextFile(fs, filename).then(function(p) { return Promise.resolve(((function(text) {
+return readTextFile(fs, filename).then((function(text) {
 return {filename: file, text: text};
-}))(p)) });
+}));
 })));
 })).then((function(files) {
 var sortedFiles = sortByString(files, (function(p) {
 return p.filename;
 }));
 return compile(fs, sortedFiles);
-})).catch(function(p) { return Promise.resolve(((function(error) {
+})).catch((function(error) {
 console.log(error);
-}))(p)) });
+}));
 }
 
 function main() {
@@ -4253,7 +4263,7 @@ var void_ = Type.constructor(0, "Void@_", []);
 var int = Type.constructor(0, "Int@_", []);
 var bool = Type.constructor(0, "Bool@_", []);
 var string = Type.constructor(0, "String@_", []);
-var typeDefinitions = [TypeDefinition.typeDefinition(0, "Void@_", [], false, []), TypeDefinition.typeDefinition(0, "Pair@_", ["a", "b"], true, [MethodSignature.methodSignature(0, "pair", [], [Parameter.parameter(0, "first", Type.parameter(0, "a")), Parameter.parameter(0, "second", Type.parameter(0, "b"))], void_)]), TypeDefinition.typeDefinition(0, "Option@_", ["a"], true, [MethodSignature.methodSignature(0, "none", [], [], void_), MethodSignature.methodSignature(0, "some", [], [Parameter.parameter(0, "value", Type.parameter(0, "a"))], void_)]), TypeDefinition.typeDefinition(0, "String@_", [], false, [MethodSignature.methodSignature(0, "invoke", [], [Parameter.parameter(0, "index", int)], int), MethodSignature.methodSignature(0, "size", [], [], int), MethodSignature.methodSignature(0, "take", [], [Parameter.parameter(0, "count", int)], string), MethodSignature.methodSignature(0, "drop", [], [Parameter.parameter(0, "count", int)], string), MethodSignature.methodSignature(0, "toLower", [], [], string), MethodSignature.methodSignature(0, "toUpper", [], [], string)]), TypeDefinition.typeDefinition(0, "Bool@_", [], true, [MethodSignature.methodSignature(0, "false", [], [], void_), MethodSignature.methodSignature(0, "true", [], [], void_)]), TypeDefinition.typeDefinition(0, "Int@_", [], false, [MethodSignature.methodSignature(0, "toString", [], [], string)]), TypeDefinition.typeDefinition(0, "Float@_", [], false, [MethodSignature.methodSignature(0, "toString", [], [], string)]), TypeDefinition.typeDefinition(0, "Array@_", ["a"], false, [MethodSignature.methodSignature(0, "invoke", [], [Parameter.parameter(0, "index", int)], Type.parameter(0, "a")), MethodSignature.methodSignature(0, "size", [], [], int), MethodSignature.methodSignature(0, "take", [], [Parameter.parameter(0, "count", int)], Type.constructor(0, "Array@_", [Type.parameter(0, "a")])), MethodSignature.methodSignature(0, "drop", [], [Parameter.parameter(0, "count", int)], Type.constructor(0, "Array@_", [Type.parameter(0, "a")])), MethodSignature.methodSignature(0, "concat", [], [Parameter.parameter(0, "array", Type.constructor(0, "Array@_", [Type.parameter(0, "a")]))], Type.constructor(0, "Array@_", [Type.parameter(0, "a")]))]), TypeDefinition.typeDefinition(0, "F0@_", ["r"], false, [MethodSignature.methodSignature(0, "invoke", [], [], Type.parameter(0, "r"))]), TypeDefinition.typeDefinition(0, "F1@_", ["p1", "r"], false, [MethodSignature.methodSignature(0, "invoke", [], [Parameter.parameter(0, "a1", Type.parameter(0, "p1"))], Type.parameter(0, "r"))]), TypeDefinition.typeDefinition(0, "F2@_", ["p1", "p2", "r"], false, [MethodSignature.methodSignature(0, "invoke", [], [Parameter.parameter(0, "a1", Type.parameter(0, "p1")), Parameter.parameter(0, "a2", Type.parameter(0, "p2"))], Type.parameter(0, "r"))]), TypeDefinition.typeDefinition(0, "F3@_", ["p1", "p2", "p3", "r"], false, [MethodSignature.methodSignature(0, "invoke", [], [Parameter.parameter(0, "a1", Type.parameter(0, "p1")), Parameter.parameter(0, "a2", Type.parameter(0, "p2")), Parameter.parameter(0, "a3", Type.parameter(0, "p3"))], Type.parameter(0, "r"))]), TypeDefinition.typeDefinition(0, "Promise@_", ["a"], false, [MethodSignature.methodSignature(0, "map", ["b"], [Parameter.parameter(0, "body", Type.constructor(0, "F1@_", [Type.parameter(0, "a"), Type.parameter(0, "b")]))], Type.constructor(0, "Promise@_", [Type.parameter(0, "b")])), MethodSignature.methodSignature(0, "flatMap", ["b"], [Parameter.parameter(0, "body", Type.constructor(0, "F1@_", [Type.parameter(0, "a"), Type.constructor(0, "Promise@_", [Type.parameter(0, "b")])]))], Type.constructor(0, "Promise@_", [Type.parameter(0, "b")])), MethodSignature.methodSignature(0, "catchMap", ["r", "b"], [Parameter.parameter(0, "body", Type.constructor(0, "F1@_", [Type.parameter(0, "r"), Type.parameter(0, "b")]))], Type.constructor(0, "Promise@_", [Type.parameter(0, "b")])), MethodSignature.methodSignature(0, "catchFlatMap", ["r", "b"], [Parameter.parameter(0, "body", Type.constructor(0, "F1@_", [Type.parameter(0, "r"), Type.constructor(0, "Promise@_", [Type.parameter(0, "b")])]))], Type.constructor(0, "Promise@_", [Type.parameter(0, "b")]))])];
+var typeDefinitions = [TypeDefinition.typeDefinition(0, "Void@_", [], false, []), TypeDefinition.typeDefinition(0, "Pair@_", ["a", "b"], true, [MethodSignature.methodSignature(0, "pair", [], [Parameter.parameter(0, "first", Type.parameter(0, "a")), Parameter.parameter(0, "second", Type.parameter(0, "b"))], void_)]), TypeDefinition.typeDefinition(0, "Option@_", ["a"], true, [MethodSignature.methodSignature(0, "none", [], [], void_), MethodSignature.methodSignature(0, "some", [], [Parameter.parameter(0, "value", Type.parameter(0, "a"))], void_)]), TypeDefinition.typeDefinition(0, "String@_", [], false, [MethodSignature.methodSignature(0, "invoke", [], [Parameter.parameter(0, "index", int)], int), MethodSignature.methodSignature(0, "size", [], [], int), MethodSignature.methodSignature(0, "take", [], [Parameter.parameter(0, "count", int)], string), MethodSignature.methodSignature(0, "drop", [], [Parameter.parameter(0, "count", int)], string), MethodSignature.methodSignature(0, "toLower", [], [], string), MethodSignature.methodSignature(0, "toUpper", [], [], string)]), TypeDefinition.typeDefinition(0, "Bool@_", [], true, [MethodSignature.methodSignature(0, "false", [], [], void_), MethodSignature.methodSignature(0, "true", [], [], void_)]), TypeDefinition.typeDefinition(0, "Int@_", [], false, [MethodSignature.methodSignature(0, "toString", [], [], string)]), TypeDefinition.typeDefinition(0, "Float@_", [], false, [MethodSignature.methodSignature(0, "toString", [], [], string)]), TypeDefinition.typeDefinition(0, "Array@_", ["a"], false, [MethodSignature.methodSignature(0, "invoke", [], [Parameter.parameter(0, "index", int)], Type.parameter(0, "a")), MethodSignature.methodSignature(0, "size", [], [], int), MethodSignature.methodSignature(0, "take", [], [Parameter.parameter(0, "count", int)], Type.constructor(0, "Array@_", [Type.parameter(0, "a")])), MethodSignature.methodSignature(0, "drop", [], [Parameter.parameter(0, "count", int)], Type.constructor(0, "Array@_", [Type.parameter(0, "a")])), MethodSignature.methodSignature(0, "concat", [], [Parameter.parameter(0, "array", Type.constructor(0, "Array@_", [Type.parameter(0, "a")]))], Type.constructor(0, "Array@_", [Type.parameter(0, "a")]))]), TypeDefinition.typeDefinition(0, "F0@_", ["r"], false, [MethodSignature.methodSignature(0, "invoke", [], [], Type.parameter(0, "r"))]), TypeDefinition.typeDefinition(0, "F1@_", ["p1", "r"], false, [MethodSignature.methodSignature(0, "invoke", [], [Parameter.parameter(0, "a1", Type.parameter(0, "p1"))], Type.parameter(0, "r"))]), TypeDefinition.typeDefinition(0, "F2@_", ["p1", "p2", "r"], false, [MethodSignature.methodSignature(0, "invoke", [], [Parameter.parameter(0, "a1", Type.parameter(0, "p1")), Parameter.parameter(0, "a2", Type.parameter(0, "p2"))], Type.parameter(0, "r"))]), TypeDefinition.typeDefinition(0, "F3@_", ["p1", "p2", "p3", "r"], false, [MethodSignature.methodSignature(0, "invoke", [], [Parameter.parameter(0, "a1", Type.parameter(0, "p1")), Parameter.parameter(0, "a2", Type.parameter(0, "p2")), Parameter.parameter(0, "a3", Type.parameter(0, "p3"))], Type.parameter(0, "r"))]), TypeDefinition.typeDefinition(0, "Promise@_", ["a"], false, [MethodSignature.methodSignature(0, "map", ["b"], [Parameter.parameter(0, "onFulfilled", Type.constructor(0, "F1@_", [Type.parameter(0, "a"), Type.parameter(0, "b")]))], Type.constructor(0, "Promise@_", [Type.parameter(0, "b")])), MethodSignature.methodSignature(0, "flatMap", ["b"], [Parameter.parameter(0, "onFulfilled", Type.constructor(0, "F1@_", [Type.parameter(0, "a"), Type.constructor(0, "Promise@_", [Type.parameter(0, "b")])]))], Type.constructor(0, "Promise@_", [Type.parameter(0, "b")])), MethodSignature.methodSignature(0, "catchMap", ["r", "b"], [Parameter.parameter(0, "onRejected", Type.constructor(0, "F1@_", [Type.parameter(0, "r"), Type.parameter(0, "b")]))], Type.constructor(0, "Promise@_", [Type.parameter(0, "b")])), MethodSignature.methodSignature(0, "catchFlatMap", ["r", "b"], [Parameter.parameter(0, "onRejected", Type.constructor(0, "F1@_", [Type.parameter(0, "r"), Type.constructor(0, "Promise@_", [Type.parameter(0, "b")])]))], Type.constructor(0, "Promise@_", [Type.parameter(0, "b")])), MethodSignature.methodSignature(0, "bothMap", ["r", "b"], [Parameter.parameter(0, "onFulfilled", Type.constructor(0, "F1@_", [Type.parameter(0, "a"), Type.parameter(0, "b")])), Parameter.parameter(0, "onRejected", Type.constructor(0, "F1@_", [Type.parameter(0, "r"), Type.parameter(0, "b")]))], Type.constructor(0, "Promise@_", [Type.parameter(0, "b")])), MethodSignature.methodSignature(0, "bothFlatMap", ["r", "b"], [Parameter.parameter(0, "onFulfilled", Type.constructor(0, "F1@_", [Type.parameter(0, "a"), Type.constructor(0, "Promise@_", [Type.parameter(0, "b")])])), Parameter.parameter(0, "onRejected", Type.constructor(0, "F1@_", [Type.parameter(0, "r"), Type.constructor(0, "Promise@_", [Type.parameter(0, "b")])]))], Type.constructor(0, "Promise@_", [Type.parameter(0, "b")]))])];
 /* Promises are not quite right since JS looks into promises and checks for a .then method, and flattens it 'automatically' (thanks...). */
 return map(typeDefinitions, (function(d) {
 return Pair.pair(d.symbol, d);
