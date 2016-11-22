@@ -1323,6 +1323,7 @@ builder.append("('' + ");
 emitTerm(builder, value);
 return builder.append(")");
 })), Pair.pair("Promise@_.map", (function(value, builder, arguments_) {
+/* TODO: Promise.resolve special cases on things with a .then method, so this is wrong when body returns a promise. */
 emitTerm(builder, value);
 builder.append(".then(function(p) { return Promise.resolve((");
 emitArguments(builder, arguments_);

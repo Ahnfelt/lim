@@ -358,6 +358,7 @@ specialMethods() : StringMap[(Term, StringBuilder, Arguments) => Void] {
             builder.append(")")
         }),
         Pair("Promise@_.map", (value, builder, arguments) => {
+            js"/* TODO: Promise.resolve special cases on things with a .then method, so this is wrong when body returns a promise. */"
             emitTerm(builder, value)
             builder.append(".then(function(p) { return Promise.resolve((")
             emitArguments(builder, arguments)
