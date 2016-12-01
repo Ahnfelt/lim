@@ -51,7 +51,7 @@ loadAndCompile() {
     readDirectory(fs, "lim").flatMap(files => {
 
         promiseAll(map(files, file => {
-            filename := "lim/\(file)"
+            filename := "lim/" + file
             readTextFile(fs, filename).map(text => [filename = file, text = text])
         }))
 

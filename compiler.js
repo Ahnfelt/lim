@@ -1742,7 +1742,7 @@ function loadAndCompile() {
 var fs = newFileSystem();
 return readDirectory(fs, "lim").then((function(files) {
 return promiseAll(map(files, (function(file) {
-var filename = ("lim/" + file);
+var filename = "lim/" + file;
 return readTextFile(fs, filename).then((function(text) {
 return {filename: file, text: text};
 }));
