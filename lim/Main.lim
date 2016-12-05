@@ -44,18 +44,28 @@ compile(fs : FileSystem, moduleSources : Array[[filename : String, text : String
     })
 }
 
-loadAndCompile(fs : FileSystem) {
+tempContains(haystack : String, needle : String) : Bool {
+    js"return haystack.indexOf(needle) != -1;"
+}
 
-    readDirectory(fs, "lim").flatMap(files => {
+loadAndCompile(fs : FileSystem, directory : String) {
 
-        promiseAll(map(files, file => {
-            filename := "lim/" + file
-            readTextFile(fs, filename).map(text => [filename = file, text = text])
-        }))
+    compileDirectory(directory : String) : Promise[Array[Array[[filename : String, text : String]]]] {
+        readDirectory(fs, directory).flatMap(files => {
+            promiseAll(map(files, file => {
+                filename := directory + "/" + file
+                if(tempContains(file, "."), {
+                    readTextFile(fs, filename).map(text => [[filename = file, text = text]])
+                }, {
+                    compileDirectory(filename).map(flatten)
+                })
+            }))
+        })
+    }
 
-    }).flatMap(files => {
+    compileDirectory(directory).flatMap(files => {
 
-        sortedFiles := sortByString(files, p => p.filename)
+        sortedFiles := sortByString(flatten(files), p => p.filename)
         compile(fs, sortedFiles)
 
     }).catchMap(error => {
@@ -68,5 +78,5 @@ loadAndCompile(fs : FileSystem) {
 main() {
     js"process.on('unhandledRejection', function (err, p) { console.error('Unhandled promise rejection: ' + err) })"
     fs := newFileSystem()
-    loadAndCompile(fs)
+    loadAndCompile(fs, "lim")
 }

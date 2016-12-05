@@ -1244,7 +1244,8 @@ return builder.append(")");
 case "variable": return (function(){
 var position = _match.position;
 var symbol = _match.symbol;
-return builder.append(escapeVariable(symbol));
+var name = baseName(symbol);
+return builder.append(escapeVariable(name));
 })();
 }})(term);
 }
@@ -1738,16 +1739,27 @@ console.log('Wrote output.js')
 }));
 }
 
-function loadAndCompile(fs) {
-return readDirectory(fs, "lim").then((function(files) {
+function tempContains(haystack, needle) {
+return haystack.indexOf(needle) != -1;
+}
+
+function loadAndCompile(fs, directory) {
+function compileDirectory(directory) {
+return readDirectory(fs, directory).then((function(files) {
 return promiseAll(map(files, (function(file) {
-var filename = "lim/" + file;
+var filename = directory + "/" + file;
+return if_(tempContains(file, "."), (function() {
 return readTextFile(fs, filename).then((function(text) {
-return {filename: file, text: text};
+return [{filename: file, text: text}];
+}));
+}), (function() {
+return compileDirectory(filename).then(flatten);
 }));
 })));
-})).then((function(files) {
-var sortedFiles = sortByString(files, (function(p) {
+}));
+}
+return compileDirectory(directory).then((function(files) {
+var sortedFiles = sortByString(flatten(files), (function(p) {
 return p.filename;
 }));
 return compile(fs, sortedFiles);
@@ -1759,7 +1771,7 @@ console.log(error);
 function main() {
 process.on('unhandledRejection', function (err, p) { console.error('Unhandled promise rejection: ' + err) })
 var fs = newFileSystem();
-return loadAndCompile(fs);
+return loadAndCompile(fs, "lim");
 }
 
 function parseCommaList(pc, parse, end) {

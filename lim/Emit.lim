@@ -261,7 +261,8 @@ emitTerm(builder : StringBuilder, term : Term) {
             })
         }
         variable(position, symbol) {
-            builder.append(escapeVariable(symbol))
+            name := baseName(symbol)
+            builder.append(escapeVariable(name))
         }
     }
 }
