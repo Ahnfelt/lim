@@ -44,17 +44,13 @@ compile(fs : FileSystem, moduleSources : Array[[filename : String, text : String
     })
 }
 
-tempContains(haystack : String, needle : String) : Bool {
-    js"return haystack.indexOf(needle) != -1;"
-}
-
 loadAndCompile(fs : FileSystem, directory : String) {
 
     compileDirectory(directory : String) : Promise[Array[Array[[filename : String, text : String]]]] {
         readDirectory(fs, directory).flatMap(files => {
             promiseAll(map(files, file => {
                 filename := directory + "/" + file
-                if(tempContains(file, "."), {
+                if(file.contains("."), {
                     readTextFile(fs, filename).map(text => [[filename = file, text = text]])
                 }, {
                     compileDirectory(filename).map(flatten)

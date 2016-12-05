@@ -321,6 +321,13 @@ specialMethods() : StringMap[(Term, StringBuilder, Arguments) => Void] {
             emitTerm(builder, value)
             builder.append(".toLowerCase()")
         }),
+        Pair("String@_.contains", (value, builder, arguments) => {
+            builder.append("(")
+            emitTerm(builder, value)
+            builder.append(".indexOf(")
+            emitArguments(builder, arguments)
+            builder.append(") != -1)")
+        }),
         Pair("F0@_.invoke", (value, builder, arguments) => {
             emitTerm(builder, value)
             builder.append("()")

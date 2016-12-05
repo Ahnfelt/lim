@@ -213,7 +213,8 @@ preludeTypeDefinitions() : Array[Pair[String, TypeDefinition]] {
             MethodSignature(0, "take", [], [Parameter(0, "count", int)], string),
             MethodSignature(0, "drop", [], [Parameter(0, "count", int)], string),
             MethodSignature(0, "toLower", [], [], string),
-            MethodSignature(0, "toUpper", [], [], string)
+            MethodSignature(0, "toUpper", [], [], string),
+            MethodSignature(0, "contains", [], [Parameter(0, "needle", string)], bool),
         ]),
         TypeDefinition(0, "Bool@_", [], Bool.true, [
             MethodSignature(0, "false", [], [], void),
