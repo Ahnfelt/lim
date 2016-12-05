@@ -39,14 +39,12 @@ compile(fs : FileSystem, moduleSources : Array[[filename : String, text : String
 
     emitted := builder.drain
 
-    writeTextFile(fs, "compiler.js", "\(emitted)\n\nmain();\n").map(v => {
-        js"console.log('Wrote compiler.js')"
+    writeTextFile(fs, "output.js", "\(emitted)\n\nmain();\n").map(v => {
+        js"console.log('Wrote output.js')"
     })
 }
 
-loadAndCompile() {
-
-    fs := newFileSystem()
+loadAndCompile(fs : FileSystem) {
 
     readDirectory(fs, "lim").flatMap(files => {
 
@@ -69,5 +67,6 @@ loadAndCompile() {
 
 main() {
     js"process.on('unhandledRejection', function (err, p) { console.error('Unhandled promise rejection: ' + err) })"
-    loadAndCompile()
+    fs := newFileSystem()
+    loadAndCompile(fs)
 }

@@ -1733,13 +1733,12 @@ console.log('Emitting ' + p.filename);
 return emitModule(builder, p.module);
 }));
 var emitted = builder.drain();
-return writeTextFile(fs, "compiler.js", (emitted + "\n\nmain();\n")).then((function(v) {
-console.log('Wrote compiler.js')
+return writeTextFile(fs, "output.js", (emitted + "\n\nmain();\n")).then((function(v) {
+console.log('Wrote output.js')
 }));
 }
 
-function loadAndCompile() {
-var fs = newFileSystem();
+function loadAndCompile(fs) {
 return readDirectory(fs, "lim").then((function(files) {
 return promiseAll(map(files, (function(file) {
 var filename = "lim/" + file;
@@ -1759,7 +1758,8 @@ console.log(error);
 
 function main() {
 process.on('unhandledRejection', function (err, p) { console.error('Unhandled promise rejection: ' + err) })
-return loadAndCompile();
+var fs = newFileSystem();
+return loadAndCompile(fs);
 }
 
 function parseCommaList(pc, parse, end) {
