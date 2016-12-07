@@ -144,7 +144,7 @@ checkTerm(typer : Typer, expectedType : Type, term : Term) : Term {
                         typer.error(position, "Expected Int, Float or String, got \(typeToString(operandType))")
                     }
                 }
-                operandType
+                if(operator == TokenType.slash, { Type.constructor(position, "Float@_", []) }, { operandType })
             }, {
                 Type.constructor(position, "Bool@_", [])
             })

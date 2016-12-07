@@ -360,8 +360,30 @@ specialMethods() : StringMap[(Term, StringBuilder, Arguments) => Void] {
             emitTerm(builder, value)
             builder.append(")")
         }),
+        Pair("Int@_.remainder", (value, builder, arguments) => {
+            builder.append("(")
+            emitTerm(builder, value)
+            builder.append(" % ")
+            emitArguments(builder, arguments)
+            builder.append(")")
+        }),
         Pair("Float@_.toString", (value, builder, arguments) => {
             builder.append("('' + ")
+            emitTerm(builder, value)
+            builder.append(")")
+        }),
+        Pair("Float@_.round", (value, builder, arguments) => {
+            builder.append("Math.round(")
+            emitTerm(builder, value)
+            builder.append(")")
+        }),
+        Pair("Float@_.floor", (value, builder, arguments) => {
+            builder.append("Math.floor(")
+            emitTerm(builder, value)
+            builder.append(")")
+        }),
+        Pair("Float@_.ceil", (value, builder, arguments) => {
+            builder.append("Math.ceil(")
             emitTerm(builder, value)
             builder.append(")")
         }),
