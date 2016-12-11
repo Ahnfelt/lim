@@ -1881,10 +1881,7 @@ console.log(error);
 function main() {
 process.on('unhandledRejection', function (err, p) { console.error('Unhandled promise rejection: ' + err) })
 var fs = newFileSystem();
-loadAndCompile(fs, "lim");
-var p1 = {x: 7, y: 5};
-var p2 = (function(_o) { return {y: _o.y, x: 2}})(p1);
-console.dir(p2)
+return loadAndCompile(fs, "lim");
 }
 
 function parseCommaList(pc, parse, end) {
@@ -2148,16 +2145,18 @@ return pc.lookahead("atom", [Pair.pair([TokenType.leftSquare()], (function() {
 return parseArray(pc);
 })), Pair.pair([TokenType.lower(), TokenType.rightThickArrow()], (function() {
 return parseLambda(pc);
-})), Pair.pair([TokenType.leftRound(), TokenType.lower(), TokenType.assign()], (function() {
-return parseRecord(pc);
-})), Pair.pair([TokenType.leftRound(), TokenType.dotDot()], (function() {
-return parseRecord(pc);
 })), Pair.pair([TokenType.leftRound(), TokenType.lower(), TokenType.comma()], (function() {
 return parseLambda(pc);
 })), Pair.pair([TokenType.leftRound(), TokenType.lower(), TokenType.rightRound(), TokenType.rightThickArrow()], (function() {
 return parseLambda(pc);
 })), Pair.pair([TokenType.leftRound(), TokenType.rightRound(), TokenType.rightThickArrow()], (function() {
 return parseLambda(pc);
+})), Pair.pair([TokenType.leftRound(), TokenType.lower(), TokenType.assign()], (function() {
+return parseRecord(pc);
+})), Pair.pair([TokenType.leftRound(), TokenType.dotDot()], (function() {
+return parseRecord(pc);
+})), Pair.pair([TokenType.leftRound(), TokenType.rightRound()], (function() {
+return parseRecord(pc);
 })), Pair.pair([TokenType.leftCurly()], (function() {
 return parseLambda(pc);
 })), Pair.pair([TokenType.upper(), TokenType.leftCurly()], (function() {
