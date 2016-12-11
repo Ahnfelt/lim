@@ -183,7 +183,7 @@ typeToString(type : Type) : String {
         }
         record(p2, fields2) {
             joined := join(map(fields2, f => "\(f.label) : \(typeToString(f.type))"), ", ")
-            "[\(joined)]"
+            "(\(joined))"
         }
         parameter(p2, name2) {
             "\(name2)"

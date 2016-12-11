@@ -4404,7 +4404,7 @@ var fields2 = _match.fields;
 var joined = join(map(fields2, (function(f) {
 return (f.label + " : " + typeToString(f.type));
 })), ", ");
-return ("[" + joined + "]");
+return ("(" + joined + ")");
 })();
 case "parameter": return (function(){
 var p2 = _match.position;
