@@ -4291,7 +4291,11 @@ var fields2 = _match.fields;
 when(fields1.length != fields2.length, (function() {
 return error();
 }));
-return each(zip(fields1, fields2), (function(p) {
+return each(zip(sortByString(fields1, (function(f) {
+return f.label;
+})), sortByString(fields2, (function(f) {
+return f.label;
+}))), (function(p) {
 when(p.first.label != p.second.label, (function() {
 return error();
 }));

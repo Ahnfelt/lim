@@ -136,7 +136,7 @@ solveEqualityConstraint(typer : Typer, position : Int, originalExpectedType : Ty
                 constructor(p2, symbol2, typeArguments2) { error() }
                 record(p2, fields2) {
                     when(fields1.size != fields2.size, { error() })
-                    each(zip(fields1, fields2), p => {
+                    each(zip(sortByString(fields1, f => f.label), sortByString(fields2, f => f.label)), p => {
                         when(p.first.label != p.second.label, { error() })
                         solveEqualityConstraint(typer, position, originalExpectedType, originalActualType, p.first.type, p.second.type)
                     })
