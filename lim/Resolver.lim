@@ -126,8 +126,12 @@ resolveTerm(resolver : Resolver, term : Term) : Term {
         array(position, elements) {
             Term.array(position, map(elements, e => resolveTerm(resolver, e)))
         }
-        record(position, fields) {
-            Term.record(position, map(fields, f => {
+        record(position, original, labels, fields) {
+            resolvedOriginal := original ? {
+                some(o) { Option.some(resolveTerm(resolver, o)) }
+                none { Option.none }
+            }
+            Term.record(position, resolvedOriginal, labels, map(fields, f => {
                 Field(f.position, f.label, resolveTerm(resolver, f.value))
             }))
         }

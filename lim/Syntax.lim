@@ -7,7 +7,7 @@ Term ? {
     integer(position : Int, value : String)
     floating(position : Int, value : String)
     array(position : Int, elements : Array[Term])
-    record(position : Int, fields : Array[Field])
+    record(position : Int, original : Option[Term], labels : Array[String], fields : Array[Field])
     variable(position : Int, symbol : String)
     staticCall(position : Int, symbol : String, name : String, arguments : Arguments)
     functionCall(position : Int, name : String, arguments : Arguments)

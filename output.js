@@ -470,6 +470,8 @@ return Term.array(position, typedElements);
 })();
 case "record": return (function(){
 var position = _match.position;
+var original = _match.original;
+var emptyLabels = _match.labels;
 var fields = _match.fields;
 var fieldTypes = map(fields, (function(f) {
 return Type.variable(position, typer.fresh());
@@ -478,13 +480,63 @@ var typedFields = map(zip(fields, fieldTypes), (function(p) {
 var typedValue = checkTerm(typer, p.second, p.first.value);
 return Pair.pair(Field.field(p.first.position, p.first.label, typedValue), FieldType.fieldType(p.first.position, p.first.label, p.second));
 }));
+var pair = (function(_match) { switch(_match._) {
+case "none": return (function(){
 var recordType = Type.record(position, sortByString(map(typedFields, (function(p) {
 return p.second;
 })), (function(f) {
 return f.label;
 })));
 equalityConstraint(typer, position, expectedType, recordType);
-return Term.record(position, map(typedFields, (function(p) {
+return Pair.pair(Option.none(), map(typedFields, (function(p) {
+return p.second.label;
+})));
+})();
+case "some": return (function(){
+var e = _match.value;
+var typedOriginal = checkTerm(typer, expectedType, e);
+var labels = (function(_match) { switch(_match._) {
+case "variable": return (function(){
+var position2 = _match.position;
+var id2 = _match.id;
+return typer.error(position, "Record update requires known type");
+})();
+case "parameter": return (function(){
+var position2 = _match.position;
+var name2 = _match.name;
+return typer.error(position, "Record update requires record type, got: " + typeToString(typer.expand(expectedType)));
+})();
+case "constructor": return (function(){
+var position2 = _match.position;
+var symbol2 = _match.symbol;
+var typeArguments2 = _match.typeArguments;
+return typer.error(position, "Record update requires record type, got: " + typeToString(typer.expand(expectedType)));
+})();
+case "record": return (function(){
+var position2 = _match.position;
+var fields2 = _match.fields;
+each(typedFields, (function(field) {
+return (function(_match) { switch(_match._) {
+case "none": return (function(){
+return typer.error(position, "No such field " + field.first.label + " to update on type " + typeToString(typer.expand(expectedType)));
+})();
+case "some": return (function(){
+var f = _match.value;
+return equalityConstraint(typer, field.first.position, f.type, field.second.type);
+})();
+}})(find(fields2, (function(f) {
+return f.label == field.first.label;
+})));
+}));
+return map(fields2, (function(f) {
+return f.label;
+}));
+})();
+}})(typer.expand(expectedType));
+return Pair.pair(Option.some(typedOriginal), labels);
+})();
+}})(original);
+return Term.record(position, pair.first, pair.second, map(typedFields, (function(p) {
 return p.first;
 })));
 })();
@@ -1107,7 +1159,16 @@ return builder.append("]");
 })();
 case "record": return (function(){
 var position = _match.position;
+var original = _match.original;
+var labels = _match.labels;
 var fields = _match.fields;
+var originalLabels = filter(labels, (function(l) {
+return find(fields, (function(f) {
+return f.label == l;
+})) == Option.none();
+}));
+return (function(_match) { switch(_match._) {
+case "none": return (function(){
 var first = true;
 builder.append("{");
 each(fields, (function(f) {
@@ -1115,10 +1176,35 @@ when(!first, (function() {
 return builder.append(", ");
 }));
 first = false;
-builder.append((escapeMethod(f.label) + ": "));
+builder.append(escapeMethod(f.label) + ": ");
 return emitTerm(builder, f.value);
 }));
 return builder.append("}");
+})();
+case "some": return (function(){
+var o = _match.value;
+var first = true;
+builder.append("(function(_o) { return {");
+each(originalLabels, (function(l) {
+when(!first, (function() {
+return builder.append(", ");
+}));
+first = false;
+return builder.append(escapeMethod(l) + ": _o." + escapeMethod(l));
+}));
+each(fields, (function(f) {
+when(!first, (function() {
+return builder.append(", ");
+}));
+first = false;
+builder.append(escapeMethod(f.label) + ": ");
+return emitTerm(builder, f.value);
+}));
+builder.append("}})(");
+emitTerm(builder, o);
+return builder.append(")");
+})();
+}})(original);
 })();
 case "instance": return (function(){
 var position = _match.position;
@@ -1528,7 +1614,7 @@ i += 1;
 }));
 return result;
 });
-var result = firstAcceptedToken([token([45, 62], TokenType.rightThinArrow()), token([45, 61], TokenType.decrement()), token([45], TokenType.minus()), token([43, 61], TokenType.increment()), token([43], TokenType.plus()), token([61, 62], TokenType.rightThickArrow()), token([61, 61], TokenType.equal()), token([33, 61], TokenType.notEqual()), token([61], TokenType.assign()), token([42], TokenType.star()), token([47], TokenType.slash()), token([38, 38], TokenType.and()), token([124, 124], TokenType.or()), token([124, 62], TokenType.rightPipe()), token([60, 124], TokenType.leftPipe()), token([63], TokenType.question()), token([33], TokenType.exclamation()), token([58], TokenType.colon()), token([64], TokenType.atSign()), token([46], TokenType.dot()), token([44], TokenType.comma()), token([95], TokenType.underscore()), token([60, 45], TokenType.leftThinArrow()), token([60, 61], TokenType.lessEqual()), token([60], TokenType.less()), token([62, 61], TokenType.greaterEqual()), token([62], TokenType.greater())]);
+var result = firstAcceptedToken([token([45, 62], TokenType.rightThinArrow()), token([45, 61], TokenType.decrement()), token([45], TokenType.minus()), token([43, 61], TokenType.increment()), token([43], TokenType.plus()), token([61, 62], TokenType.rightThickArrow()), token([61, 61], TokenType.equal()), token([33, 61], TokenType.notEqual()), token([61], TokenType.assign()), token([42], TokenType.star()), token([47], TokenType.slash()), token([38, 38], TokenType.and()), token([124, 124], TokenType.or()), token([124, 62], TokenType.rightPipe()), token([60, 124], TokenType.leftPipe()), token([63], TokenType.question()), token([33], TokenType.exclamation()), token([58], TokenType.colon()), token([64], TokenType.atSign()), token([46, 46], TokenType.dotDot()), token([46], TokenType.dot()), token([44], TokenType.comma()), token([95], TokenType.underscore()), token([60, 45], TokenType.leftThinArrow()), token([60, 61], TokenType.lessEqual()), token([60], TokenType.less()), token([62, 61], TokenType.greaterEqual()), token([62], TokenType.greater())]);
 when(result != Option.none(), (function() {
 return cursor.skipWhitespace();
 }));
@@ -1795,7 +1881,10 @@ console.log(error);
 function main() {
 process.on('unhandledRejection', function (err, p) { console.error('Unhandled promise rejection: ' + err) })
 var fs = newFileSystem();
-return loadAndCompile(fs, "lim");
+loadAndCompile(fs, "lim");
+var p1 = {x: 7, y: 5};
+var p2 = (function(_o) { return {y: _o.y, x: 2}})(p1);
+console.dir(p2)
 }
 
 function parseCommaList(pc, parse, end) {
@@ -1845,9 +1934,9 @@ var value = parseType(pc);
 return FieldType.fieldType(fieldPosition, label, value);
 });
 var position = pc.position();
-pc.consume(TokenType.leftSquare());
-var fields = parseCommaList(pc, parseField, TokenType.rightSquare());
-pc.consume(TokenType.rightSquare());
+pc.consume(TokenType.leftRound());
+var fields = parseCommaList(pc, parseField, TokenType.rightRound());
+pc.consume(TokenType.rightRound());
 var sortedFields = sortByString(fields, (function(f) {
 return f.label;
 }));
@@ -1886,7 +1975,7 @@ return name;
 }
 
 function parseType(pc) {
-var left = pc.lookahead("type", [Pair.pair([TokenType.leftRound()], (function() {
+function parseFunctionType() {
 pc.consume(TokenType.leftRound());
 var typeArguments = parseCommaList(pc, (function() {
 return parseType(pc);
@@ -1896,12 +1985,19 @@ var position = pc.position();
 pc.consume(TokenType.rightThickArrow());
 var returnType = parseType(pc);
 return Type.constructor(position, ("_.F" + ('' + typeArguments.length)), typeArguments.concat([returnType]));
+}
+var left = pc.lookahead("type", [Pair.pair([TokenType.leftRound(), TokenType.rightRound(), TokenType.rightThickArrow()], (function() {
+return parseFunctionType();
+})), Pair.pair([TokenType.leftRound(), TokenType.rightRound()], (function() {
+return parseRecordType(pc);
+})), Pair.pair([TokenType.leftRound(), TokenType.lower(), TokenType.colon()], (function() {
+return parseRecordType(pc);
+})), Pair.pair([TokenType.leftRound()], (function() {
+return parseFunctionType();
 })), Pair.pair([TokenType.lower()], (function() {
 var position = pc.position();
 var name = pc.consume(TokenType.lower());
 return Type.parameter(position, name);
-})), Pair.pair([TokenType.leftSquare()], (function() {
-return parseRecordType(pc);
 })), Pair.pair([], (function() {
 return parseTypeConstructor(pc);
 }))]);
@@ -2033,19 +2129,29 @@ var value = parseTerm(pc);
 return Field.field(fieldPosition, label, value);
 });
 var position = pc.position();
-pc.consume(TokenType.leftSquare());
-var fields = parseCommaList(pc, parseField, TokenType.rightSquare());
-pc.consume(TokenType.rightSquare());
-return Term.record(position, fields);
+pc.consume(TokenType.leftRound());
+var original = pc.lookahead("record", [Pair.pair([TokenType.dotDot()], (function() {
+pc.consume(TokenType.dotDot());
+var result = Option.some(parseTerm(pc));
+pc.consume(TokenType.comma());
+return result;
+})), Pair.pair([], (function() {
+return Option.none();
+}))]);
+var fields = parseCommaList(pc, parseField, TokenType.rightRound());
+pc.consume(TokenType.rightRound());
+return Term.record(position, original, [], fields);
 }
 
 function parseAtom(pc) {
-return pc.lookahead("atom", [Pair.pair([TokenType.leftSquare(), TokenType.lower(), TokenType.assign()], (function() {
-return parseRecord(pc);
-})), Pair.pair([TokenType.leftSquare()], (function() {
+return pc.lookahead("atom", [Pair.pair([TokenType.leftSquare()], (function() {
 return parseArray(pc);
 })), Pair.pair([TokenType.lower(), TokenType.rightThickArrow()], (function() {
 return parseLambda(pc);
+})), Pair.pair([TokenType.leftRound(), TokenType.lower(), TokenType.assign()], (function() {
+return parseRecord(pc);
+})), Pair.pair([TokenType.leftRound(), TokenType.dotDot()], (function() {
+return parseRecord(pc);
 })), Pair.pair([TokenType.leftRound(), TokenType.lower(), TokenType.comma()], (function() {
 return parseLambda(pc);
 })), Pair.pair([TokenType.leftRound(), TokenType.lower(), TokenType.rightRound(), TokenType.rightThickArrow()], (function() {
@@ -3052,8 +3158,19 @@ return resolveTerm(resolver, e);
 })();
 case "record": return (function(){
 var position = _match.position;
+var original = _match.original;
+var labels = _match.labels;
 var fields = _match.fields;
-return Term.record(position, map(fields, (function(f) {
+var resolvedOriginal = (function(_match) { switch(_match._) {
+case "some": return (function(){
+var o = _match.value;
+return Option.some(resolveTerm(resolver, o));
+})();
+case "none": return (function(){
+return Option.none();
+})();
+}})(original);
+return Term.record(position, resolvedOriginal, labels, map(fields, (function(f) {
 return Field.field(f.position, f.label, resolveTerm(resolver, f.value));
 })));
 })();
@@ -3179,7 +3296,7 @@ return Option.none();
 })();
 case "record": return (function(){
 var position = _match.position;
-var fields = _match.fields;
+var fields = _match.original;
 return Option.none();
 })();
 case "instance": return (function(){
@@ -3586,8 +3703,8 @@ return {_: "floating", position: position, value: value};
 array: function(position, elements) {
 return {_: "array", position: position, elements: elements};
 },
-record: function(position, fields) {
-return {_: "record", position: position, fields: fields};
+record: function(position, original, labels, fields) {
+return {_: "record", position: position, original: original, labels: labels, fields: fields};
 },
 variable: function(position, symbol) {
 return {_: "variable", position: position, symbol: symbol};
@@ -3759,6 +3876,10 @@ return TokenType.comma_k;
 dot_k: {_: "dot"},
 dot: function() {
 return TokenType.dot_k;
+},
+dotDot_k: {_: "dotDot"},
+dotDot: function() {
+return TokenType.dotDot_k;
 },
 underscore_k: {_: "underscore"},
 underscore: function() {

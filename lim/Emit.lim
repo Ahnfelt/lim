@@ -165,16 +165,39 @@ emitTerm(builder : StringBuilder, term : Term) {
             })
             builder.append("]")
         }
-        record(position, fields) {
-            first := Bool.true
-            builder.append("{")
-            each(fields, f => {
-                when(!first, { builder.append(", ") })
-                first = Bool.false
-                builder.append("\(escapeMethod(f.label)): ")
-                emitTerm(builder, f.value)
-            })
-            builder.append("}")
+        record(position, original, labels, fields) {
+            originalLabels := filter(labels, l => find(fields, f => f.label == l) == Option.none)
+            original ? {
+                none {
+                    first := Bool.true
+                    builder.append("{")
+                    each(fields, f => {
+                        when(!first, { builder.append(", ") })
+                        first = Bool.false
+                        builder.append(escapeMethod(f.label) + ": ")
+                        emitTerm(builder, f.value)
+                    })
+                    builder.append("}")
+                }
+                some(o) {
+                    first := Bool.true
+                    builder.append("(function(_o) { return {")
+                    each(originalLabels, l => {
+                        when(!first, { builder.append(", ") })
+                        first = Bool.false
+                        builder.append(escapeMethod(l) + ": _o." + escapeMethod(l))
+                    })
+                    each(fields, f => {
+                        when(!first, { builder.append(", ") })
+                        first = Bool.false
+                        builder.append(escapeMethod(f.label) + ": ")
+                        emitTerm(builder, f.value)
+                    })
+                    builder.append("}})(")
+                    emitTerm(builder, o)
+                    builder.append(")")
+                }
+            }
         }
         instance(position, symbol, thisName, methods) {
             when(symbol == "F0@_" || symbol == "F1@_" || symbol == "F2@_" || symbol == "F3@_", { panic("Can't create explicit instance of lambda function F*@_") })

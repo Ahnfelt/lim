@@ -1,23 +1,23 @@
-compile(fs : FileSystem, moduleSources : Array[[filename : String, text : String]]) : Promise[Void] {
+compile(fs : FileSystem, moduleSources : Array[(filename : String, text : String)]) : Promise[Void] {
 
     parsedModules := map(moduleSources, p => {
         moduleName := p.filename
         js"console.log('Parsing ' + moduleName);"
         tokens := lexTokens(p.text)
         pc := newPc(newTokenCursor(tokens, 0), p.text)
-        [filename = p.filename, module = parseModule(pc, "_current", "_Current", p.filename, p.text)]
+        (filename = p.filename, module = parseModule(pc, "_current", "_Current", p.filename, p.text))
     })
 
     resolver := newResolver(map(parsedModules, p => p.module))
     resolvedModules := map(parsedModules, p => {
         js"console.log('Resolving ' + p.filename);"
-        [filename = p.filename, module = resolveModule(resolver, p.module)]
+        (filename = p.filename, module = resolveModule(resolver, p.module))
     })
 
     typer := newTyper(map(resolvedModules, p => p.module))
     typedModules := map(resolvedModules, p => {
         js"console.log('Typing ' + p.filename);"
-        [filename = p.filename, module = checkModule(typer, p.module)]
+        (filename = p.filename, module = checkModule(typer, p.module))
     })
 
     builder := newStringBuilder()
@@ -46,12 +46,12 @@ compile(fs : FileSystem, moduleSources : Array[[filename : String, text : String
 
 loadAndCompile(fs : FileSystem, directory : String) {
 
-    compileDirectory(directory : String) : Promise[Array[Array[[filename : String, text : String]]]] {
+    compileDirectory(directory : String) : Promise[Array[Array[(filename : String, text : String)]]] {
         readDirectory(fs, directory).flatMap(files => {
             promiseAll(map(files, file => {
                 filename := directory + "/" + file
                 if(file.contains("."), {
-                    readTextFile(fs, filename).map(text => [[filename = file, text = text]])
+                    readTextFile(fs, filename).map(text => [(filename = file, text = text)])
                 }, {
                     compileDirectory(filename).map(flatten)
                 })

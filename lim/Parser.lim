@@ -36,9 +36,9 @@ parseRecordType(pc : Pc) : Type {
         FieldType(fieldPosition, label, value)
     }
     position := pc.position
-    pc.consume(TokenType.leftSquare)
-    fields := parseCommaList(pc, parseField, TokenType.rightSquare)
-    pc.consume(TokenType.rightSquare)
+    pc.consume(TokenType.leftRound)
+    fields := parseCommaList(pc, parseField, TokenType.rightRound)
+    pc.consume(TokenType.rightRound)
     sortedFields := sortByString(fields, f => f.label)
     Type.record(position, fields)
 }
@@ -67,22 +67,25 @@ parseTypeConstructor(pc : Pc) : Type {
 }
 
 parseType(pc : Pc) : Type {
+    parseFunctionType() : Type {
+        pc.consume(TokenType.leftRound)
+        typeArguments := parseCommaList(pc, { parseType(pc) }, TokenType.rightRound)
+        pc.consume(TokenType.rightRound)
+        position := pc.position
+        pc.consume(TokenType.rightThickArrow)
+        returnType := parseType(pc)
+        Type.constructor(position, "_.F\(typeArguments.size.toString)", typeArguments.concat([returnType]))
+    }
     left := pc.lookahead("type", [
-        Pair([TokenType.leftRound], {
-            pc.consume(TokenType.leftRound)
-            typeArguments := parseCommaList(pc, { parseType(pc) }, TokenType.rightRound)
-            pc.consume(TokenType.rightRound)
-            position := pc.position
-            pc.consume(TokenType.rightThickArrow)
-            returnType := parseType(pc)
-            Type.constructor(position, "_.F\(typeArguments.size.toString)", typeArguments.concat([returnType]))
-        }),
+        Pair([TokenType.leftRound, TokenType.rightRound, TokenType.rightThickArrow], { parseFunctionType() }),
+        Pair([TokenType.leftRound, TokenType.rightRound], { parseRecordType(pc) }),
+        Pair([TokenType.leftRound, TokenType.lower, TokenType.colon], { parseRecordType(pc) }),
+        Pair([TokenType.leftRound], { parseFunctionType() }),
         Pair([TokenType.lower], {
             position := pc.position
             name := pc.consume(TokenType.lower)
             Type.parameter(position, name)
         }),
-        Pair([TokenType.leftSquare], { parseRecordType(pc) }),
         Pair([], { parseTypeConstructor(pc) })
     ])
     pc.lookahead("function type", [
@@ -213,17 +216,27 @@ parseRecord(pc : Pc) : Term {
         Field(fieldPosition, label, value)
     }
     position := pc.position
-    pc.consume(TokenType.leftSquare)
-    fields := parseCommaList(pc, parseField, TokenType.rightSquare)
-    pc.consume(TokenType.rightSquare)
-    Term.record(position, fields)
+    pc.consume(TokenType.leftRound)
+    original := pc.lookahead("record", [
+        Pair([TokenType.dotDot], {
+            pc.consume(TokenType.dotDot)
+            result := Option.some(parseTerm(pc))
+            pc.consume(TokenType.comma)
+            result
+        }),
+        Pair([], { Option.none })
+    ])
+    fields := parseCommaList(pc, parseField, TokenType.rightRound)
+    pc.consume(TokenType.rightRound)
+    Term.record(position, original, [], fields)
 }
 
 parseAtom(pc : Pc) : Term {
     pc.lookahead("atom", [
-        Pair([TokenType.leftSquare, TokenType.lower, TokenType.assign], { parseRecord(pc) }),
         Pair([TokenType.leftSquare], { parseArray(pc) }),
         Pair([TokenType.lower, TokenType.rightThickArrow], { parseLambda(pc) }),
+        Pair([TokenType.leftRound, TokenType.lower, TokenType.assign], { parseRecord(pc) }),
+        Pair([TokenType.leftRound, TokenType.dotDot], { parseRecord(pc) }),
         Pair([TokenType.leftRound, TokenType.lower, TokenType.comma], { parseLambda(pc) }),
         Pair([TokenType.leftRound, TokenType.lower, TokenType.rightRound, TokenType.rightThickArrow], { parseLambda(pc) }),
         Pair([TokenType.leftRound, TokenType.rightRound, TokenType.rightThickArrow], { parseLambda(pc) }),

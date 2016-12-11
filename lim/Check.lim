@@ -188,15 +188,40 @@ checkTerm(typer : Typer, expectedType : Type, term : Term) : Term {
             typedElements := map(elements, e => checkTerm(typer, elementType, e))
             Term.array(position, typedElements)
         }
-        record(position, fields) {
+        record(position, original, emptyLabels, fields) {
             fieldTypes := map(fields, f => Type.variable(position, typer.fresh))
             typedFields := map(zip(fields, fieldTypes), p => {
                 typedValue := checkTerm(typer, p.second, p.first.value)
                 Pair(Field(p.first.position, p.first.label, typedValue), FieldType(p.first.position, p.first.label, p.second))
             })
-            recordType := Type.record(position, sortByString(map(typedFields, p => p.second), f => f.label))
-            equalityConstraint(typer, position, expectedType, recordType)
-            Term.record(position, map(typedFields, p => p.first))
+            pair := original ? {
+                none() {
+                    recordType := Type.record(position, sortByString(map(typedFields, p => p.second), f => f.label))
+                    equalityConstraint(typer, position, expectedType, recordType)
+                    Pair(Option.none, map(typedFields, p => p.second.label))
+                }
+                some(e) {
+                    typedOriginal := checkTerm(typer, expectedType, e)
+                    labels := typer.expand(expectedType) ? {
+                        variable(position2, id2) { typer.error(position, "Record update requires known type") }
+                        parameter(position2, name2) { typer.error(position, "Record update requires record type, got: " + typeToString(typer.expand(expectedType))) }
+                        constructor(position2, symbol2, typeArguments2) { typer.error(position, "Record update requires record type, got: " + typeToString(typer.expand(expectedType))) }
+                        record(position2, fields2) {
+                            each(typedFields, field => {
+                                find(fields2, f => f.label == field.first.label) ? {
+                                    none { typer.error(position, "No such field " + field.first.label + " to update on type " + typeToString(typer.expand(expectedType))) }
+                                    some(f) {
+                                        equalityConstraint(typer, field.first.position, f.type, field.second.type)
+                                    }
+                                }
+                            })
+                            map(fields2, f => f.label)
+                        }
+                    }
+                    Pair(Option.some(typedOriginal), labels)
+                }
+            }
+            Term.record(position, pair.first, pair.second, map(typedFields, p => p.first))
         }
         instance(position, symbol, thisName, methods) {
             typeDefinition := typer.type(symbol)

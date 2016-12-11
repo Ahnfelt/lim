@@ -78,6 +78,7 @@ lexOperator(cursor : CharCursor) : Option[Token] {
         token(['!'], TokenType.exclamation),
         token([':'], TokenType.colon),
         token(['@'], TokenType.atSign),
+        token(['.', '.'], TokenType.dotDot),
         token(['.'], TokenType.dot),
         token([','], TokenType.comma),
         token(['_'], TokenType.underscore),
