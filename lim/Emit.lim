@@ -107,6 +107,7 @@ emitArguments(builder : StringBuilder, arguments : Arguments) {
 emitTerm(builder : StringBuilder, term : Term) {
     term ? {
         binary(position, operator, left, right) {
+            builder.append("(")
             emitTerm(builder, left)
             builder.append(" ")
             done := Bool.false
@@ -125,6 +126,7 @@ emitTerm(builder : StringBuilder, term : Term) {
             when(!done, { panic("Unknown binary operator") })
             builder.append(" ")
             emitTerm(builder, right)
+            builder.append(")")
         }
         unary(position, operator, value) {
             done := Bool.false

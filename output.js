@@ -1030,6 +1030,7 @@ var position = _match.position;
 var operator = _match.operator;
 var left = _match.left;
 var right = _match.right;
+builder.append("(");
 emitTerm(builder, left);
 builder.append(" ");
 var done = false;
@@ -1085,7 +1086,8 @@ when(!done, (function() {
 return panic("Unknown binary operator");
 }));
 builder.append(" ");
-return emitTerm(builder, right);
+emitTerm(builder, right);
+return builder.append(")");
 })();
 case "unary": return (function(){
 var position = _match.position;
